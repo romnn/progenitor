@@ -713,7 +713,7 @@ impl Generator {
                     {
                         assert!(mt.encoding.is_empty());
 
-                        let typ = if let Some(schema) = &mt.schema {
+                        if let Some(schema) = &mt.schema {
                             // Capture the source component name when the
                             // response body is a `$ref` so `extract_responses`
                             // can later collapse sibling responses that share
@@ -728,12 +728,18 @@ impl Generator {
                                 &format!("{}-response", operation.operation_id.as_ref().unwrap(),),
                                 Case::Pascal,
                             );
-                            self.type_space.add_type_with_name(&schema, Some(name))?
+                            let type_id =
+                                self.type_space.add_type_with_name(&schema, Some(name))?;
+                            OperationResponseKind::Type(type_id)
                         } else {
-                            todo!("media type encoding, no schema: {:#?}", mt);
-                        };
-
-                        OperationResponseKind::Type(typ)
+                            // A JSON media type with no `schema` is common
+                            // in real-world specs ("returns some JSON, but
+                            // we won't promise the shape"). Treat it as a
+                            // raw byte stream — callers who want JSON can
+                            // deserialize manually. Replacing the prior
+                            // `todo!()` lets the operation generate at all.
+                            OperationResponseKind::Raw
+                        }
                     } else if status_code == OperationResponseStatus::Code(101) {
                         OperationResponseKind::Upgrade
                     } else if response.content.first().is_some() {
