@@ -268,7 +268,15 @@ impl<T> ResponseValue<T> {
     }
 
     #[doc(hidden)]
-    pub fn map<U: std::fmt::Debug, F, E>(self, f: F) -> Result<ResponseValue<U>, E>
+    // The transform is total — return `ResponseValue<U>` directly rather
+    // than `Result<_, E>`. The previous signature returned `Result` so
+    // callers could `?` the (always-`Ok`) result; in practice the `E`
+    // parameter never inferred cleanly when the closure produced an
+    // enum-variant type, and synthesised multi-kind response enums
+    // (which may carry `ByteStream`) also can't satisfy a `U: Debug`
+    // bound. Both problems disappear once we drop the gratuitous
+    // wrapper.
+    pub fn map<U, F>(self, f: F) -> ResponseValue<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -278,11 +286,11 @@ impl<T> ResponseValue<T> {
             headers,
         } = self;
 
-        Ok(ResponseValue {
+        ResponseValue {
             inner: f(inner),
             status,
             headers,
-        })
+        }
     }
 }
 

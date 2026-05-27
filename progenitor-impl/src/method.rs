@@ -79,6 +79,12 @@ struct MethodSigBody {
     success: TokenStream,
     error: TokenStream,
     body: TokenStream,
+    /// Definitions for any types synthesised by `method_sig_body` itself —
+    /// today this is the per-operation `Status<code>` sum-type enums that
+    /// `extract_responses` falls back to when the response set has multiple
+    /// distinct kinds. Emitted by the caller alongside the function so the
+    /// signature's `Synth("…")` identifier resolves.
+    extra_types: TokenStream,
 }
 
 struct BuilderImpl {
@@ -371,6 +377,15 @@ pub(crate) enum OperationResponseKind {
     None,
     Raw,
     Upgrade,
+    /// Per-operation synthesized sum type, used when the response set
+    /// contains multiple distinct kinds (e.g. some statuses return a
+    /// typed JSON body and others return a streamed non-JSON body) that
+    /// don't collapse to a single kind via the bodyless or `allOf`
+    /// passes. The string is the synthesized enum's Rust identifier; the
+    /// enum definition itself is emitted alongside the operation function
+    /// by `method_sig_body`, deriving variants from the response items'
+    /// status codes and original payload kinds.
+    Synth(String),
 }
 
 impl OperationResponseKind {
@@ -389,7 +404,121 @@ impl OperationResponseKind {
             OperationResponseKind::Upgrade => {
                 quote! { reqwest::Upgraded }
             }
+            OperationResponseKind::Synth(name) => {
+                let ident = format_ident!("{}", name);
+                quote! { #ident }
+            }
         }
+    }
+}
+
+/// Translate a response status code into a Rust variant identifier for a
+/// synthesized response/error enum (`Status200`, `StatusRange4xx`,
+/// `Default`). Mirrors the convention used by openapi-generator so the
+/// generated code is recognisable.
+fn synth_variant_name(status: &OperationResponseStatus) -> String {
+    match status {
+        OperationResponseStatus::Code(code) => format!("Status{code}"),
+        OperationResponseStatus::Range(r) => format!("StatusRange{r}xx"),
+        OperationResponseStatus::Default => "Default".to_string(),
+    }
+}
+
+/// Which call to `extract_responses` produced this kind — determines the
+/// `Response`/`Error` suffix on synthesized enum names.
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum ResponseSide {
+    Success,
+    Error,
+}
+
+/// Pattern to emit in the success-arm `match` for a given status code.
+/// In the regular (single-kind) case all 2xx statuses collapse into the
+/// catch-all `200 ..= 299` arm; in the synth (multi-kind) case each
+/// status gets its own specific arm so we dispatch to the right variant
+/// constructor.
+fn success_arm_pattern(is_synth: bool, status: &OperationResponseStatus) -> TokenStream {
+    if is_synth {
+        match status {
+            OperationResponseStatus::Code(code) => quote! { #code },
+            OperationResponseStatus::Range(r) => {
+                let min = r * 100;
+                let max = min + 99;
+                quote! { #min ..= #max }
+            }
+            OperationResponseStatus::Default => quote! { _ },
+        }
+    } else {
+        match status {
+            OperationResponseStatus::Code(code) => quote! { #code },
+            OperationResponseStatus::Range(_) | OperationResponseStatus::Default => {
+                quote! { 200 ..= 299 }
+            }
+        }
+    }
+}
+
+/// Generate the per-arm decode expression that pulls the response body
+/// into a variant of a synthesized response/error enum. The function
+/// signature uses `Result<ResponseValue<#enum>, Error<#enum>>` so the
+/// per-arm result has to be `ResponseValue<#enum>` (success) or
+/// `Err(Error::ErrorResponse(ResponseValue<#enum>))` (error). Each
+/// inner-kind branch leverages `ResponseValue::map` (which is
+/// infallible but typed as `Result<_, E>`) so `?` threads through the
+/// surrounding async block's error type.
+fn synth_decode_arm(
+    enum_name: &str,
+    status: &OperationResponseStatus,
+    payload: &OperationResponseKind,
+    payload_ident: Option<&TokenStream>,
+    response_ident: &proc_macro2::Ident,
+    is_error: bool,
+) -> TokenStream {
+    let enum_ident = format_ident!("{}", enum_name);
+    let variant_ident = format_ident!("{}", synth_variant_name(status));
+
+    // Wrap the original kind's decode into a `ResponseValue<#enum>` whose
+    // inner value is the right variant constructor. `ResponseValue::map`
+    // is infallible but returns `Result<_, E>` so the `?` threads through
+    // the surrounding async block's error type without an extra branch.
+    //
+    // `from_response` and `upgrade` need a turbofish — their return type
+    // depends on a `T` the surrounding code can't infer once we collapse
+    // the result through the variant constructor.
+    let wrap_variant = match payload {
+        OperationResponseKind::Type(_) => {
+            let ty = payload_ident.expect("Type payload requires an ident").clone();
+            quote! {
+                ResponseValue::<#ty>::from_response(#response_ident)
+                    .await?
+                    .map(|inner| #enum_ident::#variant_ident(inner))
+            }
+        }
+        OperationResponseKind::None => quote! {
+            ResponseValue::empty(#response_ident)
+                .map(|()| #enum_ident::#variant_ident)
+        },
+        OperationResponseKind::Raw => quote! {
+            ResponseValue::stream(#response_ident)
+                .map(|inner| #enum_ident::#variant_ident(inner))
+        },
+        OperationResponseKind::Upgrade => quote! {
+            ResponseValue::<::reqwest::Upgraded>::upgrade(#response_ident)
+                .await?
+                .map(|inner| #enum_ident::#variant_ident(inner))
+        },
+        OperationResponseKind::Synth(_) => {
+            unreachable!("Synth kinds cannot themselves contain a synth variant")
+        }
+    };
+
+    if is_error {
+        quote! { Err(Error::ErrorResponse(#wrap_variant)) }
+    } else {
+        // Success arms must produce `Result<ResponseValue<#enum>, _>`.
+        // `wrap_variant` already evaluated to `ResponseValue<#enum>` via
+        // the trailing `?`, so wrap it in `Ok(...)` here.
+        quote! { Ok(#wrap_variant) }
     }
 }
 
@@ -686,11 +815,19 @@ impl Generator {
         })
     }
 
+    /// Generate the `impl`-block body for one positional-style method.
+    ///
+    /// Returns `(extra_types, impl_body)` where `extra_types` contains any
+    /// items (today: per-operation synthesized response/error sum-type
+    /// enums) that must live *outside* the surrounding `impl Client {}`
+    /// block — a `pub enum` is rejected by the parser inside an impl. The
+    /// caller is expected to emit the extras at module level alongside
+    /// the impl.
     pub(crate) fn positional_method(
         &mut self,
         method: &OperationMethod,
         has_inner: bool,
-    ) -> Result<TokenStream> {
+    ) -> Result<(TokenStream, TokenStream)> {
         let operation_id = format_ident!("{}", method.operation_id);
 
         // Render each parameter as it will appear in the method signature.
@@ -747,6 +884,7 @@ impl Generator {
             success: success_type,
             error: error_type,
             body,
+            extra_types,
         } = self.method_sig_body(method, quote! { Self }, quote! { self }, has_inner)?;
 
         let method_impl = quote! {
@@ -895,7 +1033,7 @@ impl Generator {
             #stream_impl
         };
 
-        Ok(all)
+        Ok((extra_types, all))
     }
 
     /// Common code generation between positional and builder interface-styles.
@@ -1068,33 +1206,52 @@ impl Generator {
         let (success_response_items, response_type) =
             self.extract_responses(method, OperationResponseStatus::is_success_or_default);
 
-        let success_response_matches = success_response_items.iter().map(|response| {
-            let pat = match &response.status_code {
-                OperationResponseStatus::Code(code) => quote! { #code },
-                OperationResponseStatus::Range(_) | OperationResponseStatus::Default => {
-                    quote! { 200 ..= 299 }
-                }
-            };
+        let success_synth_name = match &response_type {
+            OperationResponseKind::Synth(name) => Some(name.clone()),
+            _ => None,
+        };
 
-            let decode = match &response.typ {
-                OperationResponseKind::Type(_) => {
-                    quote! {
-                        ResponseValue::from_response(#response_ident).await
+        let success_response_matches = success_response_items.iter().map(|response| {
+            let pat = success_arm_pattern(success_synth_name.is_some(), &response.status_code);
+            let decode = if let Some(enum_name) = &success_synth_name {
+                let payload_ident = match &response.typ {
+                    OperationResponseKind::Type(type_id) => {
+                        Some(self.type_space.get_type(type_id).unwrap().ident())
                     }
-                }
-                OperationResponseKind::None => {
-                    quote! {
-                        Ok(ResponseValue::empty(#response_ident))
+                    _ => None,
+                };
+                synth_decode_arm(
+                    enum_name,
+                    &response.status_code,
+                    &response.typ,
+                    payload_ident.as_ref(),
+                    &response_ident,
+                    false,
+                )
+            } else {
+                match &response.typ {
+                    OperationResponseKind::Type(_) => {
+                        quote! {
+                            ResponseValue::from_response(#response_ident).await
+                        }
                     }
-                }
-                OperationResponseKind::Raw => {
-                    quote! {
-                        Ok(ResponseValue::stream(#response_ident))
+                    OperationResponseKind::None => {
+                        quote! {
+                            Ok(ResponseValue::empty(#response_ident))
+                        }
                     }
-                }
-                OperationResponseKind::Upgrade => {
-                    quote! {
-                        ResponseValue::upgrade(#response_ident).await
+                    OperationResponseKind::Raw => {
+                        quote! {
+                            Ok(ResponseValue::stream(#response_ident))
+                        }
+                    }
+                    OperationResponseKind::Upgrade => {
+                        quote! {
+                            ResponseValue::upgrade(#response_ident).await
+                        }
+                    }
+                    OperationResponseKind::Synth(_) => {
+                        unreachable!("Synth never appears in per-item typ")
                     }
                 }
             };
@@ -1105,6 +1262,11 @@ impl Generator {
         // Errors...
         let (error_response_items, error_type) =
             self.extract_responses(method, OperationResponseStatus::is_error_or_default);
+
+        let error_synth_name = match &error_type {
+            OperationResponseKind::Synth(name) => Some(name.clone()),
+            _ => None,
+        };
 
         let error_response_matches = error_response_items.iter().map(|response| {
             let pat = match &response.status_code {
@@ -1122,37 +1284,57 @@ impl Generator {
                 }
             };
 
-            let decode = match &response.typ {
-                OperationResponseKind::Type(_) => {
-                    quote! {
-                        Err(Error::ErrorResponse(
-                            ResponseValue::from_response(#response_ident)
-                                .await?
-                        ))
+            let decode = if let Some(enum_name) = &error_synth_name {
+                let payload_ident = match &response.typ {
+                    OperationResponseKind::Type(type_id) => {
+                        Some(self.type_space.get_type(type_id).unwrap().ident())
                     }
-                }
-                OperationResponseKind::None => {
-                    quote! {
-                        Err(Error::ErrorResponse(
-                            ResponseValue::empty(#response_ident)
-                        ))
+                    _ => None,
+                };
+                synth_decode_arm(
+                    enum_name,
+                    &response.status_code,
+                    &response.typ,
+                    payload_ident.as_ref(),
+                    &response_ident,
+                    true,
+                )
+            } else {
+                match &response.typ {
+                    OperationResponseKind::Type(_) => {
+                        quote! {
+                            Err(Error::ErrorResponse(
+                                ResponseValue::from_response(#response_ident)
+                                    .await?
+                            ))
+                        }
                     }
-                }
-                OperationResponseKind::Raw => {
-                    quote! {
-                        Err(Error::ErrorResponse(
-                            ResponseValue::stream(#response_ident)
-                        ))
+                    OperationResponseKind::None => {
+                        quote! {
+                            Err(Error::ErrorResponse(
+                                ResponseValue::empty(#response_ident)
+                            ))
+                        }
                     }
-                }
-                OperationResponseKind::Upgrade => {
-                    if response.status_code == OperationResponseStatus::Default {
-                        return quote! {}; // catch-all handled below
-                    } else {
-                        todo!(
-                            "non-default error response handling for \
-                                upgrade requests is not yet implemented"
-                        );
+                    OperationResponseKind::Raw => {
+                        quote! {
+                            Err(Error::ErrorResponse(
+                                ResponseValue::stream(#response_ident)
+                            ))
+                        }
+                    }
+                    OperationResponseKind::Upgrade => {
+                        if response.status_code == OperationResponseStatus::Default {
+                            return quote! {}; // catch-all handled below
+                        } else {
+                            todo!(
+                                "non-default error response handling for \
+                                    upgrade requests is not yet implemented"
+                            );
+                        }
+                    }
+                    OperationResponseKind::Synth(_) => {
+                        unreachable!("Synth never appears in per-item typ")
                     }
                 }
             };
@@ -1177,16 +1359,26 @@ impl Generator {
         });
 
         // Generate the catch-all case for other statuses. If the operation
-        // specifies a default response, we've already generated a default
-        // match as part of error response code handling. (And we've handled
-        // the default as a success response as well.) Otherwise the catch-all
-        // produces an error corresponding to a response not specified in the
-        // API description.
-        let default_response = match method.responses.iter().last() {
-            Some(response) if response.status_code.is_default() => quote! {},
-            _ => {
-                quote! { _ => Err(Error::UnexpectedResponse(#response_ident)), }
-            }
+        // specifies a default response on either side it already produced
+        // a `_ => …` arm (success side via the synth pattern, error side
+        // via the `Default` status pattern); emitting another would yield
+        // duplicate match arms and `rustc` would reject the source. The
+        // prior implementation looked at `method.responses.iter().last()`
+        // and relied on the YAML author putting `default:` after every
+        // specific code — but `process_operation` chains
+        // `operation.responses.default` BEFORE `operation.responses.responses`,
+        // so the last entry is always the highest specific code, never
+        // `Default`. Check the filtered/sorted items instead.
+        let success_has_default = success_response_items
+            .iter()
+            .any(|item| item.status_code.is_default());
+        let error_has_default = error_response_items
+            .iter()
+            .any(|item| item.status_code.is_default());
+        let default_response = if success_has_default || error_has_default {
+            quote! {}
+        } else {
+            quote! { _ => Err(Error::UnexpectedResponse(#response_ident)), }
         };
 
         let inner = match has_inner {
@@ -1296,23 +1488,98 @@ impl Generator {
             }
         };
 
+        // Emit per-operation synthesized enum definitions for any side
+        // whose `extract_responses` fell through to the multi-kind sum
+        // type. They live in the operations module alongside the function
+        // (not in `mod types`) because their variant payloads are
+        // status-keyed rather than schema-derived.
+        let success_enum = match &response_type {
+            OperationResponseKind::Synth(name) => {
+                Some(self.synth_enum_definition(name, &success_response_items))
+            }
+            _ => None,
+        };
+        let error_enum = match &error_type {
+            OperationResponseKind::Synth(name) => {
+                Some(self.synth_enum_definition(name, &error_response_items))
+            }
+            _ => None,
+        };
+        let extra_types = quote! { #success_enum #error_enum };
+
         Ok(MethodSigBody {
             success: response_type.into_tokens(&self.type_space),
             error: error_type.into_tokens(&self.type_space),
             body: body_impl,
+            extra_types,
         })
+    }
+
+    /// Emit a synthesized response/error enum. Variants are derived from
+    /// the response items' status codes (`Status401`, `Default`, ...) and
+    /// the payload type from each item's `typ`:
+    /// `Type(X)` → `Variant(<X>)`, `None` → bare unit variant, `Raw` →
+    /// `Variant(ByteStream)`, `Upgrade` → `Variant(::reqwest::Upgraded)`.
+    fn synth_enum_definition(&self, name: &str, items: &[OperationResponse]) -> TokenStream {
+        let enum_ident = format_ident!("{}", name);
+        let variants = items.iter().map(|item| {
+            let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
+            match &item.typ {
+                OperationResponseKind::Type(type_id) => {
+                    let ty = self.type_space.get_type(type_id).unwrap().ident();
+                    quote! { #variant_ident(#ty) }
+                }
+                OperationResponseKind::None => quote! { #variant_ident },
+                OperationResponseKind::Raw => quote! { #variant_ident(ByteStream) },
+                OperationResponseKind::Upgrade => quote! { #variant_ident(::reqwest::Upgraded) },
+                OperationResponseKind::Synth(_) => {
+                    unreachable!("Synth kinds cannot themselves contain a synth variant")
+                }
+            }
+        });
+        // Intentionally no `#[derive(Debug)]` — `ByteStream` from
+        // `progenitor-client` does not implement `Debug` (it wraps a
+        // boxed `Stream<Item = ...>` which isn't), and any synthesised
+        // enum that mixes typed + raw responses would otherwise fail to
+        // compile. Consumers who want Debug can derive it on a wrapper
+        // type or pattern-match on variants directly.
+        quote! {
+            pub enum #enum_ident {
+                #(#variants),*
+            }
+        }
     }
 
     /// Extract responses that match criteria specified by the `filter`. The
     /// result is a `Vec<OperationResponse>` that enumerates the cases matching
     /// the filter, and an `OperationResponseKind` that represents the common
     /// generated type for those cases. Items may be rewritten relative to
-    /// `method.responses` — see the bodyless-collapse and `allOf`-collapse
-    /// paths below.
+    /// `method.responses` — see the bodyless-collapse, `allOf`-collapse, and
+    /// multi-kind sum-type synthesis paths below.
     pub(crate) fn extract_responses(
         &self,
         method: &OperationMethod,
         filter: fn(&OperationResponseStatus) -> bool,
+    ) -> (Vec<OperationResponse>, OperationResponseKind) {
+        // We need to know whether this is the success or error side to
+        // synthesise a meaningful enum name when multi-kind collapse fails.
+        // The two filters are the only ones the rest of the crate uses, so
+        // identifier equality is a safe discriminator.
+        let success_filter_ptr =
+            OperationResponseStatus::is_success_or_default as *const () as usize;
+        let side = if filter as *const () as usize == success_filter_ptr {
+            ResponseSide::Success
+        } else {
+            ResponseSide::Error
+        };
+        self.extract_responses_inner(method, filter, side)
+    }
+
+    fn extract_responses_inner(
+        &self,
+        method: &OperationMethod,
+        filter: fn(&OperationResponseStatus) -> bool,
+        side: ResponseSide,
     ) -> (Vec<OperationResponse>, OperationResponseKind) {
         let mut response_items: Vec<OperationResponse> = method
             .responses
@@ -1391,15 +1658,28 @@ impl Generator {
         let response_type = if let Some(typed) = collapse_bodyless_with_typed(&response_types) {
             response_items.retain(|item| !matches!(item.typ, OperationResponseKind::None));
             typed
-        } else {
-            // TODO to deal with multiple response types, we'll need to create an
-            // enum type with variants for each of the response types.
-            assert!(response_types.len() <= 1);
+        } else if response_types.len() <= 1 {
             response_types
                 .into_iter()
                 .next()
                 // TODO should this be OperationResponseType::Raw?
                 .unwrap_or(OperationResponseKind::None)
+        } else {
+            // Genuine multi-kind set with no `allOf` ancestor available —
+            // synthesise a per-operation enum whose variants are keyed by
+            // status code. The enum definition itself is emitted by
+            // `method_sig_body` based on the (still original) `typ`s in
+            // `response_items`; here we only return the enum's name as the
+            // common kind so the surrounding function signature compiles.
+            let enum_name = format!(
+                "{}{}",
+                sanitize(&method.operation_id, Case::Pascal),
+                match side {
+                    ResponseSide::Success => "Response",
+                    ResponseSide::Error => "Error",
+                },
+            );
+            OperationResponseKind::Synth(enum_name)
         };
         (response_items, response_type)
     }
@@ -1598,12 +1878,20 @@ impl Generator {
     /// Finally, paginated interfaces have a `stream()` method which uses the
     /// `send()` method above to fetch each page of results to assemble the
     /// items into a single `impl Stream`.
+    /// Generate the per-operation builder struct + `impl` (for the
+    /// builder interface style).
+    ///
+    /// Returns `(extra_types, builder)` analogous to
+    /// [`positional_method`] — `extra_types` carries any module-level
+    /// items (currently the synthesized response/error sum-type enums)
+    /// that must be emitted alongside the builder rather than inside its
+    /// `impl` block.
     pub(crate) fn builder_struct(
         &mut self,
         method: &OperationMethod,
         tag_style: TagStyle,
         has_inner: bool,
-    ) -> Result<TokenStream> {
+    ) -> Result<(TokenStream, TokenStream)> {
         let struct_name = sanitize(&method.operation_id, Case::Pascal);
         let struct_ident = format_ident!("{}", struct_name);
 
@@ -1840,6 +2128,7 @@ impl Generator {
             success,
             error,
             body,
+            extra_types,
         } = self.method_sig_body(
             method,
             quote! { super::Client },
@@ -2043,27 +2332,30 @@ impl Generator {
             }
         };
 
-        Ok(quote! {
-            #[doc = #struct_doc]
-            #derive
-            pub struct #struct_ident<'a> {
-                #client_ident: &'a super::Client,
-                #( #param_names: #param_types, )*
-            }
-
-            impl<'a> #struct_ident<'a> {
-                pub fn new(client: &'a super::Client) -> Self {
-                    Self {
-                        #client_ident: client,
-                        #( #param_names: #param_values, )*
-                    }
+        Ok((
+            extra_types,
+            quote! {
+                #[doc = #struct_doc]
+                #derive
+                pub struct #struct_ident<'a> {
+                    #client_ident: &'a super::Client,
+                    #( #param_names: #param_types, )*
                 }
 
-                #( #param_impls )*
-                #send_impl
-                #stream_impl
-            }
-        })
+                impl<'a> #struct_ident<'a> {
+                    pub fn new(client: &'a super::Client) -> Self {
+                        Self {
+                            #client_ident: client,
+                            #( #param_names: #param_values, )*
+                        }
+                    }
+
+                    #( #param_impls )*
+                    #send_impl
+                    #stream_impl
+                }
+            },
+        ))
     }
 
     fn builder_helper(&self, method: &OperationMethod) -> BuilderImpl {

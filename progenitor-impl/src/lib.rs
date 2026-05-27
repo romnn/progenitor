@@ -572,16 +572,23 @@ impl Generator {
         input_methods: &[method::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
-        let methods = input_methods
+        let pairs = input_methods
             .iter()
             .map(|method| self.positional_method(method, has_inner))
             .collect::<Result<Vec<_>>>()?;
+        let (extra_types, methods): (Vec<TokenStream>, Vec<TokenStream>) =
+            pairs.into_iter().unzip();
 
         // The allow(unused_imports) on the `pub use` is necessary with Rust
         // 1.76+, in case the generated file is not at the top level of the
         // crate.
 
         let out = quote! {
+            // Per-operation synthesised response/error enums must live at
+            // module level (a `pub enum` inside `impl Client {}` is rejected
+            // by the parser), so emit them ahead of the impl.
+            #(#extra_types)*
+
             #[allow(clippy::all)]
             impl Client {
                 #(#methods)*
@@ -601,10 +608,12 @@ impl Generator {
         input_methods: &[method::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
-        let builder_struct = input_methods
+        let pairs = input_methods
             .iter()
             .map(|method| self.builder_struct(method, TagStyle::Merged, has_inner))
             .collect::<Result<Vec<_>>>()?;
+        let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
+            pairs.into_iter().unzip();
 
         let builder_methods = input_methods
             .iter()
@@ -632,6 +641,11 @@ impl Generator {
                     ResponseValue,
                 };
 
+                // Synthesised response/error enums live alongside the
+                // builders so the `impl<'_> Builder<'_> { send }` arms can
+                // name them by short identifier.
+                #(#builder_extra_types)*
+
                 #(#builder_struct)*
             }
 
@@ -650,10 +664,12 @@ impl Generator {
         tag_info: BTreeMap<&String, &openapiv3::Tag>,
         has_inner: bool,
     ) -> Result<TokenStream> {
-        let builder_struct = input_methods
+        let pairs = input_methods
             .iter()
             .map(|method| self.builder_struct(method, TagStyle::Separate, has_inner))
             .collect::<Result<Vec<_>>>()?;
+        let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
+            pairs.into_iter().unzip();
 
         let (traits_and_impls, trait_preludes) = self.builder_tags(input_methods, &tag_info);
 
@@ -679,6 +695,8 @@ impl Generator {
                     RequestBuilderExt,
                     ResponseValue,
                 };
+
+                #(#builder_extra_types)*
 
                 #(#builder_struct)*
             }

@@ -339,6 +339,11 @@ impl Generator {
                         },
                     ),
                     crate::method::OperationResponseKind::Upgrade => Default::default(),
+                    // httpmock generation for the synthesised multi-kind sum
+                    // type isn't implemented — there's no single schema to
+                    // pivot the mock body on. Skip the parameter; mocks for
+                    // these operations need to be hand-written.
+                    crate::method::OperationResponseKind::Synth(_) => Default::default(),
                 };
 
                 match status_code {

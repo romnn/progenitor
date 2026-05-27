@@ -226,7 +226,8 @@ impl Generator {
             // Normal, one-shot API calls.
             None => {
                 let success_output = match success_kind {
-                    crate::method::OperationResponseKind::Type(_) => {
+                    crate::method::OperationResponseKind::Type(_)
+                    | crate::method::OperationResponseKind::Synth(_) => {
                         quote! {
                             {
                                 self.config.success_item(&r);
@@ -254,6 +255,7 @@ impl Generator {
 
                 let error_output = match error_kind {
                     crate::method::OperationResponseKind::Type(_)
+                    | crate::method::OperationResponseKind::Synth(_)
                     | crate::method::OperationResponseKind::None => {
                         quote! {
                             {
@@ -288,12 +290,17 @@ impl Generator {
                     crate::method::OperationResponseKind::Type(type_id) => {
                         self.type_space.get_type(&type_id).unwrap().ident()
                     }
+                    crate::method::OperationResponseKind::Synth(name) => {
+                        let ident = format_ident!("{}", name);
+                        quote! { #ident }
+                    }
                     crate::method::OperationResponseKind::None => quote! { () },
                     crate::method::OperationResponseKind::Raw => todo!(),
                     crate::method::OperationResponseKind::Upgrade => todo!(),
                 };
                 let error_output = match error_kind {
                     crate::method::OperationResponseKind::Type(_)
+                    | crate::method::OperationResponseKind::Synth(_)
                     | crate::method::OperationResponseKind::None => {
                         quote! {
                             {
