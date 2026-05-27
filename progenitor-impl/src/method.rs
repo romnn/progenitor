@@ -1322,24 +1322,27 @@ impl Generator {
             .collect();
         response_items.sort();
 
-        // If we have a success range and a default, we can pop off the default
-        // since it will never be hit. Note that this is a no-op for error
-        // responses.
+        // If at least one 2xx response is declared and a `default` response
+        // is also present, the `default` arm is unreachable from the success
+        // path — every concrete success status is already handled by an
+        // explicit code, and any 4xx/5xx that would otherwise fall through
+        // to `default` is picked up by the error-side `extract_responses`
+        // call anyway. Pop the trailing `default` so we don't trip the
+        // multi-distinct-kind assert below with a `{Type(success), Type(default)}`
+        // set. No-op for error-side calls because the error filter excludes
+        // 2xx codes.
         let len = response_items.len();
-        if len >= 2 {
-            if let (
-                OperationResponse {
-                    status_code: OperationResponseStatus::Range(2),
-                    ..
-                },
-                OperationResponse {
-                    status_code: OperationResponseStatus::Default,
-                    ..
-                },
-            ) = (&response_items[len - 2], &response_items[len - 1])
-            {
-                response_items.pop();
-            }
+        if len >= 2
+            && matches!(
+                response_items[len - 1].status_code,
+                OperationResponseStatus::Default
+            )
+            && matches!(
+                response_items[len - 2].status_code,
+                OperationResponseStatus::Range(2) | OperationResponseStatus::Code(200..=299),
+            )
+        {
+            response_items.pop();
         }
 
         // First pass: if every distinct `Type(...)` variant in the set
@@ -2229,11 +2232,20 @@ impl Generator {
         let (content_str, media_type) = match (body.content.first(), body.content.len()) {
             (None, _) => return Ok(None),
             (Some(first), 1) => first,
-            (_, n) => todo!(
-                "more media types than expected for {}: {}",
-                operation.operation_id.as_ref().unwrap(),
-                n,
-            ),
+            // Multiple request-body media types is common in real-world specs
+            // (e.g. an endpoint advertising both `application/json` for a
+            // typed body and `multipart/form-data` for a binary upload).
+            // Progenitor can only generate one body parameter per operation
+            // today (multipart support is incomplete — see oxidecomputer/
+            // progenitor#418), so prefer the canonical JSON variant when
+            // present; otherwise fall back to the first declared variant.
+            // The other variants are not exposed in the generated client.
+            (_, _) => body
+                .content
+                .iter()
+                .find(|(name, _)| is_json_content_type(name))
+                .or_else(|| body.content.first())
+                .expect("non-empty content map was checked above"),
         };
 
         let schema = media_type.schema.as_ref().ok_or_else(|| {
