@@ -140,16 +140,33 @@ pub enum BodyContentType {
     Text(String),
 }
 
+/// Returns true for the canonical JSON media type, its parameterized forms
+/// (`application/json;charset=utf-8`, `application/json;version=1.0`, ...),
+/// and any media type using the RFC 6839 §3.1 `+json` structured syntax
+/// suffix (`application/problem+json`, `application/vnd.foo.v1+json`,
+/// `application/scim+json`, ...).
+fn is_json_content_type(content_type: &str) -> bool {
+    let base = content_type
+        .split(';')
+        .next()
+        .unwrap_or(content_type)
+        .trim();
+    base == "application/json" || base.ends_with("+json")
+}
+
 impl FromStr for BodyContentType {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let offset = s.find(';').unwrap_or(s.len());
-        match &s[..offset] {
+        let base = &s[..offset];
+        if is_json_content_type(s) {
+            return Ok(Self::Json);
+        }
+        match base {
             "application/octet-stream" => Ok(Self::OctetStream),
-            "application/json" => Ok(Self::Json),
             "application/x-www-form-urlencoded" => Ok(Self::FormUrlencoded),
-            "text/plain" | "text/x-markdown" => Ok(Self::Text(String::from(&s[..offset]))),
+            "text/plain" | "text/x-markdown" => Ok(Self::Text(String::from(base))),
             _ => Err(Error::UnexpectedFormat(format!(
                 "unexpected content type: {}",
                 s
@@ -451,19 +468,25 @@ impl Generator {
                         status_code = OperationResponseStatus::Code(101);
                     }
 
-                    // We categorize responses as "typed" based on the
-                    // "application/json" content type, "upgrade" if it's a
+                    // We categorize responses as "typed" based on a JSON
+                    // content type (canonical `application/json`, a
+                    // parameterized form like `application/json;version=1.0`,
+                    // or any RFC 6839 `+json` suffix like
+                    // `application/problem+json`), "upgrade" if it's a
                     // websocket channel without a meaningful content-type,
-                    // "raw" if there's any other response content type (we don't
-                    // investigate further), or "none" if there is no content.
-                    // TODO if there are multiple response content types we could
-                    // treat those like different response types and create an
-                    // enum; the generated client method would check for the
-                    // content type of the response just as it currently examines
-                    // the status code.
-                    let typ = if let Some(mt) = response.content.iter().find_map(|(x, v)| {
-                        (x == "application/json" || x.starts_with("application/json;")).then_some(v)
-                    }) {
+                    // "raw" if there's any other response content type (we
+                    // don't investigate further), or "none" if there is no
+                    // content.
+                    // TODO if there are multiple response content types we
+                    // could treat those like different response types and
+                    // create an enum; the generated client method would
+                    // check for the content type of the response just as it
+                    // currently examines the status code.
+                    let typ = if let Some(mt) = response
+                        .content
+                        .iter()
+                        .find_map(|(x, v)| is_json_content_type(x).then_some(v))
+                    {
                         assert!(mt.encoding.is_empty());
 
                         let typ = if let Some(schema) = &mt.schema {
@@ -2330,5 +2353,53 @@ impl ParameterDataExt for openapiv3::ParameterData {
                 format!("unexpected content {:#?}", c),
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::{BodyContentType, is_json_content_type};
+
+    #[test]
+    fn json_content_type_matches_canonical_and_parameterized() {
+        assert!(is_json_content_type("application/json"));
+        assert!(is_json_content_type("application/json;charset=utf-8"));
+        assert!(is_json_content_type("application/json; charset=utf-8"));
+        assert!(is_json_content_type("application/json;version=1.0"));
+    }
+
+    #[test]
+    fn json_content_type_matches_rfc6839_structured_syntax_suffix() {
+        // RFC 6839 §3.1 — the `+json` structured syntax suffix.
+        assert!(is_json_content_type("application/problem+json"));
+        assert!(is_json_content_type("application/vnd.github.v3.star+json"));
+        assert!(is_json_content_type("application/scim+json"));
+        assert!(is_json_content_type("application/ld+json"));
+        // Parameters after the suffix still parse correctly.
+        assert!(is_json_content_type("application/problem+json; charset=utf-8"));
+    }
+
+    #[test]
+    fn json_content_type_rejects_non_json() {
+        assert!(!is_json_content_type("application/octet-stream"));
+        assert!(!is_json_content_type("application/xml"));
+        assert!(!is_json_content_type("text/plain"));
+        assert!(!is_json_content_type("application/x-www-form-urlencoded"));
+        // `+jsonish` is not a structured syntax suffix.
+        assert!(!is_json_content_type("application/foo+jsonish"));
+    }
+
+    #[test]
+    fn body_content_type_parses_rfc6839_suffix_as_json() {
+        assert!(matches!(
+            BodyContentType::from_str("application/problem+json").unwrap(),
+            BodyContentType::Json,
+        ));
+        assert!(matches!(
+            BodyContentType::from_str("application/vnd.api+json; charset=utf-8").unwrap(),
+            BodyContentType::Json,
+        ));
     }
 }
