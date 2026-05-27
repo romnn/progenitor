@@ -11,7 +11,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 use thiserror::Error;
-use typify::{TypeSpace, TypeSpaceSettings};
+use typify::{TypeId, TypeSpace, TypeSpaceSettings};
 
 use crate::to_schema::ToSchema;
 
@@ -53,6 +53,19 @@ pub struct Generator {
     settings: GenerationSettings,
     uses_futures: bool,
     uses_websockets: bool,
+    /// Maps each component schema that extends another via a top-level
+    /// `allOf: [{$ref: <parent>}, ...]` to its parent's component name.
+    /// Populated in `generate_tokens` after `add_ref_types`; used by
+    /// `extract_responses` to collapse sibling response types that share
+    /// a common ancestor (so the generated function signature gets a
+    /// single error/success type instead of crashing on the
+    /// multi-distinct-kind assert downstream).
+    schema_supertypes: BTreeMap<String, String>,
+    /// Component-schema name → `TypeId` of the corresponding typify type
+    /// after `add_ref_types`. Needed alongside `schema_supertypes` so
+    /// `extract_responses` can resolve a common-ancestor schema name back
+    /// to a usable `TypeId` when rewriting response items.
+    schema_type_ids: BTreeMap<String, TypeId>,
 }
 
 /// Settings for [Generator].
@@ -264,6 +277,8 @@ impl Default for Generator {
             settings: Default::default(),
             uses_futures: Default::default(),
             uses_websockets: Default::default(),
+            schema_supertypes: Default::default(),
+            schema_type_ids: Default::default(),
         }
     }
 }
@@ -315,7 +330,31 @@ impl Generator {
             settings: settings.clone(),
             uses_futures: false,
             uses_websockets: false,
+            schema_supertypes: Default::default(),
+            schema_type_ids: Default::default(),
         }
+    }
+
+    /// Resolve each `components.schemas` entry to its `TypeId` by handing
+    /// typify a `$ref` to the named component — `add_ref_types` already
+    /// populated typify's internal `ref_to_id` map, so passing the same
+    /// `$ref` back returns the cached id rather than synthesising a new
+    /// type. The resulting map is the inverse of typify's name → id mapping
+    /// that progenitor needs (typify doesn't expose it directly).
+    fn build_schema_type_id_map(
+        &mut self,
+        components: &openapiv3::Components,
+    ) -> Result<BTreeMap<String, TypeId>> {
+        let mut map = BTreeMap::new();
+        for name in components.schemas.keys() {
+            let ref_schema: schemars::schema::Schema = schemars::schema::SchemaObject::new_ref(
+                format!("#/components/schemas/{name}"),
+            )
+            .into();
+            let type_id = self.type_space.add_type_with_name(&ref_schema, None)?;
+            map.insert(name.clone(), type_id);
+        }
+        Ok(map)
     }
 
     /// Emit a [TokenStream] containing the generated client code.
@@ -331,6 +370,14 @@ impl Generator {
         });
 
         self.type_space.add_ref_types(schemas)?;
+
+        // Build the supertype map and the schema-name → TypeId map used
+        // by `extract_responses` to collapse sibling response types that
+        // share a common `allOf` ancestor.
+        if let Some(components) = &spec.components {
+            self.schema_supertypes = crate::method::build_schema_supertype_map(components);
+            self.schema_type_ids = self.build_schema_type_id_map(components)?;
+        }
 
         let raw_methods = spec
             .paths

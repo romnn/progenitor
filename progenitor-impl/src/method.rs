@@ -140,6 +140,78 @@ pub enum BodyContentType {
     Text(String),
 }
 
+/// Build a `child_name → parent_name` map for every schema in `components`
+/// that extends another via a top-level `allOf: [{$ref: parent}, ...]`.
+///
+/// Only schemas whose top-level `allOf` contains exactly one `$ref` to a
+/// component qualify — patterns with multiple parent refs, no parent ref,
+/// or non-allOf compositions don't have unambiguous "single parent"
+/// semantics, so they're omitted. The map is used by
+/// [`find_common_supertype`] to detect sibling response schemas that share
+/// a common ancestor.
+pub(crate) fn build_schema_supertype_map(
+    components: &openapiv3::Components,
+) -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
+    for (name, schema_or_ref) in &components.schemas {
+        let ReferenceOr::Item(schema) = schema_or_ref else {
+            continue;
+        };
+        let openapiv3::SchemaKind::AllOf { all_of } = &schema.schema_kind else {
+            continue;
+        };
+        let mut parent_refs: Vec<&str> = Vec::new();
+        for member in all_of {
+            if let ReferenceOr::Reference { reference } = member {
+                if let Some(parent) = reference.strip_prefix("#/components/schemas/") {
+                    parent_refs.push(parent);
+                }
+            }
+        }
+        if parent_refs.len() == 1 {
+            map.insert(name.clone(), parent_refs[0].to_string());
+        }
+    }
+    map
+}
+
+/// Find the lowest common ancestor of `names` in the inheritance graph
+/// described by `supertype_map`. Returns the deepest ancestor present in
+/// every input's supertype chain; `None` if no shared ancestor exists.
+///
+/// Walking is bounded: each chain is built only as far as the supertype
+/// map carries the lookup, and cycles are detected via a contains-check.
+pub(crate) fn find_common_supertype(
+    names: &BTreeSet<String>,
+    supertype_map: &BTreeMap<String, String>,
+) -> Option<String> {
+    if names.is_empty() {
+        return None;
+    }
+    let chains: Vec<Vec<String>> = names
+        .iter()
+        .map(|name| {
+            let mut chain = vec![name.clone()];
+            let mut current = name.as_str();
+            while let Some(parent) = supertype_map.get(current) {
+                if chain.iter().any(|seen| seen == parent) {
+                    break;
+                }
+                chain.push(parent.clone());
+                current = parent.as_str();
+            }
+            chain
+        })
+        .collect();
+    let first = chains.first()?;
+    for candidate in first {
+        if chains.iter().all(|chain| chain.contains(candidate)) {
+            return Some(candidate.clone());
+        }
+    }
+    None
+}
+
 /// If `types` is exactly `{kind, None}` where `kind != None`, return that
 /// body-bearing kind. Otherwise return `None` (the caller should fall back
 /// to its prior behaviour). See the call site in `extract_responses` for
@@ -202,10 +274,16 @@ impl std::fmt::Display for BodyContentType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct OperationResponse {
     pub status_code: OperationResponseStatus,
     pub typ: OperationResponseKind,
+    /// Source `components.schemas.<name>` of this response body, when the
+    /// response references a named component schema. `None` for inline
+    /// schemas and for bodyless / raw / upgrade responses. Used by
+    /// `extract_responses` to detect sibling response types that share a
+    /// common `allOf` ancestor and can be collapsed to that ancestor.
+    pub schema_name: Option<String>,
     // TODO this isn't currently used because dropshot doesn't give us a
     // particularly useful message here.
     #[allow(dead_code)]
@@ -498,6 +576,7 @@ impl Generator {
                     // create an enum; the generated client method would
                     // check for the content type of the response just as it
                     // currently examines the status code.
+                    let mut schema_name: Option<String> = None;
                     let typ = if let Some(mt) = response
                         .content
                         .iter()
@@ -506,6 +585,15 @@ impl Generator {
                         assert!(mt.encoding.is_empty());
 
                         let typ = if let Some(schema) = &mt.schema {
+                            // Capture the source component name when the
+                            // response body is a `$ref` so `extract_responses`
+                            // can later collapse sibling responses that share
+                            // a common `allOf` ancestor.
+                            if let ReferenceOr::Reference { reference } = schema {
+                                schema_name = reference
+                                    .strip_prefix("#/components/schemas/")
+                                    .map(str::to_string);
+                            }
                             let schema = schema.to_schema();
                             let name = sanitize(
                                 &format!("{}-response", operation.operation_id.as_ref().unwrap(),),
@@ -545,6 +633,7 @@ impl Generator {
                     Ok(OperationResponse {
                         status_code,
                         typ,
+                        schema_name,
                         description,
                     })
                 })
@@ -558,6 +647,7 @@ impl Generator {
             responses.push(OperationResponse {
                 status_code: OperationResponseStatus::Range(2),
                 typ: OperationResponseKind::Raw,
+                schema_name: None,
                 description: None,
             });
         }
@@ -1215,18 +1305,21 @@ impl Generator {
 
     /// Extract responses that match criteria specified by the `filter`. The
     /// result is a `Vec<OperationResponse>` that enumerates the cases matching
-    /// the filter, and a `TokenStream` that represents the generated type for
-    /// those cases.
-    pub(crate) fn extract_responses<'a>(
+    /// the filter, and an `OperationResponseKind` that represents the common
+    /// generated type for those cases. Items may be rewritten relative to
+    /// `method.responses` — see the bodyless-collapse and `allOf`-collapse
+    /// paths below.
+    pub(crate) fn extract_responses(
         &self,
-        method: &'a OperationMethod,
+        method: &OperationMethod,
         filter: fn(&OperationResponseStatus) -> bool,
-    ) -> (Vec<&'a OperationResponse>, OperationResponseKind) {
-        let mut response_items = method
+    ) -> (Vec<OperationResponse>, OperationResponseKind) {
+        let mut response_items: Vec<OperationResponse> = method
             .responses
             .iter()
             .filter(|response| filter(&response.status_code))
-            .collect::<Vec<_>>();
+            .cloned()
+            .collect();
         response_items.sort();
 
         // If we have a success range and a default, we can pop off the default
@@ -1249,19 +1342,48 @@ impl Generator {
             }
         }
 
+        // First pass: if every distinct `Type(...)` variant in the set
+        // descends from a common ancestor schema via `allOf`, rewrite each
+        // typed response to use that ancestor's `TypeId`. The runtime cost
+        // is the loss of subtype-specific fields (e.g. `BadRequestProblem`'s
+        // `violations` deserialized as `Problem`), which is acceptable
+        // because the alternative is failing to generate the operation at
+        // all. `None` / `Raw` / `Upgrade` items are passed through
+        // untouched — they're handled by the subsequent bodyless collapse
+        // or the strict assertion.
+        let typed_schema_names: Option<BTreeSet<String>> = response_items
+            .iter()
+            .filter(|item| matches!(item.typ, OperationResponseKind::Type(_)))
+            .map(|item| item.schema_name.clone())
+            .collect();
+        if let Some(names) = typed_schema_names {
+            if names.len() > 1 {
+                if let Some(ancestor) = find_common_supertype(&names, &self.schema_supertypes) {
+                    if let Some(type_id) = self.schema_type_ids.get(&ancestor) {
+                        for item in &mut response_items {
+                            if matches!(item.typ, OperationResponseKind::Type(_)) {
+                                item.typ = OperationResponseKind::Type(type_id.clone());
+                                item.schema_name = Some(ancestor.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let response_types = response_items
             .iter()
             .map(|response| response.typ.clone())
             .collect::<BTreeSet<_>>();
 
-        // If the only distinct kinds are one body-bearing kind plus `None`
-        // (a common pattern — e.g. 200 with a JSON body alongside 304 / 204
-        // / a bodyless Unauthorized), collapse to the body-bearing kind and
-        // drop the `None` items from `response_items` so their per-arm
-        // decodes are never emitted. Those status codes fall through to the
-        // `_ => Err(Error::UnexpectedResponse(response))` catch-all at
-        // runtime: callers still get an error tagged with the status code,
-        // they just don't get a typed `ErrorResponse(ResponseValue<()>)`
+        // Second pass: if the only distinct kinds are one body-bearing kind
+        // plus `None` (a common pattern — e.g. 200 with a JSON body alongside
+        // 304 / 204 / a bodyless Unauthorized), collapse to the body-bearing
+        // kind and drop the `None` items from `response_items` so their
+        // per-arm decodes are never emitted. Those status codes fall through
+        // to the `_ => Err(Error::UnexpectedResponse(response))` catch-all
+        // at runtime: callers still get an error tagged with the status
+        // code, they just don't get a typed `ErrorResponse(ResponseValue<()>)`
         // variant for it.
         let response_type = if let Some(typed) = collapse_bodyless_with_typed(&response_types) {
             response_items.retain(|item| !matches!(item.typ, OperationResponseKind::None));
@@ -2388,10 +2510,13 @@ impl ParameterDataExt for openapiv3::ParameterData {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::str::FromStr;
 
-    use super::{BodyContentType, OperationResponseKind, collapse_bodyless_with_typed, is_json_content_type};
+    use super::{
+        BodyContentType, OperationResponseKind, build_schema_supertype_map,
+        collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
+    };
 
     fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
         items.into_iter().collect()
@@ -2431,6 +2556,116 @@ mod tests {
             ])),
             None,
         );
+    }
+
+    fn supertype_map(entries: &[(&str, &str)]) -> BTreeMap<String, String> {
+        entries
+            .iter()
+            .map(|(child, parent)| ((*child).to_string(), (*parent).to_string()))
+            .collect()
+    }
+
+    fn name_set(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn find_common_supertype_picks_immediate_parent_when_one_input_is_the_parent() {
+        // BadRequestProblem extends Problem; both appear in the input set.
+        // The LCA is Problem itself.
+        let map = supertype_map(&[("BadRequestProblem", "Problem")]);
+        assert_eq!(
+            find_common_supertype(&name_set(&["BadRequestProblem", "Problem"]), &map),
+            Some("Problem".to_string()),
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_walks_multi_step_chains() {
+        // A extends Middle extends Root; B extends Middle extends Root.
+        // The LCA is Middle (deeper than Root).
+        let map = supertype_map(&[
+            ("A", "Middle"),
+            ("B", "Middle"),
+            ("Middle", "Root"),
+        ]);
+        assert_eq!(
+            find_common_supertype(&name_set(&["A", "B"]), &map),
+            Some("Middle".to_string()),
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_returns_none_when_no_shared_ancestor() {
+        // X has no parent; Y has its own unrelated parent.
+        let map = supertype_map(&[("Y", "OtherRoot")]);
+        assert_eq!(
+            find_common_supertype(&name_set(&["X", "Y"]), &map),
+            None,
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_tolerates_cycles_in_the_map() {
+        // Pathological input: A → B → A. Walking must terminate.
+        let map = supertype_map(&[("A", "B"), ("B", "A")]);
+        // No shared ancestor with an unrelated type.
+        assert_eq!(
+            find_common_supertype(&name_set(&["A", "C"]), &map),
+            None,
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_handles_singleton_and_empty_sets() {
+        let map = supertype_map(&[("A", "Root")]);
+        // A single name's own chain trivially contains itself.
+        assert_eq!(
+            find_common_supertype(&name_set(&["A"]), &map),
+            Some("A".to_string()),
+        );
+        assert_eq!(find_common_supertype(&BTreeSet::new(), &map), None);
+    }
+
+    #[test]
+    fn build_schema_supertype_map_captures_single_ref_allof() {
+        let yaml = r#"
+schemas:
+  Problem:
+    type: object
+    properties:
+      detail: { type: string }
+  BadRequestProblem:
+    allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        properties:
+          violations: { type: object }
+"#;
+        let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
+        let map = build_schema_supertype_map(&components);
+        assert_eq!(map.get("BadRequestProblem"), Some(&"Problem".to_string()));
+        // The plain `Problem` schema has no allOf and shouldn't appear.
+        assert!(!map.contains_key("Problem"));
+    }
+
+    #[test]
+    fn build_schema_supertype_map_skips_multiref_or_mixed_allof() {
+        // Two parent refs — not a single-parent "extends" pattern.
+        let yaml = r#"
+schemas:
+  ParentA:
+    type: object
+  ParentB:
+    type: object
+  Multi:
+    allOf:
+      - $ref: '#/components/schemas/ParentA'
+      - $ref: '#/components/schemas/ParentB'
+"#;
+        let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
+        let map = build_schema_supertype_map(&components);
+        assert!(!map.contains_key("Multi"), "multi-parent allOf must not yield a single parent");
     }
 
     #[test]
