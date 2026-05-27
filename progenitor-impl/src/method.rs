@@ -140,6 +140,22 @@ pub enum BodyContentType {
     Text(String),
 }
 
+/// If `types` is exactly `{kind, None}` where `kind != None`, return that
+/// body-bearing kind. Otherwise return `None` (the caller should fall back
+/// to its prior behaviour). See the call site in `extract_responses` for
+/// the motivating context.
+fn collapse_bodyless_with_typed(
+    types: &BTreeSet<OperationResponseKind>,
+) -> Option<OperationResponseKind> {
+    if types.len() != 2 || !types.contains(&OperationResponseKind::None) {
+        return None;
+    }
+    types
+        .iter()
+        .find(|kind| !matches!(kind, OperationResponseKind::None))
+        .cloned()
+}
+
 /// Returns true for the canonical JSON media type, its parameterized forms
 /// (`application/json;charset=utf-8`, `application/json;version=1.0`, ...),
 /// and any media type using the RFC 6839 §3.1 `+json` structured syntax
@@ -1238,14 +1254,28 @@ impl Generator {
             .map(|response| response.typ.clone())
             .collect::<BTreeSet<_>>();
 
-        // TODO to deal with multiple response types, we'll need to create an
-        // enum type with variants for each of the response types.
-        assert!(response_types.len() <= 1);
-        let response_type = response_types
-            .into_iter()
-            .next()
-            // TODO should this be OperationResponseType::Raw?
-            .unwrap_or(OperationResponseKind::None);
+        // If the only distinct kinds are one body-bearing kind plus `None`
+        // (a common pattern — e.g. 200 with a JSON body alongside 304 / 204
+        // / a bodyless Unauthorized), collapse to the body-bearing kind and
+        // drop the `None` items from `response_items` so their per-arm
+        // decodes are never emitted. Those status codes fall through to the
+        // `_ => Err(Error::UnexpectedResponse(response))` catch-all at
+        // runtime: callers still get an error tagged with the status code,
+        // they just don't get a typed `ErrorResponse(ResponseValue<()>)`
+        // variant for it.
+        let response_type = if let Some(typed) = collapse_bodyless_with_typed(&response_types) {
+            response_items.retain(|item| !matches!(item.typ, OperationResponseKind::None));
+            typed
+        } else {
+            // TODO to deal with multiple response types, we'll need to create an
+            // enum type with variants for each of the response types.
+            assert!(response_types.len() <= 1);
+            response_types
+                .into_iter()
+                .next()
+                // TODO should this be OperationResponseType::Raw?
+                .unwrap_or(OperationResponseKind::None)
+        };
         (response_items, response_type)
     }
 
@@ -2358,9 +2388,64 @@ impl ParameterDataExt for openapiv3::ParameterData {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
     use std::str::FromStr;
 
-    use super::{BodyContentType, is_json_content_type};
+    use super::{BodyContentType, OperationResponseKind, collapse_bodyless_with_typed, is_json_content_type};
+
+    fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
+        items.into_iter().collect()
+    }
+
+    #[test]
+    fn collapse_bodyless_collapses_single_typed_plus_none() {
+        let collapsed = collapse_bodyless_with_typed(&kinds([
+            OperationResponseKind::Raw,
+            OperationResponseKind::None,
+        ]));
+        assert_eq!(collapsed, Some(OperationResponseKind::Raw));
+
+        let collapsed = collapse_bodyless_with_typed(&kinds([
+            OperationResponseKind::Upgrade,
+            OperationResponseKind::None,
+        ]));
+        assert_eq!(collapsed, Some(OperationResponseKind::Upgrade));
+    }
+
+    #[test]
+    fn collapse_bodyless_leaves_uniform_sets_alone() {
+        // Single kind — caller's existing path handles it.
+        assert_eq!(collapse_bodyless_with_typed(&kinds([OperationResponseKind::Raw])), None);
+        assert_eq!(collapse_bodyless_with_typed(&kinds([OperationResponseKind::None])), None);
+        assert_eq!(collapse_bodyless_with_typed(&BTreeSet::new()), None);
+    }
+
+    #[test]
+    fn collapse_bodyless_does_not_collapse_two_body_kinds() {
+        // `Raw` + `Upgrade` is a genuine multi-kind conflict — the existing
+        // assertion should still fire downstream so we surface the spec issue.
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([
+                OperationResponseKind::Raw,
+                OperationResponseKind::Upgrade,
+            ])),
+            None,
+        );
+    }
+
+    #[test]
+    fn collapse_bodyless_does_not_collapse_more_than_two_kinds() {
+        // Even when `None` is present, three distinct kinds is not the
+        // single-typed-plus-bodyless pattern the collapse is designed for.
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([
+                OperationResponseKind::Raw,
+                OperationResponseKind::Upgrade,
+                OperationResponseKind::None,
+            ])),
+            None,
+        );
+    }
 
     #[test]
     fn json_content_type_matches_canonical_and_parameterized() {
