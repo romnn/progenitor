@@ -93,7 +93,7 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
 
         let openapiv3::SchemaData {
             nullable,
-            discriminator: _, // TODO: see above
+            discriminator,
             external_docs: _, // TODO: append to description?
 
             title,
@@ -118,7 +118,21 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
         };
 
         let metadata = Some(Box::new(metadata)).simplify_default();
-        let extensions = extensions.into_iter().collect();
+        let mut extensions: schemars::Map<String, serde_json::Value> =
+            extensions.into_iter().collect();
+        // Preserve the OpenAPI `discriminator` keyword (not part of JSON
+        // Schema, which is why `schemars` doesn't have a typed slot for
+        // it) under the standard `x-discriminator` extension so the
+        // downstream typify pass can detect discriminator+allOf-subtype
+        // patterns and synthesise a polymorphic `enum Base { Subtype(...) }`
+        // rather than emitting only a bare `struct { type_: String }`.
+        if let Some(discriminator) = discriminator {
+            extensions
+                .entry("x-discriminator".to_string())
+                .or_insert_with(|| {
+                    serde_json::to_value(&discriminator).unwrap_or(serde_json::Value::Null)
+                });
+        }
 
         match &self.schema_kind {
             openapiv3::SchemaKind::Type(openapiv3::Type::String(openapiv3::StringType {
