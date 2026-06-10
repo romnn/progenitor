@@ -487,7 +487,9 @@ fn synth_decode_arm(
     // the result through the variant constructor.
     let wrap_variant = match payload {
         OperationResponseKind::Type(_) => {
-            let ty = payload_ident.expect("Type payload requires an ident").clone();
+            let ty = payload_ident
+                .expect("Type payload requires an ident")
+                .clone();
             quote! {
                 ResponseValue::<#ty>::from_response(#response_ident)
                     .await?
@@ -2850,8 +2852,14 @@ mod tests {
     #[test]
     fn collapse_bodyless_leaves_uniform_sets_alone() {
         // Single kind — caller's existing path handles it.
-        assert_eq!(collapse_bodyless_with_typed(&kinds([OperationResponseKind::Raw])), None);
-        assert_eq!(collapse_bodyless_with_typed(&kinds([OperationResponseKind::None])), None);
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([OperationResponseKind::Raw])),
+            None
+        );
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([OperationResponseKind::None])),
+            None
+        );
         assert_eq!(collapse_bodyless_with_typed(&BTreeSet::new()), None);
     }
 
@@ -2894,11 +2902,7 @@ mod tests {
     fn find_common_supertype_walks_multi_step_chains() {
         // A extends Middle extends Root; B extends Middle extends Root.
         // The LCA is Middle (deeper than Root).
-        let map = supertype_map(&[
-            ("A", "Middle"),
-            ("B", "Middle"),
-            ("Middle", "Root"),
-        ]);
+        let map = supertype_map(&[("A", "Middle"), ("B", "Middle"), ("Middle", "Root")]);
         assert_eq!(
             find_common_supertype(&name_set(&["A", "B"]), &map),
             Some("Middle".to_string()),
@@ -2909,10 +2913,7 @@ mod tests {
     fn find_common_supertype_returns_none_when_no_shared_ancestor() {
         // X has no parent; Y has its own unrelated parent.
         let map = supertype_map(&[("Y", "OtherRoot")]);
-        assert_eq!(
-            find_common_supertype(&name_set(&["X", "Y"]), &map),
-            None,
-        );
+        assert_eq!(find_common_supertype(&name_set(&["X", "Y"]), &map), None,);
     }
 
     #[test]
@@ -2920,10 +2921,7 @@ mod tests {
         // Pathological input: A → B → A. Walking must terminate.
         let map = supertype_map(&[("A", "B"), ("B", "A")]);
         // No shared ancestor with an unrelated type.
-        assert_eq!(
-            find_common_supertype(&name_set(&["A", "C"]), &map),
-            None,
-        );
+        assert_eq!(find_common_supertype(&name_set(&["A", "C"]), &map), None,);
     }
 
     #[test]
@@ -2975,7 +2973,10 @@ schemas:
 "#;
         let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
         let map = build_schema_supertype_map(&components);
-        assert!(!map.contains_key("Multi"), "multi-parent allOf must not yield a single parent");
+        assert!(
+            !map.contains_key("Multi"),
+            "multi-parent allOf must not yield a single parent"
+        );
     }
 
     #[test]
@@ -3008,7 +3009,9 @@ schemas:
         assert!(is_json_content_type("application/scim+json"));
         assert!(is_json_content_type("application/ld+json"));
         // Parameters after the suffix still parse correctly.
-        assert!(is_json_content_type("application/problem+json; charset=utf-8"));
+        assert!(is_json_content_type(
+            "application/problem+json; charset=utf-8"
+        ));
     }
 
     #[test]

@@ -1,9 +1,6 @@
 // Copyright 2025 Oxide Computer Company
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use progenitor_impl::{
     GenerationSettings, Generator, InterfaceStyle, TagStyle, TypeImpl, TypePatch, space_out_items,
@@ -16,14 +13,8 @@ fn load_api<P>(p: P) -> OpenAPI
 where
     P: AsRef<Path> + std::clone::Clone + std::fmt::Debug,
 {
-    let mut f = File::open(p.clone()).unwrap();
-    match serde_json::from_reader(f) {
-        Ok(json_value) => json_value,
-        _ => {
-            f = File::open(p).unwrap();
-            serde_yaml::from_reader(f).unwrap()
-        }
-    }
+    let document = std::fs::read_to_string(p).unwrap();
+    progenitor_impl::parse_openapi_str(&document).unwrap()
 }
 
 fn generate_formatted(generator: &mut Generator, spec: &OpenAPI) -> String {

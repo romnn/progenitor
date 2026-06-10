@@ -15,6 +15,9 @@ use typify::{TypeId, TypeSpace, TypeSpaceSettings};
 
 use crate::to_schema::ToSchema;
 
+pub use crate::openapi::ParseOpenApiError;
+pub use crate::openapi::parse_openapi_str;
+pub use crate::openapi::parse_openapi_value;
 pub use typify::CrateVers;
 pub use typify::TypeSpaceImpl as TypeImpl;
 pub use typify::TypeSpacePatch as TypePatch;
@@ -23,6 +26,7 @@ pub use typify::UnknownPolicy;
 mod cli;
 mod httpmock;
 mod method;
+mod openapi;
 mod template;
 mod to_schema;
 mod util;
@@ -347,10 +351,9 @@ impl Generator {
     ) -> Result<BTreeMap<String, TypeId>> {
         let mut map = BTreeMap::new();
         for name in components.schemas.keys() {
-            let ref_schema: schemars::schema::Schema = schemars::schema::SchemaObject::new_ref(
-                format!("#/components/schemas/{name}"),
-            )
-            .into();
+            let ref_schema: schemars::schema::Schema =
+                schemars::schema::SchemaObject::new_ref(format!("#/components/schemas/{name}"))
+                    .into();
             let type_id = self.type_space.add_type_with_name(&ref_schema, None)?;
             map.insert(name.clone(), type_id);
         }

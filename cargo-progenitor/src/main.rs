@@ -308,13 +308,6 @@ fn load_api<P>(p: P) -> Result<OpenAPI>
 where
     P: AsRef<Path> + std::clone::Clone + std::fmt::Debug,
 {
-    let mut f = File::open(p.clone())?;
-    let api = match serde_json::from_reader(f) {
-        Ok(json_value) => json_value,
-        _ => {
-            f = File::open(p)?;
-            serde_yaml::from_reader(f)?
-        }
-    };
-    Ok(api)
+    let document = std::fs::read_to_string(p)?;
+    progenitor_impl::parse_openapi_str(&document).map_err(Into::into)
 }

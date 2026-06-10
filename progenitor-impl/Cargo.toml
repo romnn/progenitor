@@ -19,6 +19,8 @@ regex = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_path_to_error = { workspace = true }
+serde_yaml = { workspace = true }
 syn = { workspace = true }
 thiserror = { workspace = true }
 typify = { workspace = true }
@@ -34,5 +36,4 @@ progenitor-client = { workspace = true }
 reqwest = { workspace = true }
 rustfmt-wrapper = { workspace = true }
 semver = { workspace = true }
-serde_yaml = { workspace = true }
 tokio = { workspace = true }

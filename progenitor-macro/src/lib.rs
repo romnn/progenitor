@@ -421,19 +421,18 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
     let path = base_dir.join(spec_path.value());
     let path_str = path.to_string_lossy();
 
-    let mut f = open_file(path.clone(), spec_path.span())?;
-    let oapi: OpenAPI = match serde_json::from_reader(f) {
-        Ok(json_value) => json_value,
-        _ => {
-            f = open_file(path.clone(), spec_path.span())?;
-            serde_yaml::from_reader(f).map_err(|e| {
-                syn::Error::new(
-                    spec_path.span(),
-                    format!("failed to parse {}: {}", path_str, e),
-                )
-            })?
-        }
-    };
+    let document = std::fs::read_to_string(path.clone()).map_err(|err| {
+        syn::Error::new(
+            spec_path.span(),
+            format!("failed to read {}: {}", path_str, err),
+        )
+    })?;
+    let oapi: OpenAPI = progenitor_impl::parse_openapi_str(&document).map_err(|err| {
+        syn::Error::new(
+            spec_path.span(),
+            format!("failed to parse {}: {}", path_str, err),
+        )
+    })?;
 
     let mut builder = Generator::new(&settings);
 
