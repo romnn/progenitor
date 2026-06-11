@@ -51,7 +51,11 @@ rustfmt-wrapper = "0.2.1"
 schemars = "0.8.22"
 semver = "1.0.28"
 serde = { version = "1.0.226", features = ["derive"] }
-serde_json = "1.0.150"
+# `preserve_order` is load-bearing: `parse_openapi_str` round-trips the
+# document through `serde_json::Value`, and without it object keys are
+# re-sorted alphabetically — silently reordering paths/components, which
+# changes generated operation order and typify type naming.
+serde_json = { version = "1.0.150", features = ["preserve_order"] }
 serde_path_to_error = "0.1"
 serde_urlencoded = "0.7.1"
 serde_yaml = "0.9"

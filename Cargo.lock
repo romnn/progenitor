@@ -1466,9 +1466,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.29"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "lru-slab"
@@ -1813,6 +1813,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "serde_path_to_error",
  "serde_yaml",
  "syn",
  "thiserror 2.0.18",
@@ -2356,6 +2357,7 @@ version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8014e44b4736ed0538adeecded0fce2a272f22dc9578a7eb6b2d9993c74cfb9"
 dependencies = [
+ "indexmap",
  "itoa",
  "memchr",
  "serde",
@@ -3002,8 +3004,7 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 [[package]]
 name = "typify"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc0b89f47309feaeb23c4509c15c9a04234f7deccef6f96c3bfe95319819a304"
+source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "typify-impl",
  "typify-macro",
@@ -3012,8 +3013,7 @@ dependencies = [
 [[package]]
 name = "typify-impl"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7b026f540b148b81043c720889dbb942b08659aa8a43f624ac4f04dbfc1861"
+source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "heck",
  "log",
@@ -3032,8 +3032,7 @@ dependencies = [
 [[package]]
 name = "typify-macro"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39ed96c57f06ae0839416b986921a98f18b220da63bbb243a8570a00c8492183"
+source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "proc-macro2",
  "quote",
