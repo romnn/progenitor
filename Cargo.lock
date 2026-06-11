@@ -967,6 +967,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "h2"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2257,6 +2263,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "schema"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96422023a2fbf8c618a005a24bcbe01d1f3159e5ea7c8881120fa25227e39a2c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "schema-derive",
+ "syn",
+]
+
+[[package]]
+name = "schema-derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "325e57fb235cb8b19d922a8d28c5d22d705b8fe41a27cc6c189b851e0d1cba6f"
+dependencies = [
+ "paste",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "schemars"
 version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2647,6 +2677,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
 
 [[package]]
+name = "target-triple"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "591ef38edfb78ca4771ee32cf494cb8771944bee237a9b91fc9c1424ac4b777b"
+
+[[package]]
 name = "tempfile"
 version = "3.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2666,6 +2702,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2111ef44dae28680ae9752bb89409e7310ca33a8c621ebe7b106cf5c928b3ac0"
 dependencies = [
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -3031,6 +3076,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
+name = "trybuild"
+version = "1.0.116"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47c635f0191bd3a2941013e5062667100969f8c4e9cd787c14f977265d73616e"
+dependencies = [
+ "glob",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "target-triple",
+ "termcolor",
+ "toml 1.0.7+spec-1.1.0",
+]
+
+[[package]]
 name = "typenum"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3040,19 +3100,36 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 name = "typify"
 version = "0.6.2"
 dependencies = [
+ "chrono",
+ "env_logger",
+ "expectorate",
+ "glob",
+ "quote",
+ "regress",
+ "rustfmt-wrapper",
+ "schemars",
+ "serde",
+ "serde_json",
+ "trybuild",
  "typify-impl",
  "typify-macro",
+ "uuid",
 ]
 
 [[package]]
 name = "typify-impl"
 version = "0.6.2"
 dependencies = [
+ "env_logger",
+ "expectorate",
  "heck",
  "log",
+ "paste",
  "proc-macro2",
  "quote",
  "regress",
+ "rustfmt-wrapper",
+ "schema",
  "schemars",
  "semver",
  "serde",
@@ -3060,6 +3137,7 @@ dependencies = [
  "syn",
  "thiserror 2.0.18",
  "unicode-ident",
+ "uuid",
 ]
 
 [[package]]

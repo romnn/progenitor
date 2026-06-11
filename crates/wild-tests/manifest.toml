@@ -109,7 +109,7 @@ notes = "huge; vendor-hosted JSON; older /spec.json path now returns HTML"
 name = "hf-tgi"
 url = "https://huggingface.github.io/text-generation-inference/openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "utoipa (Rust) generated spec for HF text-generation-inference, GitHub Pages hosted"
 
 [[spec]]
@@ -168,7 +168,7 @@ notes = "official PayPal Checkout Orders v2; only 3.0.4 patch version in corpus"
 name = "plaid"
 url = "https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; single large YAML covering the whole fintech data API"
 
@@ -190,7 +190,7 @@ notes = "openapi field is not first key (paths come first); good parser-order te
 name = "square"
 url = "https://raw.githubusercontent.com/square/connect-api-specification/master/api.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; official Square Connect API, full payments/commerce surface"
 
@@ -220,14 +220,14 @@ notes = "generated from protobuf via grpc-gateway; YAML"
 name = "twilio-api-v2010"
 url = "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "Twilio core REST API; heavy form-encoded request bodies and vendor x- extensions"
 
 [[spec]]
 name = "vercel"
 url = "https://openapi.vercel.sh/"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; vendor endpoint returns full JSON spec directly; many inline anonymous schemas and oneOf unions"
 
@@ -256,7 +256,7 @@ notes = "official Stainless-published spec; .yml extension but JSON content; has
 name = "assemblyai"
 url = "https://www.assemblyai.com/docs/openapi.yaml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "official vendor-hosted YAML; old GitHub api-spec repo is gone"
 
 [[spec]]
@@ -314,7 +314,7 @@ notes = "official Discourse API spec, vendor-hosted JSON"
 name = "elevenlabs"
 url = "https://api.elevenlabs.io/openapi.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "FastAPI-generated, served from live API host; lots of multipart/form-data schemas"
 
 [[spec]]
@@ -343,7 +343,7 @@ notes = "HuggingFace managed Inference Endpoints API, served live from API host"
 name = "meilisearch"
 url = "https://raw.githubusercontent.com/meilisearch/open-api/main/open-api.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "hand-maintained 3.1 JSON spec"
 
 [[spec]]
@@ -364,7 +364,7 @@ notes = "official Mollie Public API spec, YAML"
 name = "openai"
 url = "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; famously messy (anyOf/oneOf-heavy, streaming events, deprecated shapes); YAML"
 

@@ -1,6 +1,9 @@
 [workspace]
 members = [
 	"cargo-progenitor",
+	"crates/typify/typify",
+	"crates/typify/typify-impl",
+	"crates/typify/typify-macro",
 	"crates/wild-tests",
 	"example-build",
 	"example-macro",
@@ -41,6 +44,16 @@ http = "1.4.0"
 hyper = "1.9.0"
 indexmap = "2.14.0"
 indoc = "2.0.7"
+glob = "0.3.3"
+ipnetwork = { version = "0.21.1", features = ["schemars"] }
+log = "0.4.30"
+newline-converter = "0.3.0"
+paste = "1.0.15"
+prettyplease = "0.2.37"
+schema = "0.1.0"
+serde_tokenstream = "0.2"
+tempfile = "3.27.0"
+trybuild = "1.0.116"
 openapiv3 = "2.2.0"
 percent-encoding = "2.3.2"
 proc-macro2 = "1.0.106"
@@ -61,10 +74,12 @@ serde_json = { version = "1.0.150", features = ["preserve_order"] }
 serde_path_to_error = "0.1"
 serde_urlencoded = "0.7.1"
 serde_yaml = "0.9"
-syn = { version = "2.0.117", features = ["parsing"] }
+syn = { version = "2.0.117", features = ["full", "parsing"] }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["rt", "net"] }
-typify = { git = "https://github.com/romnn/typify.git", branch = "feat/improve-support" }
+typify = { version = "0.6.2", path = "crates/typify/typify" }
+typify-impl = { version = "0.6.2", path = "crates/typify/typify-impl" }
+typify-macro = { version = "0.6.2", path = "crates/typify/typify-macro" }
 url = "2.5.8"
 unicode-ident = "1.0.24"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
@@ -76,9 +91,3 @@ uuid = { version = "1.23.1", features = ["serde", "v4"] }
 #serde_tokenstream = { path = "../serde_tokenstream" }
 #typify = { path = "../typify/typify" }
 #rustfmt-wrapper = { path = "../rustfmt-wrapper" }
-
-# Temporary local override to verify unpushed typify-fork fixes against
-# the wild-spec corpus; remove once romnn/typify feat/improve-support is
-# pushed and the lock is bumped to the new revision.
-[patch."https://github.com/romnn/typify.git"]
-typify = { path = "../typify/typify" }
