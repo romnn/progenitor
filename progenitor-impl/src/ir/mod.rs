@@ -190,6 +190,73 @@ pub(crate) fn validate(doc: &Document) -> Result<()> {
     Ok(())
 }
 
+/// Patch references to schemas the document never defines.
+///
+/// Wild specs ship with dangling `$ref`s (Square references
+/// `AppFeeAllocation` four times and defines it nowhere). The shape is
+/// unknowable, so register a permissive schema under the missing name —
+/// the type degrades to `serde_json::Value` instead of failing the whole
+/// client.
+pub(crate) fn patch_dangling_schema_refs(document: &mut Document) {
+    let mut referenced = std::collections::BTreeSet::new();
+
+    fn collect(value: &serde_json::Value, out: &mut std::collections::BTreeSet<String>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                if let Some(serde_json::Value::String(reference)) = map.get("$ref")
+                    && let Some(name) = reference.strip_prefix("#/components/schemas/")
+                    && !name.contains('/')
+                {
+                    out.insert(name.to_string());
+                }
+                for member in map.values() {
+                    collect(member, out);
+                }
+            }
+            serde_json::Value::Array(items) => {
+                for item in items {
+                    collect(item, out);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut scan = |schema: &schemars::schema::Schema| {
+        if let Ok(value) = serde_json::to_value(schema) {
+            collect(&value, &mut referenced);
+        }
+    };
+    for schema in document.schemas.values() {
+        scan(schema);
+    }
+    for operation in &document.operations {
+        for parameter in &operation.parameters {
+            if let Some(schema) = &parameter.schema {
+                scan(schema);
+            }
+        }
+        let bodies = operation
+            .request_body
+            .iter()
+            .flat_map(|b| b.content.values());
+        let responses = operation.responses.iter().flat_map(|r| r.content.values());
+        for media in bodies.chain(responses) {
+            if let Some(schema_ref) = &media.schema {
+                scan(&schema_ref.schema);
+            }
+        }
+    }
+
+    for name in referenced {
+        if !document.schemas.contains_key(&name) {
+            document
+                .schemas
+                .insert(name, schemars::schema::Schema::Bool(true));
+        }
+    }
+}
+
 /// Give every operation a usable, unique operation ID.
 ///
 /// Wild specs routinely omit operation IDs or reuse one across

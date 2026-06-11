@@ -95,6 +95,7 @@ fn lower(document: Document31) -> Result<ir::Document> {
         operations,
         tags,
     };
+    ir::patch_dangling_schema_refs(&mut ir_document);
     ir::ensure_operation_ids(&mut ir_document);
     ir::validate(&ir_document)?;
     Ok(ir_document)

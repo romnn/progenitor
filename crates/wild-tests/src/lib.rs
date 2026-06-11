@@ -255,6 +255,33 @@ fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {
     }
 }
 
+/// Write the workspace manifest tying the generated spec crates
+/// together: one shared lockfile and target dir, native cargo
+/// parallelism, per-member checks.
+pub fn write_compile_workspace(out_root: &Path, members: &[String]) -> Result<()> {
+    let members = members
+        .iter()
+        .map(|name| format!("    \"{name}\","))
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::create_dir_all(out_root)?;
+    std::fs::write(
+        out_root.join("Cargo.toml"),
+        format!("[workspace]\nresolver = \"2\"\nmembers = [\n{members}\n]\n"),
+    )?;
+    Ok(())
+}
+
+/// Hand-written per-spec assertions: `spec-tests/<name>.rs` is copied
+/// into the generated crate as an integration test and executed, so the
+/// assertions are checked by rustc and the test harness against the
+/// real generated API.
+pub fn spec_test_path(entry: &SpecEntry) -> PathBuf {
+    manifest_dir()
+        .join("spec-tests")
+        .join(format!("{}.rs", entry.name))
+}
+
 /// Write a spec's generated client to a standalone crate dir for
 /// compile-checking (tier 2, `WILD_COMPILE=1`).
 pub fn write_compile_crate(entry: &SpecEntry, out_root: &Path) -> Result<PathBuf> {
@@ -271,6 +298,13 @@ pub fn write_compile_crate(entry: &SpecEntry, out_root: &Path) -> Result<PathBuf
     lib_source.push_str(&tokens.to_string());
     std::fs::write(src.join("lib.rs"), lib_source)?;
     std::fs::write(src.join("progenitor_client.rs"), progenitor_client_code())?;
+
+    let spec_test = spec_test_path(entry);
+    if spec_test.exists() {
+        let tests = root.join("tests");
+        std::fs::create_dir_all(&tests)?;
+        std::fs::copy(&spec_test, tests.join("spec.rs"))?;
+    }
     std::fs::write(
         root.join("Cargo.toml"),
         format!(
@@ -290,8 +324,6 @@ serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
 serde_urlencoded = "0.7"
 uuid = {{ version = "1", features = ["serde"] }}
-
-[workspace]
 "#,
             name = entry.name
         ),

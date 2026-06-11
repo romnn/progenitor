@@ -11,7 +11,10 @@
 //! - `WILD_COMPILE=1` — additionally `cargo check` the generated client
 //!   of every entry expected to pass (tier 2; slow).
 
-use wild_tests::{Expectation, Outcome, check_entry, load_manifest, write_compile_crate};
+use wild_tests::{
+    Expectation, Outcome, check_entry, load_manifest, spec_test_path, write_compile_crate,
+    write_compile_workspace,
+};
 
 #[test]
 fn corpus_matches_manifest() {
@@ -77,6 +80,12 @@ fn corpus_matches_manifest() {
     );
 }
 
+/// Tier 2: every spec expected to pass is generated into a member crate
+/// of one throwaway cargo workspace (shared lockfile/target dir, native
+/// cargo parallelism) and `cargo check`ed — rustc is the assertion that
+/// the generated code is real. Specs with a hand-written test file in
+/// `spec-tests/<name>.rs` additionally get that file as an integration
+/// test and are `cargo test`ed, exercising the generated API itself.
 #[test]
 fn compile_generated_clients() {
     if std::env::var_os("WILD_COMPILE").is_none_or(|v| v != "1") {
@@ -87,39 +96,52 @@ fn compile_generated_clients() {
     let out_root = std::env::temp_dir().join("progenitor-wild-compile");
 
     let mut failures = Vec::new();
+    let mut members = Vec::new();
+    let mut entries = Vec::new();
     for entry in load_manifest().expect("manifest loads") {
         if entry.expect != Expectation::Pass || (entry.slow && !run_slow) {
             continue;
         }
-        let crate_dir = match write_compile_crate(&entry, &out_root) {
-            Ok(dir) => dir,
-            Err(err) => {
-                failures.push(format!("{}: generation failed: {err}", entry.name));
-                continue;
+        match write_compile_crate(&entry, &out_root) {
+            Ok(_) => {
+                members.push(entry.name.clone());
+                entries.push(entry);
             }
-        };
+            Err(err) => failures.push(format!("{}: generation failed: {err}", entry.name)),
+        }
+    }
+    write_compile_workspace(&out_root, &members).expect("workspace manifest");
+
+    for entry in &entries {
+        let has_tests = spec_test_path(entry).exists();
+        let subcommand = if has_tests { "test" } else { "check" };
         let status = std::process::Command::new("cargo")
-            .arg("check")
+            .arg(subcommand)
             .arg("--quiet")
-            .current_dir(&crate_dir)
+            .arg("--package")
+            .arg(format!("wild-{}", entry.name))
+            .current_dir(&out_root)
             .status()
             .expect("cargo runs");
         println!(
             "{:<28} {}",
             entry.name,
-            if status.success() {
-                "compiles"
-            } else {
-                "FAILS"
+            match (status.success(), has_tests) {
+                (true, true) => "compiles + spec tests pass",
+                (true, false) => "compiles",
+                (false, _) => "FAILS",
             }
         );
         if !status.success() {
-            failures.push(format!("{}: generated client does not compile", entry.name));
+            failures.push(format!(
+                "{}: generated client failed {subcommand}",
+                entry.name
+            ));
         }
     }
     assert!(
         failures.is_empty(),
-        "generated clients failed to compile:\n{}",
+        "generated clients failed:\n{}",
         failures.join("\n")
     );
 }

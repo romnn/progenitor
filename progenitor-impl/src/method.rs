@@ -2614,29 +2614,21 @@ impl Generator {
                 }
                 OperationParameterType::RawBody
             }
-            BodyContentType::Text(_) => {
-                // For a plain text body, we expect no schema or a simple,
-                // specific one:
-                // "schema": {
-                //     "type": "string",
-                // }
-                if let Some(schema_ref) = &media_type.schema {
-                    let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
-                    if !is_plain_string_schema(resolved, None) {
-                        return Err(Error::UnexpectedFormat(format!(
-                            "invalid schema for {}: {:?}",
-                            content_type, resolved
-                        )));
+            BodyContentType::Text(ref text_type) => {
+                // For a plain text body, we expect no schema or a simple
+                // string. Anything fancier (an object schema, a
+                // contentEncoding like base64) means the payload isn't the
+                // plain string we'd send; degrade to the raw passthrough
+                // treatment so the caller controls the exact bytes.
+                let plain = match &media_type.schema {
+                    None => true,
+                    Some(schema_ref) => {
+                        let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
+                        is_plain_string_schema(resolved, None) && !has_content_keywords(resolved)
                     }
-                    // A `contentEncoding` here means the payload is not the
-                    // plain text we'd send (e.g. base64); passing the body
-                    // through raw would silently corrupt it.
-                    if has_content_keywords(resolved) {
-                        return Err(Error::UnexpectedFormat(format!(
-                            "content keywords on a {} body are not supported",
-                            content_type
-                        )));
-                    }
+                };
+                if !plain {
+                    content_type = BodyContentType::Raw(text_type.clone());
                 }
                 OperationParameterType::RawBody
             }

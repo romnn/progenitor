@@ -62,6 +62,7 @@ pub(crate) fn lower(spec: &OpenAPI) -> Result<ir::Document> {
         operations,
         tags,
     };
+    ir::patch_dangling_schema_refs(&mut document);
     ir::ensure_operation_ids(&mut document);
     ir::validate(&document)?;
     Ok(document)
