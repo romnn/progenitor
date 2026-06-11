@@ -93,7 +93,10 @@ fn compile_generated_clients() {
         return;
     }
     let run_slow = std::env::var_os("WILD_SLOW").is_some_and(|v| v == "1");
-    let out_root = std::env::temp_dir().join("progenitor-wild-compile");
+    // Live under the workspace target dir — same disk as every other
+    // build artifact, covered by `cargo clean`, never bloating /tmp.
+    let out_root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/wild-compile");
 
     let mut failures = Vec::new();
     let mut members = Vec::new();
