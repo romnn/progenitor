@@ -510,22 +510,31 @@ impl Generator {
                     ir::ParameterKind::Path {
                         style: ir::PathStyle::Simple,
                     } => {
-                        // Path parameters MUST be required.
-                        assert!(parameter.required);
-
-                        let schema = parameter_schema(parameter)?;
+                        let schema = parameter_schema(parameter);
 
                         let name = sanitize(
                             &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
-                        let typ = self.type_space.add_type_with_name(schema, Some(name))?;
+                        let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
+
+                        // A path parameter can't meaningfully be absent; if
+                        // a (sloppy) nullable schema produced an Option,
+                        // use the inner type so the generated path encoding
+                        // operates on a concrete value.
+                        let ty = self.type_space.get_type(&type_id).unwrap();
+                        let type_id =
+                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
+                                inner_type_id
+                            } else {
+                                type_id
+                            };
 
                         Ok(OperationParameter {
                             name: sanitize(&parameter.name, Case::Snake),
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
-                            typ: OperationParameterType::Type(typ),
+                            typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Path,
                         })
                     }
@@ -535,13 +544,13 @@ impl Generator {
                         // is irrelevant for this client.
                         ..
                     } => {
-                        let schema = parameter_schema(parameter)?;
+                        let schema = parameter_schema(parameter);
                         let name = sanitize(
                             &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
 
-                        let type_id = self.type_space.add_type_with_name(schema, Some(name))?;
+                        let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
 
                         let ty = self.type_space.get_type(&type_id).unwrap();
 
@@ -567,20 +576,34 @@ impl Generator {
                     ir::ParameterKind::Header {
                         style: ir::HeaderStyle::Simple,
                     } => {
-                        let schema = parameter_schema(parameter)?;
+                        let schema = parameter_schema(parameter);
                         let name = sanitize(
                             &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
 
-                        let typ = self.type_space.add_type_with_name(schema, Some(name))?;
+                        let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
+
+                        // Same Option handling as query parameters: a
+                        // nullable schema means the header is optional, and
+                        // the generated header encoding needs the inner
+                        // type (calling `.to_string()` on an `Option` does
+                        // not compile).
+                        let ty = self.type_space.get_type(&type_id).unwrap();
+                        let details = ty.details();
+                        let (type_id, required) =
+                            if let typify::TypeDetails::Option(inner_type_id) = details {
+                                (inner_type_id, false)
+                            } else {
+                                (type_id, parameter.required)
+                            };
 
                         Ok(OperationParameter {
                             name: sanitize(&parameter.name, Case::Snake),
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
-                            typ: OperationParameterType::Type(typ),
-                            kind: OperationParameterKind::Header(parameter.required),
+                            typ: OperationParameterType::Type(type_id),
+                            kind: OperationParameterKind::Header(required),
                         })
                     }
                     ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
@@ -598,6 +621,20 @@ impl Generator {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Distinct API parameter names can sanitize to the same Rust
+        // identifier (`filter.workflowId` and `filter.workflow_id` both
+        // become `filter_workflow_id`); disambiguate deterministically so
+        // the generated function signature compiles.
+        let mut seen_names = std::collections::HashSet::new();
+        for param in &mut params {
+            let base = param.name.clone();
+            let mut counter = 2;
+            while !seen_names.insert(param.name.clone()) {
+                param.name = format!("{base}_{counter}");
+                counter += 1;
+            }
+        }
+
         let dropshot_websocket = operation.extensions.get("x-dropshot-websocket").is_some();
         if dropshot_websocket {
             self.uses_websockets = true;
@@ -609,6 +646,40 @@ impl Generator {
 
         let tmp = crate::template::parse(&operation.path)?;
         let names = tmp.names();
+
+        // Wild specs declare path parameters that don't appear in the URL
+        // template; such a value has nowhere to go, so drop the parameter
+        // rather than panic.
+        params.retain(|param| {
+            !matches!(param.kind, OperationParameterKind::Path) || names.contains(&param.api_name)
+        });
+
+        // The reverse also happens: the template names a parameter nobody
+        // declared. Synthesize a string parameter so the URL can still be
+        // constructed.
+        for name in &names {
+            let declared = params.iter().any(|param| {
+                matches!(param.kind, OperationParameterKind::Path) && &param.api_name == name
+            });
+            if !declared {
+                let schema: schemars::schema::Schema = schemars::schema::SchemaObject {
+                    instance_type: Some(schemars::schema::InstanceType::String.into()),
+                    ..Default::default()
+                }
+                .into();
+                let type_name = sanitize(&format!("{}-{}", operation_id, name), Case::Pascal);
+                let type_id = self
+                    .type_space
+                    .add_type_with_name(&schema, Some(type_name))?;
+                params.push(OperationParameter {
+                    name: sanitize(name, Case::Snake),
+                    api_name: name.clone(),
+                    description: None,
+                    typ: OperationParameterType::Type(type_id),
+                    kind: OperationParameterKind::Path,
+                });
+            }
+        }
 
         sort_params(&mut params, &names);
 
@@ -2590,15 +2661,24 @@ impl Generator {
     }
 }
 
-/// Get a parameter's schema, failing the way the generator historically
-/// failed for parameters that use `content` rather than `schema`.
-fn parameter_schema(parameter: &ir::Parameter) -> Result<&schemars::schema::Schema> {
-    parameter.schema.as_ref().ok_or_else(|| {
-        Error::UnexpectedFormat(format!(
-            "parameter {} uses `content` rather than `schema`, which is not supported",
-            parameter.name,
-        ))
-    })
+/// Get a parameter's schema.
+///
+/// Parameters that use `content` rather than `schema` serialize their
+/// value according to a media type (usually JSON). Model them as plain
+/// strings the caller fills with the already-serialized form — coarse,
+/// but far better than failing the whole client over one exotic
+/// parameter.
+fn parameter_schema(parameter: &ir::Parameter) -> std::borrow::Cow<'_, schemars::schema::Schema> {
+    match &parameter.schema {
+        Some(schema) => std::borrow::Cow::Borrowed(schema),
+        None => std::borrow::Cow::Owned(
+            schemars::schema::SchemaObject {
+                instance_type: Some(schemars::schema::InstanceType::String.into()),
+                ..Default::default()
+            }
+            .into(),
+        ),
+    }
 }
 
 /// A binary payload schema: `type: string` marked binary via 3.0's

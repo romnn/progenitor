@@ -76,3 +76,9 @@ uuid = { version = "1.23.1", features = ["serde", "v4"] }
 #serde_tokenstream = { path = "../serde_tokenstream" }
 #typify = { path = "../typify/typify" }
 #rustfmt-wrapper = { path = "../rustfmt-wrapper" }
+
+# Temporary local override to verify unpushed typify-fork fixes against
+# the wild-spec corpus; remove once romnn/typify feat/improve-support is
+# pushed and the lock is bumped to the new revision.
+[patch."https://github.com/romnn/typify.git"]
+typify = { path = "../typify/typify" }

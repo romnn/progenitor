@@ -168,16 +168,55 @@ fn download(url: &str) -> std::result::Result<String, String> {
         .map_err(|err| format!("reading {url}: {err}"))
 }
 
+std::thread_local! {
+    /// The most recent panic message+location on this thread, recorded by
+    /// the hook installed in [`install_panic_capture`]. More reliable than
+    /// downcasting `catch_unwind`'s payload.
+    static LAST_PANIC: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
+static PANIC_HOOK: std::sync::Once = std::sync::Once::new();
+
+fn install_panic_capture() {
+    PANIC_HOOK.call_once(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let message = info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| info.payload().downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            let location = info
+                .location()
+                .map(|l| format!(" at {}:{}", l.file(), l.line()))
+                .unwrap_or_default();
+            LAST_PANIC.with(|last| *last.borrow_mut() = Some(format!("{message}{location}")));
+            previous(info);
+        }));
+    });
+}
+
+fn take_panic_message(panic: &(dyn std::any::Any + Send)) -> String {
+    LAST_PANIC
+        .with(|last| last.borrow_mut().take())
+        .unwrap_or_else(|| panic_message(panic))
+}
+
 /// Run the full pipeline on a spec document.
 ///
 /// Both parsing/lowering and generation still contain hard panics
 /// (todo!/assert/unwrap) on unsupported constructs; catch them so one bad
 /// spec can't take the whole corpus run down.
 pub fn check_document(text: &str) -> Outcome {
+    install_panic_capture();
+
     let parsed = match std::panic::catch_unwind(|| progenitor_impl::parse_openapi_str(text)) {
         Ok(Ok(parsed)) => parsed,
         Ok(Err(err)) => return Outcome::ParseFail(err.to_string()),
-        Err(panic) => return Outcome::ParseFail(format!("panic: {}", panic_message(&panic))),
+        Err(panic) => {
+            return Outcome::ParseFail(format!("panic: {}", take_panic_message(&panic)));
+        }
     };
 
     let generated = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -188,7 +227,9 @@ pub fn check_document(text: &str) -> Outcome {
     let tokens = match generated {
         Ok(Ok(tokens)) => tokens,
         Ok(Err(err)) => return Outcome::GenerateFail(err.to_string()),
-        Err(panic) => return Outcome::GenerateFail(format!("panic: {}", panic_message(&panic))),
+        Err(panic) => {
+            return Outcome::GenerateFail(format!("panic: {}", take_panic_message(&panic)));
+        }
     };
 
     match syn::parse2::<syn::File>(tokens) {

@@ -3039,7 +3039,6 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 [[package]]
 name = "typify"
 version = "0.6.2"
-source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "typify-impl",
  "typify-macro",
@@ -3048,7 +3047,6 @@ dependencies = [
 [[package]]
 name = "typify-impl"
 version = "0.6.2"
-source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "heck",
  "log",
@@ -3067,7 +3065,6 @@ dependencies = [
 [[package]]
 name = "typify-macro"
 version = "0.6.2"
-source = "git+https://github.com/romnn/typify.git?branch=feat%2Fimprove-support#3bc4f0c358be69fc32117c26aec5448cf38632ef"
 dependencies = [
  "proc-macro2",
  "quote",
