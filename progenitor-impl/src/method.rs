@@ -6,17 +6,16 @@ use std::{
     str::FromStr,
 };
 
-use openapiv3::{Components, Parameter, ReferenceOr, Response, StatusCode};
+use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use typify::{TypeId, TypeSpace};
 
 use crate::{
-    Error, Generator, Result, TagStyle,
+    Error, Generator, Result, TagStyle, ir,
     template::PathTemplate,
-    util::{Case, items, parameter_map, sanitize, unique_ident_from},
+    util::{Case, sanitize, unique_ident_from},
 };
-use crate::{to_schema::ToSchema, util::ReferenceOrExt};
 
 /// The intermediate representation of an operation that will become a method.
 pub(crate) struct OperationMethod {
@@ -144,41 +143,6 @@ pub enum BodyContentType {
     Json,
     FormUrlencoded,
     Text(String),
-}
-
-/// Build a `child_name → parent_name` map for every schema in `components`
-/// that extends another via a top-level `allOf: [{$ref: parent}, ...]`.
-///
-/// Only schemas whose top-level `allOf` contains exactly one `$ref` to a
-/// component qualify — patterns with multiple parent refs, no parent ref,
-/// or non-allOf compositions don't have unambiguous "single parent"
-/// semantics, so they're omitted. The map is used by
-/// [`find_common_supertype`] to detect sibling response schemas that share
-/// a common ancestor.
-pub(crate) fn build_schema_supertype_map(
-    components: &openapiv3::Components,
-) -> BTreeMap<String, String> {
-    let mut map = BTreeMap::new();
-    for (name, schema_or_ref) in &components.schemas {
-        let ReferenceOr::Item(schema) = schema_or_ref else {
-            continue;
-        };
-        let openapiv3::SchemaKind::AllOf { all_of } = &schema.schema_kind else {
-            continue;
-        };
-        let mut parent_refs: Vec<&str> = Vec::new();
-        for member in all_of {
-            if let ReferenceOr::Reference { reference } = member {
-                if let Some(parent) = reference.strip_prefix("#/components/schemas/") {
-                    parent_refs.push(parent);
-                }
-            }
-        }
-        if parent_refs.len() == 1 {
-            map.insert(name.clone(), parent_refs[0].to_string());
-        }
-    }
-    map
 }
 
 /// Find the lowest common ancestor of `names` in the inheritance graph
@@ -527,66 +491,53 @@ fn synth_decode_arm(
 impl Generator {
     pub(crate) fn process_operation(
         &mut self,
-        operation: &openapiv3::Operation,
-        components: &Option<Components>,
-        path: &str,
-        method: &str,
-        path_parameters: &[ReferenceOr<Parameter>],
+        operation: &ir::Operation,
+        schemas: &IndexMap<String, schemars::schema::Schema>,
     ) -> Result<OperationMethod> {
         let operation_id = operation.operation_id.as_ref().unwrap();
 
-        let mut combined_path_parameters = parameter_map(path_parameters, components)?;
-        for operation_param in items(&operation.parameters, components) {
-            let parameter = operation_param?;
-            combined_path_parameters.insert(&parameter.parameter_data_ref().name, parameter);
-        }
-
-        // Filter out any path parameters that have been overridden by an
-        // operation parameter
-        let mut params = combined_path_parameters
-            .values()
+        // Parameters arrive pre-merged (path-item + operation, operation
+        // wins) and name-ordered from the frontend lowering.
+        let mut params = operation
+            .parameters
+            .iter()
             .map(|parameter| {
-                match parameter {
-                    openapiv3::Parameter::Path {
-                        parameter_data,
-                        style: openapiv3::PathStyle::Simple,
+                match &parameter.kind {
+                    ir::ParameterKind::Path {
+                        style: ir::PathStyle::Simple,
                     } => {
                         // Path parameters MUST be required.
-                        assert!(parameter_data.required);
+                        assert!(parameter.required);
 
-                        let schema = parameter_data.schema()?.to_schema();
+                        let schema = parameter_schema(parameter)?;
 
                         let name = sanitize(
-                            &format!("{}-{}", operation_id, &parameter_data.name),
+                            &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
-                        let typ = self.type_space.add_type_with_name(&schema, Some(name))?;
+                        let typ = self.type_space.add_type_with_name(schema, Some(name))?;
 
                         Ok(OperationParameter {
-                            name: sanitize(&parameter_data.name, Case::Snake),
-                            api_name: parameter_data.name.clone(),
-                            description: parameter_data.description.clone(),
+                            name: sanitize(&parameter.name, Case::Snake),
+                            api_name: parameter.name.clone(),
+                            description: parameter.description.clone(),
                             typ: OperationParameterType::Type(typ),
                             kind: OperationParameterKind::Path,
                         })
                     }
-                    openapiv3::Parameter::Query {
-                        parameter_data,
-                        allow_reserved: _, // We always encode reserved chars
-                        style: openapiv3::QueryStyle::Form,
-                        allow_empty_value: _, // Irrelevant for this client
+                    ir::ParameterKind::Query {
+                        style: ir::QueryStyle::Form,
+                        // We always encode reserved chars; allow_empty_value
+                        // is irrelevant for this client.
+                        ..
                     } => {
-                        let schema = parameter_data.schema()?.to_schema();
+                        let schema = parameter_schema(parameter)?;
                         let name = sanitize(
-                            &format!(
-                                "{}-{}",
-                                operation.operation_id.as_ref().unwrap(),
-                                &parameter_data.name,
-                            ),
+                            &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
 
-                        let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
+                        let type_id = self.type_space.add_type_with_name(schema, Some(name))?;
 
                         let ty = self.type_space.get_type(&type_id).unwrap();
 
@@ -598,50 +549,47 @@ impl Generator {
                             if let typify::TypeDetails::Option(inner_type_id) = details {
                                 (inner_type_id, false)
                             } else {
-                                (type_id, parameter_data.required)
+                                (type_id, parameter.required)
                             };
 
                         Ok(OperationParameter {
-                            name: sanitize(&parameter_data.name, Case::Snake),
-                            api_name: parameter_data.name.clone(),
-                            description: parameter_data.description.clone(),
+                            name: sanitize(&parameter.name, Case::Snake),
+                            api_name: parameter.name.clone(),
+                            description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Query(required),
                         })
                     }
-                    openapiv3::Parameter::Header {
-                        parameter_data,
-                        style: openapiv3::HeaderStyle::Simple,
+                    ir::ParameterKind::Header {
+                        style: ir::HeaderStyle::Simple,
                     } => {
-                        let schema = parameter_data.schema()?.to_schema();
+                        let schema = parameter_schema(parameter)?;
                         let name = sanitize(
-                            &format!(
-                                "{}-{}",
-                                operation.operation_id.as_ref().unwrap(),
-                                &parameter_data.name,
-                            ),
+                            &format!("{}-{}", operation_id, &parameter.name),
                             Case::Pascal,
                         );
 
-                        let typ = self.type_space.add_type_with_name(&schema, Some(name))?;
+                        let typ = self.type_space.add_type_with_name(schema, Some(name))?;
 
                         Ok(OperationParameter {
-                            name: sanitize(&parameter_data.name, Case::Snake),
-                            api_name: parameter_data.name.clone(),
-                            description: parameter_data.description.clone(),
+                            name: sanitize(&parameter.name, Case::Snake),
+                            api_name: parameter.name.clone(),
+                            description: parameter.description.clone(),
                             typ: OperationParameterType::Type(typ),
-                            kind: OperationParameterKind::Header(parameter_data.required),
+                            kind: OperationParameterKind::Header(parameter.required),
                         })
                     }
-                    openapiv3::Parameter::Path { style, .. } => Err(Error::UnexpectedFormat(
-                        format!("unsupported style of path parameter {:#?}", style,),
-                    )),
-                    openapiv3::Parameter::Query { style, .. } => Err(Error::UnexpectedFormat(
+                    ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
+                        "unsupported style of path parameter {:#?}",
+                        style,
+                    ))),
+                    ir::ParameterKind::Query { style, .. } => Err(Error::UnexpectedFormat(
                         format!("unsupported style of query parameter {:#?}", style,),
                     )),
-                    cookie @ openapiv3::Parameter::Cookie { .. } => Err(Error::UnexpectedFormat(
-                        format!("cookie parameters are not supported {:#?}", cookie,),
-                    )),
+                    ir::ParameterKind::Cookie => Err(Error::UnexpectedFormat(format!(
+                        "cookie parameters are not supported: {}",
+                        parameter.name,
+                    ))),
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -651,130 +599,111 @@ impl Generator {
             self.uses_websockets = true;
         }
 
-        if let Some(body_param) = self.get_body_param(operation, components)? {
+        if let Some(body_param) = self.get_body_param(operation, schemas)? {
             params.push(body_param);
         }
 
-        let tmp = crate::template::parse(path)?;
+        let tmp = crate::template::parse(&operation.path)?;
         let names = tmp.names();
 
         sort_params(&mut params, &names);
 
         let mut success = false;
 
-        let mut responses =
-            operation
-                .responses
-                .default
-                .iter()
-                .map(|response_or_ref| {
-                    Ok((
-                        OperationResponseStatus::Default,
-                        response_or_ref.item(components)?,
-                    ))
-                })
-                .chain(operation.responses.responses.iter().map(
-                    |(status_code, response_or_ref)| {
-                        Ok((
-                            match status_code {
-                                StatusCode::Code(code) => OperationResponseStatus::Code(*code),
-                                StatusCode::Range(range) => OperationResponseStatus::Range(*range),
-                            },
-                            response_or_ref.item(components)?,
-                        ))
-                    },
-                ))
-                .map(|v: Result<(OperationResponseStatus, &Response)>| {
-                    let (mut status_code, response) = v?;
+        let mut responses = operation
+            .responses
+            .iter()
+            .map(|response| {
+                let mut status_code = match response.status {
+                    ir::ResponseStatus::Default => OperationResponseStatus::Default,
+                    ir::ResponseStatus::Code(code) => OperationResponseStatus::Code(code),
+                    ir::ResponseStatus::Range(range) => OperationResponseStatus::Range(range),
+                };
 
-                    // A previous version of dropshot websockets failed to
-                    // properly report responses; clean this up here.
-                    if dropshot_websocket && status_code == OperationResponseStatus::Default {
-                        status_code = OperationResponseStatus::Code(101);
-                    }
+                // A previous version of dropshot websockets failed to
+                // properly report responses; clean this up here.
+                if dropshot_websocket && status_code == OperationResponseStatus::Default {
+                    status_code = OperationResponseStatus::Code(101);
+                }
 
-                    // We categorize responses as "typed" based on a JSON
-                    // content type (canonical `application/json`, a
-                    // parameterized form like `application/json;version=1.0`,
-                    // or any RFC 6839 `+json` suffix like
-                    // `application/problem+json`), "upgrade" if it's a
-                    // websocket channel without a meaningful content-type,
-                    // "raw" if there's any other response content type (we
-                    // don't investigate further), or "none" if there is no
-                    // content.
-                    // TODO if there are multiple response content types we
-                    // could treat those like different response types and
-                    // create an enum; the generated client method would
-                    // check for the content type of the response just as it
-                    // currently examines the status code.
-                    let mut schema_name: Option<String> = None;
-                    let typ = if let Some(mt) = response
-                        .content
-                        .iter()
-                        .find_map(|(x, v)| is_json_content_type(x).then_some(v))
-                    {
-                        assert!(mt.encoding.is_empty());
+                // We categorize responses as "typed" based on a JSON
+                // content type (canonical `application/json`, a
+                // parameterized form like `application/json;version=1.0`,
+                // or any RFC 6839 `+json` suffix like
+                // `application/problem+json`), "upgrade" if it's a
+                // websocket channel without a meaningful content-type,
+                // "raw" if there's any other response content type (we
+                // don't investigate further), or "none" if there is no
+                // content.
+                // TODO if there are multiple response content types we
+                // could treat those like different response types and
+                // create an enum; the generated client method would
+                // check for the content type of the response just as it
+                // currently examines the status code.
+                let mut schema_name: Option<String> = None;
+                let typ = if let Some(mt) = response
+                    .content
+                    .iter()
+                    .find_map(|(x, v)| is_json_content_type(x).then_some(v))
+                {
+                    assert!(!mt.has_encoding);
 
-                        if let Some(schema) = &mt.schema {
-                            // Capture the source component name when the
-                            // response body is a `$ref` so `extract_responses`
-                            // can later collapse sibling responses that share
-                            // a common `allOf` ancestor.
-                            if let ReferenceOr::Reference { reference } = schema {
-                                schema_name = reference
-                                    .strip_prefix("#/components/schemas/")
-                                    .map(str::to_string);
-                            }
-                            let schema = schema.to_schema();
-                            let name = sanitize(
-                                &format!("{}-response", operation.operation_id.as_ref().unwrap(),),
-                                Case::Pascal,
-                            );
-                            let type_id =
-                                self.type_space.add_type_with_name(&schema, Some(name))?;
-                            OperationResponseKind::Type(type_id)
-                        } else {
-                            // A JSON media type with no `schema` is common
-                            // in real-world specs ("returns some JSON, but
-                            // we won't promise the shape"). Treat it as a
-                            // raw byte stream — callers who want JSON can
-                            // deserialize manually. Replacing the prior
-                            // `todo!()` lets the operation generate at all.
-                            OperationResponseKind::Raw
-                        }
-                    } else if status_code == OperationResponseStatus::Code(101) {
-                        OperationResponseKind::Upgrade
-                    } else if response.content.first().is_some() {
+                    if let Some(schema_ref) = &mt.schema {
+                        // Capture the source component name when the
+                        // response body is a `$ref` so `extract_responses`
+                        // can later collapse sibling responses that share
+                        // a common `allOf` ancestor.
+                        schema_name = schema_ref.ref_name.clone();
+                        let name = sanitize(
+                            &format!("{}-response", operation.operation_id.as_ref().unwrap(),),
+                            Case::Pascal,
+                        );
+                        let type_id = self
+                            .type_space
+                            .add_type_with_name(&schema_ref.schema, Some(name))?;
+                        OperationResponseKind::Type(type_id)
+                    } else {
+                        // A JSON media type with no `schema` is common
+                        // in real-world specs ("returns some JSON, but
+                        // we won't promise the shape"). Treat it as a
+                        // raw byte stream — callers who want JSON can
+                        // deserialize manually. Replacing the prior
+                        // `todo!()` lets the operation generate at all.
                         OperationResponseKind::Raw
-                    } else {
-                        OperationResponseKind::None
-                    };
-
-                    // See if there's a status code that covers success cases.
-                    if matches!(
-                        status_code,
-                        OperationResponseStatus::Default
-                            | OperationResponseStatus::Code(101)
-                            | OperationResponseStatus::Code(200..=299)
-                            | OperationResponseStatus::Range(2)
-                    ) {
-                        success = true;
                     }
+                } else if status_code == OperationResponseStatus::Code(101) {
+                    OperationResponseKind::Upgrade
+                } else if !response.content.is_empty() {
+                    OperationResponseKind::Raw
+                } else {
+                    OperationResponseKind::None
+                };
 
-                    let description = if response.description.is_empty() {
-                        None
-                    } else {
-                        Some(response.description.clone())
-                    };
+                // See if there's a status code that covers success cases.
+                if matches!(
+                    status_code,
+                    OperationResponseStatus::Default
+                        | OperationResponseStatus::Code(101)
+                        | OperationResponseStatus::Code(200..=299)
+                        | OperationResponseStatus::Range(2)
+                ) {
+                    success = true;
+                }
 
-                    Ok(OperationResponse {
-                        status_code,
-                        typ,
-                        schema_name,
-                        description,
-                    })
+                let description = if response.description.is_empty() {
+                    None
+                } else {
+                    Some(response.description.clone())
+                };
+
+                Ok(OperationResponse {
+                    status_code,
+                    typ,
+                    schema_name,
+                    description,
                 })
-                .collect::<Result<Vec<_>>>()?;
+            })
+            .collect::<Result<Vec<_>>>()?;
 
         // If the API has declined to specify the characteristics of a
         // successful response, we cons up a generic one. Note that this is
@@ -812,7 +741,7 @@ impl Generator {
         Ok(OperationMethod {
             operation_id: sanitize(operation_id, Case::Snake),
             tags: operation.tags.clone(),
-            method: HttpMethod::from_str(method)?,
+            method: HttpMethod::from_str(&operation.method)?,
             path: tmp,
             summary: operation.summary.clone().filter(|s| !s.is_empty()),
             description: operation.description.clone().filter(|s| !s.is_empty()),
@@ -1696,7 +1625,7 @@ impl Generator {
     // the paginated item type data if all conditions are met.
     fn dropshot_pagination_data(
         &self,
-        operation: &openapiv3::Operation,
+        operation: &ir::Operation,
         parameters: &[OperationParameter],
         responses: &[OperationResponse],
     ) -> Option<DropshotPagination> {
@@ -2425,7 +2354,7 @@ impl Generator {
     pub(crate) fn builder_tags(
         &self,
         methods: &[OperationMethod],
-        tag_info: &BTreeMap<&String, &openapiv3::Tag>,
+        tag_info: &BTreeMap<&String, &ir::Tag>,
     ) -> (TokenStream, TokenStream) {
         let mut base = Vec::new();
         let mut ext = BTreeMap::new();
@@ -2521,11 +2450,11 @@ impl Generator {
 
     fn get_body_param(
         &mut self,
-        operation: &openapiv3::Operation,
-        components: &Option<Components>,
+        operation: &ir::Operation,
+        schemas: &IndexMap<String, schemars::schema::Schema>,
     ) -> Result<Option<OperationParameter>> {
         let body = match &operation.request_body {
-            Some(body) => body.item(components)?,
+            Some(body) => body,
             None => return Ok(None),
         };
 
@@ -2548,7 +2477,7 @@ impl Generator {
                 .expect("non-empty content map was checked above"),
         };
 
-        let schema = media_type.schema.as_ref().ok_or_else(|| {
+        let schema_ref = media_type.schema.as_ref().ok_or_else(|| {
             Error::UnexpectedFormat("No schema specified for request body".to_string())
         })?;
 
@@ -2561,36 +2490,13 @@ impl Generator {
                 //     "type": "string",
                 //     "format": "binary"
                 // }
-                match schema.item(components)? {
-                    openapiv3::Schema {
-                        schema_data:
-                            openapiv3::SchemaData {
-                                nullable: false,
-                                discriminator: None,
-                                default: None,
-                                // Other fields that describe or document the
-                                // schema are fine.
-                                ..
-                            },
-                        schema_kind:
-                            openapiv3::SchemaKind::Type(openapiv3::Type::String(
-                                openapiv3::StringType {
-                                    format:
-                                        openapiv3::VariantOrUnknownOrEmpty::Item(
-                                            openapiv3::StringFormat::Binary,
-                                        ),
-                                    pattern: None,
-                                    enumeration,
-                                    min_length: None,
-                                    max_length: None,
-                                },
-                            )),
-                    } if enumeration.is_empty() => Ok(()),
-                    _ => Err(Error::UnexpectedFormat(format!(
+                let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
+                if !is_plain_string_schema(resolved, Some("binary")) {
+                    return Err(Error::UnexpectedFormat(format!(
                         "invalid schema for application/octet-stream: {:?}",
-                        schema
-                    ))),
-                }?;
+                        resolved
+                    )));
+                }
                 OperationParameterType::RawBody
             }
             BodyContentType::Text(_) => {
@@ -2598,41 +2504,21 @@ impl Generator {
                 // "schema": {
                 //     "type": "string",
                 // }
-                match schema.item(components)? {
-                    openapiv3::Schema {
-                        schema_data:
-                            openapiv3::SchemaData {
-                                nullable: false,
-                                discriminator: None,
-                                default: None,
-                                // Other fields that describe or document the
-                                // schema are fine.
-                                ..
-                            },
-                        schema_kind:
-                            openapiv3::SchemaKind::Type(openapiv3::Type::String(
-                                openapiv3::StringType {
-                                    format: openapiv3::VariantOrUnknownOrEmpty::Empty,
-                                    pattern: None,
-                                    enumeration,
-                                    min_length: None,
-                                    max_length: None,
-                                },
-                            )),
-                    } if enumeration.is_empty() => Ok(()),
-                    _ => Err(Error::UnexpectedFormat(format!(
+                let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
+                if !is_plain_string_schema(resolved, None) {
+                    return Err(Error::UnexpectedFormat(format!(
                         "invalid schema for {}: {:?}",
-                        content_type, schema
-                    ))),
-                }?;
+                        content_type, resolved
+                    )));
+                }
                 OperationParameterType::RawBody
             }
             BodyContentType::Json | BodyContentType::FormUrlencoded => {
                 // TODO it would be legal to have the encoding field set for
                 // application/x-www-form-urlencoded content, but I'm not sure
                 // how to interpret the values.
-                if !media_type.encoding.is_empty() {
-                    todo!("media type encoding not empty: {:#?}", media_type);
+                if media_type.has_encoding {
+                    todo!("media type encoding not empty for {}", content_str);
                 }
                 let name = sanitize(
                     &format!("{}-body", operation.operation_id.as_ref().unwrap(),),
@@ -2640,7 +2526,7 @@ impl Generator {
                 );
                 let typ = self
                     .type_space
-                    .add_type_with_name(&schema.to_schema(), Some(name))?;
+                    .add_type_with_name(&schema_ref.schema, Some(name))?;
                 OperationParameterType::Type(typ)
             }
         };
@@ -2653,6 +2539,55 @@ impl Generator {
             kind: OperationParameterKind::Body(content_type),
         }))
     }
+}
+
+/// Get a parameter's schema, failing the way the generator historically
+/// failed for parameters that use `content` rather than `schema`.
+fn parameter_schema(parameter: &ir::Parameter) -> Result<&schemars::schema::Schema> {
+    parameter.schema.as_ref().ok_or_else(|| {
+        Error::UnexpectedFormat(format!(
+            "parameter {} uses `content` rather than `schema`, which is not supported",
+            parameter.name,
+        ))
+    })
+}
+
+/// Check that a (resolved) schema is exactly the plain string shape the
+/// raw-body paths require: `type: string` with the given `format` and no
+/// other constraints. Descriptive metadata (title, description, examples)
+/// is fine; anything that would affect the value space is not. This
+/// mirrors the openapiv3 shape the generator historically pattern-matched
+/// before schemas moved to their schemars representation.
+fn is_plain_string_schema(schema: &schemars::schema::Schema, format: Option<&str>) -> bool {
+    let schemars::schema::Schema::Object(object) = schema else {
+        return false;
+    };
+    let type_is_string = matches!(
+        &object.instance_type,
+        Some(schemars::schema::SingleOrVec::Single(single))
+            if **single == schemars::schema::InstanceType::String
+    );
+    let format_matches = object.format.as_deref() == format;
+    let no_string_constraints = object.string.as_ref().is_none_or(|string| {
+        string.pattern.is_none() && string.min_length.is_none() && string.max_length.is_none()
+    });
+    let no_other_kind = object.subschemas.is_none()
+        && object.object.is_none()
+        && object.array.is_none()
+        && object.number.is_none()
+        && object.enum_values.is_none()
+        && object.const_value.is_none()
+        && object.reference.is_none();
+    let no_value_constraints = object
+        .metadata
+        .as_ref()
+        .is_none_or(|metadata| metadata.default.is_none())
+        && !object.extensions.contains_key("x-discriminator");
+    type_is_string
+        && format_matches
+        && no_string_constraints
+        && no_other_kind
+        && no_value_constraints
 }
 
 fn make_doc_comment(method: &OperationMethod) -> String {
@@ -2805,29 +2740,14 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
     );
 }
 
-trait ParameterDataExt {
-    fn schema(&self) -> Result<&openapiv3::ReferenceOr<openapiv3::Schema>>;
-}
-
-impl ParameterDataExt for openapiv3::ParameterData {
-    fn schema(&self) -> Result<&openapiv3::ReferenceOr<openapiv3::Schema>> {
-        match &self.format {
-            openapiv3::ParameterSchemaOrContent::Schema(s) => Ok(s),
-            openapiv3::ParameterSchemaOrContent::Content(c) => Err(Error::UnexpectedFormat(
-                format!("unexpected content {:#?}", c),
-            )),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::str::FromStr;
 
     use super::{
-        BodyContentType, OperationResponseKind, build_schema_supertype_map,
-        collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
+        BodyContentType, OperationResponseKind, collapse_bodyless_with_typed,
+        find_common_supertype, is_json_content_type,
     };
 
     fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
@@ -2933,50 +2853,6 @@ mod tests {
             Some("A".to_string()),
         );
         assert_eq!(find_common_supertype(&BTreeSet::new(), &map), None);
-    }
-
-    #[test]
-    fn build_schema_supertype_map_captures_single_ref_allof() {
-        let yaml = r#"
-schemas:
-  Problem:
-    type: object
-    properties:
-      detail: { type: string }
-  BadRequestProblem:
-    allOf:
-      - $ref: '#/components/schemas/Problem'
-      - type: object
-        properties:
-          violations: { type: object }
-"#;
-        let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
-        let map = build_schema_supertype_map(&components);
-        assert_eq!(map.get("BadRequestProblem"), Some(&"Problem".to_string()));
-        // The plain `Problem` schema has no allOf and shouldn't appear.
-        assert!(!map.contains_key("Problem"));
-    }
-
-    #[test]
-    fn build_schema_supertype_map_skips_multiref_or_mixed_allof() {
-        // Two parent refs — not a single-parent "extends" pattern.
-        let yaml = r#"
-schemas:
-  ParentA:
-    type: object
-  ParentB:
-    type: object
-  Multi:
-    allOf:
-      - $ref: '#/components/schemas/ParentA'
-      - $ref: '#/components/schemas/ParentB'
-"#;
-        let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
-        let map = build_schema_supertype_map(&components);
-        assert!(
-            !map.contains_key("Multi"),
-            "multi-parent allOf must not yield a single parent"
-        );
     }
 
     #[test]

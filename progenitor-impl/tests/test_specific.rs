@@ -8,6 +8,7 @@ use dropshot::{
 use futures::StreamExt;
 use http::Response;
 use openapiv3::OpenAPI;
+use progenitor_impl::OpenApiDocument;
 use progenitor_impl::{GenerationSettings, Generator, InterfaceStyle, space_out_items};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -17,7 +18,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-fn generate_formatted(generator: &mut Generator, spec: &OpenAPI) -> String {
+fn generate_formatted(generator: &mut Generator, spec: &OpenApiDocument) -> String {
     let content = generator.generate_tokens(spec).unwrap();
     let rustfmt_config = rustfmt_wrapper::config::Config {
         normalize_doc_attributes: Some(true),
@@ -76,7 +77,7 @@ fn test_renamed_parameters() {
 
     let out = from_utf8(&out).unwrap();
 
-    let spec = serde_json::from_str::<OpenAPI>(out).unwrap();
+    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -107,7 +108,7 @@ fn test_freeform_response() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = serde_json::from_str::<OpenAPI>(out).unwrap();
+    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -161,7 +162,7 @@ fn test_default_params() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = serde_json::from_str::<OpenAPI>(out).unwrap();
+    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -230,7 +231,7 @@ async fn test_stream_pagination() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = serde_json::from_str::<OpenAPI>(out).unwrap();
+    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
 
     // Test both interface styles.
     let mut generator =

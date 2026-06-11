@@ -1,16 +1,12 @@
 // Copyright 2022 Oxide Computer Company
 
-use std::{
-    env,
-    fs::{self, File},
-    path::Path,
-};
+use std::{env, fs, path::Path};
 
 fn main() {
     let src = "../sample_openapi/keeper.json";
     println!("cargo:rerun-if-changed={}", src);
-    let file = File::open(src).unwrap();
-    let spec = serde_json::from_reader(file).unwrap();
+    let content = fs::read_to_string(src).unwrap();
+    let spec = progenitor::parse_openapi_str(&content).unwrap();
     let mut generator = progenitor::Generator::default();
 
     let tokens = generator.generate_tokens(&spec).unwrap();

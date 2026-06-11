@@ -6,7 +6,6 @@
 
 use std::{collections::HashMap, fs::File, path::PathBuf};
 
-use openapiv3::OpenAPI;
 use proc_macro::TokenStream;
 use progenitor_impl::{
     CrateVers, GenerationSettings, Generator, InterfaceStyle, TagStyle, TypePatch, UnknownPolicy,
@@ -427,7 +426,7 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
             format!("failed to read {}: {}", path_str, err),
         )
     })?;
-    let oapi: OpenAPI = progenitor_impl::parse_openapi_str(&document).map_err(|err| {
+    let oapi = progenitor_impl::parse_openapi_str(&document).map_err(|err| {
         syn::Error::new(
             spec_path.span(),
             format!("failed to parse {}: {}", path_str, err),

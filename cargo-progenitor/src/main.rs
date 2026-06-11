@@ -1,15 +1,14 @@
 // Copyright 2025 Oxide Computer Company
 
 use std::{
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     io::Write,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Result, bail};
 use clap::{Parser, ValueEnum};
-use openapiv3::OpenAPI;
-use progenitor::{GenerationSettings, Generator, InterfaceStyle, TagStyle};
+use progenitor::{GenerationSettings, Generator, InterfaceStyle, OpenApiDocument, TagStyle};
 use progenitor_impl::space_out_items;
 
 fn is_non_release() -> bool {
@@ -304,7 +303,7 @@ pub fn dependencies(builder: Generator, include_client: bool) -> Vec<String> {
     deps
 }
 
-fn load_api<P>(p: P) -> Result<OpenAPI>
+fn load_api<P>(p: P) -> Result<OpenApiDocument>
 where
     P: AsRef<Path> + std::clone::Clone + std::fmt::Debug,
 {

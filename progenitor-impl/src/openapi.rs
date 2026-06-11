@@ -2,6 +2,8 @@ use openapiv3::OpenAPI;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
+use crate::ir::OpenApiDocument;
+
 const OPENAPI_VERSION_KEY: &str = "openapi";
 const NULL_TYPE_NAME: &str = "null";
 const TYPE_KEY: &str = "type";
@@ -24,7 +26,7 @@ pub enum ParseOpenApiError {
         /// The underlying serialization error message.
         message: String,
     },
-    /// Deserializing into the `openapiv3` AST failed at a specific path.
+    /// Deserializing into the version-specific AST failed at a specific path.
     #[error("decode openapi at {path}: {message}")]
     Deserialize {
         /// The serde path within the normalized document.
@@ -32,13 +34,17 @@ pub enum ParseOpenApiError {
         /// The underlying deserialization error message.
         message: String,
     },
+    /// The document parsed but violates an invariant the generator relies
+    /// on (unsupported version, missing/duplicate operation IDs, …).
+    #[error("invalid openapi document: {0}")]
+    Invalid(#[from] crate::Error),
 }
 
-/// Parse a JSON or YAML OpenAPI document into the `openapiv3` 3.0 AST.
-///
-/// This keeps `progenitor` on the stable `openapiv3` model while accepting
-/// common OpenAPI 3.1 authoring patterns that have a direct 3.0 equivalent.
-pub fn parse_openapi_str(document: &str) -> std::result::Result<OpenAPI, ParseOpenApiError> {
+/// Parse a JSON or YAML OpenAPI document of any supported spec version
+/// into progenitor's internal model.
+pub fn parse_openapi_str(
+    document: &str,
+) -> std::result::Result<OpenApiDocument, ParseOpenApiError> {
     let value = match serde_json::from_str(document) {
         Ok(value) => value,
         Err(json_err) => {
@@ -52,9 +58,23 @@ pub fn parse_openapi_str(document: &str) -> std::result::Result<OpenAPI, ParseOp
     parse_openapi_value(value)
 }
 
+/// Parse an already-decoded OpenAPI document of any supported spec version
+/// into progenitor's internal model.
+pub fn parse_openapi_value(
+    value: Value,
+) -> std::result::Result<OpenApiDocument, ParseOpenApiError> {
+    // Both 3.0.x and 3.1.x currently go through the `openapiv3` frontend,
+    // with 3.1 documents normalized into a 3.0-compatible shape first.
+    // 3.1 will grow a native frontend that handles the full JSON Schema
+    // 2020-12 surface.
+    let spec = normalized_openapiv3(value)?;
+    let document = crate::ir::v30::lower(&spec)?;
+    Ok(OpenApiDocument(document))
+}
+
 /// Normalize a serde value into the subset of OpenAPI 3.1 that `openapiv3`
 /// can represent directly, then deserialize it.
-pub fn parse_openapi_value(mut value: Value) -> std::result::Result<OpenAPI, ParseOpenApiError> {
+fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseOpenApiError> {
     downcast_openapi_version(&mut value);
     normalize_nullable_type_unions(&mut value);
 
@@ -135,13 +155,13 @@ fn normalize_object_type_union(map: &mut Map<String, Value>) {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_openapi_value;
+    use super::normalized_openapiv3;
     use openapiv3::{ReferenceOr, SchemaKind, Type};
     use serde_json::json;
 
     #[test]
     fn parses_nullable_type_unions_from_openapi_3_1() {
-        let openapi = parse_openapi_value(json!({
+        let openapi = normalized_openapiv3(json!({
             "openapi": "3.1.0",
             "info": {
                 "title": "example",

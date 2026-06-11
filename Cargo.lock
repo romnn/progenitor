@@ -1826,7 +1826,6 @@ dependencies = [
 name = "progenitor-macro"
 version = "0.14.0"
 dependencies = [
- "openapiv3",
  "proc-macro2",
  "progenitor-impl",
  "quote",

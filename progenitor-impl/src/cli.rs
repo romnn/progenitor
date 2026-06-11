@@ -3,17 +3,14 @@
 use std::collections::BTreeMap;
 
 use heck::ToKebabCase;
-use openapiv3::OpenAPI;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use typify::{Type, TypeEnumVariant, TypeSpaceImpl, TypeStructPropInfo};
 
 use crate::{
-    Generator, Result,
+    Generator, OpenApiDocument, Result,
     method::{OperationParameterKind, OperationParameterType, OperationResponseStatus},
-    to_schema::ToSchema,
     util::{Case, sanitize},
-    validate_openapi,
 };
 
 struct CliOperation {
@@ -24,32 +21,20 @@ struct CliOperation {
 
 impl Generator {
     /// Generate a `clap`-based CLI.
-    pub fn cli(&mut self, spec: &OpenAPI, crate_name: &str) -> Result<TokenStream> {
-        validate_openapi(spec)?;
+    pub fn cli(&mut self, spec: &OpenApiDocument, crate_name: &str) -> Result<TokenStream> {
+        let document = &spec.0;
 
-        // Convert our components dictionary to schemars
-        let schemas = spec.components.iter().flat_map(|components| {
-            components
+        self.type_space.add_ref_types(
+            document
                 .schemas
                 .iter()
-                .map(|(name, ref_or_schema)| (name.clone(), ref_or_schema.to_schema()))
-        });
+                .map(|(name, schema)| (name.clone(), schema.clone())),
+        )?;
 
-        self.type_space.add_ref_types(schemas)?;
-
-        let raw_methods = spec
-            .paths
+        let raw_methods = document
+            .operations
             .iter()
-            .flat_map(|(path, ref_or_item)| {
-                // Exclude externally defined path items.
-                let item = ref_or_item.as_item().unwrap();
-                item.iter().map(move |(method, operation)| {
-                    (path.as_str(), method, operation, &item.parameters)
-                })
-            })
-            .map(|(path, method, operation, path_parameters)| {
-                self.process_operation(operation, &spec.components, path, method, path_parameters)
-            })
+            .map(|operation| self.process_operation(operation, &document.schemas))
             .collect::<Result<Vec<_>>>()?;
 
         let methods = raw_methods

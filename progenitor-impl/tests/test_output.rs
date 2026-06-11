@@ -6,10 +6,10 @@ use progenitor_impl::{
     GenerationSettings, Generator, InterfaceStyle, TagStyle, TypeImpl, TypePatch, space_out_items,
 };
 
-use openapiv3::OpenAPI;
 use proc_macro2::TokenStream;
+use progenitor_impl::OpenApiDocument;
 
-fn load_api<P>(p: P) -> OpenAPI
+fn load_api<P>(p: P) -> OpenApiDocument
 where
     P: AsRef<Path> + std::clone::Clone + std::fmt::Debug,
 {
@@ -17,7 +17,7 @@ where
     progenitor_impl::parse_openapi_str(&document).unwrap()
 }
 
-fn generate_formatted(generator: &mut Generator, spec: &OpenAPI) -> String {
+fn generate_formatted(generator: &mut Generator, spec: &OpenApiDocument) -> String {
     let content = generator.generate_tokens(&spec).unwrap();
     reformat_code(content)
 }

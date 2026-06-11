@@ -4,17 +4,15 @@
 
 #![deny(missing_docs)]
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
-use openapiv3::OpenAPI;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 use thiserror::Error;
 use typify::{TypeId, TypeSpace, TypeSpaceSettings};
 
-use crate::to_schema::ToSchema;
-
+pub use crate::ir::OpenApiDocument;
 pub use crate::openapi::ParseOpenApiError;
 pub use crate::openapi::parse_openapi_str;
 pub use crate::openapi::parse_openapi_value;
@@ -25,6 +23,7 @@ pub use typify::UnknownPolicy;
 
 mod cli;
 mod httpmock;
+mod ir;
 mod method;
 mod openapi;
 mod template;
@@ -347,10 +346,10 @@ impl Generator {
     /// that progenitor needs (typify doesn't expose it directly).
     fn build_schema_type_id_map(
         &mut self,
-        components: &openapiv3::Components,
+        schemas: &indexmap::IndexMap<String, schemars::schema::Schema>,
     ) -> Result<BTreeMap<String, TypeId>> {
         let mut map = BTreeMap::new();
-        for name in components.schemas.keys() {
+        for name in schemas.keys() {
             let ref_schema: schemars::schema::Schema =
                 schemars::schema::SchemaObject::new_ref(format!("#/components/schemas/{name}"))
                     .into();
@@ -361,40 +360,26 @@ impl Generator {
     }
 
     /// Emit a [TokenStream] containing the generated client code.
-    pub fn generate_tokens(&mut self, spec: &OpenAPI) -> Result<TokenStream> {
-        validate_openapi(spec)?;
+    pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
+        let document = &spec.0;
 
-        // Convert our components dictionary to schemars
-        let schemas = spec.components.iter().flat_map(|components| {
-            components
+        self.type_space.add_ref_types(
+            document
                 .schemas
                 .iter()
-                .map(|(name, ref_or_schema)| (name.clone(), ref_or_schema.to_schema()))
-        });
-
-        self.type_space.add_ref_types(schemas)?;
+                .map(|(name, schema)| (name.clone(), schema.clone())),
+        )?;
 
         // Build the supertype map and the schema-name → TypeId map used
         // by `extract_responses` to collapse sibling response types that
         // share a common `allOf` ancestor.
-        if let Some(components) = &spec.components {
-            self.schema_supertypes = crate::method::build_schema_supertype_map(components);
-            self.schema_type_ids = self.build_schema_type_id_map(components)?;
-        }
+        self.schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
+        self.schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
 
-        let raw_methods = spec
-            .paths
+        let raw_methods = document
+            .operations
             .iter()
-            .flat_map(|(path, ref_or_item)| {
-                // Exclude externally defined path items.
-                let item = ref_or_item.as_item().unwrap();
-                item.iter().map(move |(method, operation)| {
-                    (path.as_str(), method, operation, &item.parameters)
-                })
-            })
-            .map(|(path, method, operation, path_parameters)| {
-                self.process_operation(operation, &spec.components, path, method, path_parameters)
-            })
+            .map(|operation| self.process_operation(operation, &document.schemas))
             .collect::<Result<Vec<_>>>()?;
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
@@ -409,7 +394,7 @@ impl Generator {
             (InterfaceStyle::Builder, TagStyle::Merged) => self
                 .generate_tokens_builder_merged(&raw_methods, self.settings.inner_type.is_some()),
             (InterfaceStyle::Builder, TagStyle::Separate) => {
-                let tag_info = spec
+                let tag_info = document
                     .tags
                     .iter()
                     .map(|tag| (&tag.name, tag))
@@ -447,23 +432,23 @@ impl Generator {
         let client_timeout = self.settings.timeout.unwrap_or(15);
 
         let client_docstring = {
-            let mut s = format!("Client for {}", spec.info.title);
+            let mut s = format!("Client for {}", document.info.title);
 
-            if let Some(ss) = &spec.info.description {
+            if let Some(ss) = &document.info.description {
                 s.push_str("\n\n");
                 s.push_str(ss);
             }
-            if let Some(ss) = &spec.info.terms_of_service {
+            if let Some(ss) = &document.info.terms_of_service {
                 s.push_str("\n\n");
                 s.push_str(ss);
             }
 
-            s.push_str(&format!("\n\nVersion: {}", &spec.info.version));
+            s.push_str(&format!("\n\nVersion: {}", &document.info.version));
 
             s
         };
 
-        let version_str = &spec.info.version;
+        let version_str = &document.info.version;
 
         // The allow(unused_imports) on the `pub use` is necessary with Rust
         // 1.76+, in case the generated file is not at the top level of the
@@ -664,7 +649,7 @@ impl Generator {
     fn generate_tokens_builder_separate(
         &mut self,
         input_methods: &[method::OperationMethod],
-        tag_info: BTreeMap<&String, &openapiv3::Tag>,
+        tag_info: BTreeMap<&String, &ir::Tag>,
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
@@ -745,59 +730,20 @@ pub fn space_out_items(content: String) -> Result<String> {
     })
 }
 
-fn validate_openapi_spec_version(spec_version: &str) -> Result<()> {
-    // progenitor currenlty only support OAS 3.0.x
-    if spec_version.trim().starts_with("3.0.") {
-        Ok(())
-    } else {
-        Err(Error::UnexpectedFormat(format!(
-            "invalid version: {}",
-            spec_version
-        )))
-    }
-}
-
-/// Do some very basic checks of the OpenAPI documents.
-pub fn validate_openapi(spec: &OpenAPI) -> Result<()> {
-    validate_openapi_spec_version(spec.openapi.as_str())?;
-
-    let mut opids = HashSet::new();
-    spec.paths.paths.iter().try_for_each(|p| {
-        match p.1 {
-            openapiv3::ReferenceOr::Reference { reference: _ } => Err(Error::UnexpectedFormat(
-                format!("path {} uses reference, unsupported", p.0,),
-            )),
-            openapiv3::ReferenceOr::Item(item) => {
-                // Make sure every operation has an operation ID, and that each
-                // operation ID is only used once in the document.
-                item.iter().try_for_each(|(_, o)| {
-                    if let Some(oid) = o.operation_id.as_ref() {
-                        if !opids.insert(oid.to_string()) {
-                            return Err(Error::UnexpectedFormat(format!(
-                                "duplicate operation ID: {}",
-                                oid,
-                            )));
-                        }
-                    } else {
-                        return Err(Error::UnexpectedFormat(format!(
-                            "path {} is missing operation ID",
-                            p.0,
-                        )));
-                    }
-                    Ok(())
-                })
-            }
-        }
-    })?;
-
-    Ok(())
+/// Do some very basic checks of an OpenAPI 3.0.x document.
+///
+/// This is a compatibility wrapper around lowering the document into the
+/// internal model, which performs the same checks (spec version, no
+/// referenced path items, present and unique operation IDs).
+pub fn validate_openapi(spec: &openapiv3::OpenAPI) -> Result<()> {
+    ir::v30::lower(spec).map(|_| ())
 }
 
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use crate::{Error, validate_openapi_spec_version};
+    use crate::Error;
 
     #[test]
     fn test_bad_value() {
@@ -828,20 +774,6 @@ mod tests {
         assert_eq!(
             Error::InternalError("nope".to_string()).to_string(),
             "internal error nope",
-        );
-    }
-
-    #[test]
-    fn test_validate_openapi_spec_version() {
-        assert!(validate_openapi_spec_version("3.0.0").is_ok());
-        assert!(validate_openapi_spec_version("3.0.1").is_ok());
-        assert!(validate_openapi_spec_version("3.0.4").is_ok());
-        assert!(validate_openapi_spec_version("3.0.5-draft").is_ok());
-        assert_eq!(
-            validate_openapi_spec_version("3.1.0")
-                .unwrap_err()
-                .to_string(),
-            "unexpected or unhandled format in the OpenAPI document invalid version: 3.1.0"
         );
     }
 }

@@ -2,19 +2,16 @@
 
 //! Generation of mocking extensions for `httpmock`
 
-use openapiv3::OpenAPI;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 
 use crate::{
-    Generator, Result,
+    Generator, OpenApiDocument, Result,
     method::{
         BodyContentType, HttpMethod, OperationParameter, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseStatus,
     },
-    to_schema::ToSchema,
     util::{Case, sanitize},
-    validate_openapi,
 };
 
 struct MockOp {
@@ -30,32 +27,20 @@ impl Generator {
     /// The `crate_path` parameter should be a valid Rust path corresponding to
     /// the SDK. This can include `::` and instances of `-` in the crate name
     /// should be converted to `_`.
-    pub fn httpmock(&mut self, spec: &OpenAPI, crate_path: &str) -> Result<TokenStream> {
-        validate_openapi(spec)?;
+    pub fn httpmock(&mut self, spec: &OpenApiDocument, crate_path: &str) -> Result<TokenStream> {
+        let document = &spec.0;
 
-        // Convert our components dictionary to schemars
-        let schemas = spec.components.iter().flat_map(|components| {
-            components
+        self.type_space.add_ref_types(
+            document
                 .schemas
                 .iter()
-                .map(|(name, ref_or_schema)| (name.clone(), ref_or_schema.to_schema()))
-        });
+                .map(|(name, schema)| (name.clone(), schema.clone())),
+        )?;
 
-        self.type_space.add_ref_types(schemas)?;
-
-        let raw_methods = spec
-            .paths
+        let raw_methods = document
+            .operations
             .iter()
-            .flat_map(|(path, ref_or_item)| {
-                // Exclude externally defined path items.
-                let item = ref_or_item.as_item().unwrap();
-                item.iter().map(move |(method, operation)| {
-                    (path.as_str(), method, operation, &item.parameters)
-                })
-            })
-            .map(|(path, method, operation, path_parameters)| {
-                self.process_operation(operation, &spec.components, path, method, path_parameters)
-            })
+            .map(|operation| self.process_operation(operation, &document.schemas))
             .collect::<Result<Vec<_>>>()?;
 
         let methods = raw_methods
