@@ -28,14 +28,6 @@ use crate::{Error, Result};
 /// [`openapiv3::OpenAPI`] via `TryFrom`.
 pub struct OpenApiDocument(pub(crate) Document);
 
-impl TryFrom<&openapiv3::OpenAPI> for OpenApiDocument {
-    type Error = Error;
-
-    fn try_from(spec: &openapiv3::OpenAPI) -> Result<Self> {
-        Ok(Self(v30::lower(spec)?))
-    }
-}
-
 pub(crate) struct Document {
     pub info: Info,
     /// `components.schemas`, converted to schemars, in document order.
@@ -260,22 +252,48 @@ pub(crate) fn build_schema_supertype_map(
 /// Get a schema's top-level `allOf` members, looking through the
 /// `oneOf: [null, …]` wrapper that the 3.0 frontend produces for
 /// `nullable: true` composite schemas.
+///
+/// Only *pure* composition qualifies: schemas that also carry
+/// type-forming keywords (a `type`, `enum`, validation constraints, …)
+/// don't have plain "extends parent" semantics and are excluded, matching
+/// the openapiv3 `SchemaKind::AllOf`-only behavior this map historically
+/// had.
 fn schema_all_of(schema: &schemars::schema::Schema) -> Option<&[schemars::schema::Schema]> {
     let schemars::schema::Schema::Object(object) = schema else {
         return None;
     };
+    if !is_pure_composition(object) {
+        return None;
+    }
     let subschemas = object.subschemas.as_deref()?;
-    if let Some(all_of) = &subschemas.all_of {
-        return Some(all_of);
-    }
-    // nullable wrapper: oneOf of exactly [null-typed schema, inner].
-    let one_of = subschemas.one_of.as_deref()?;
-    if let [first, inner] = one_of
-        && is_null_schema(first)
+    if subschemas.any_of.is_some()
+        || subschemas.not.is_some()
+        || subschemas.if_schema.is_some()
+        || subschemas.then_schema.is_some()
+        || subschemas.else_schema.is_some()
     {
-        return schema_all_of(inner);
+        return None;
     }
-    None
+    match (&subschemas.all_of, subschemas.one_of.as_deref()) {
+        (Some(all_of), None) => Some(all_of),
+        // nullable wrapper: oneOf of exactly [null-typed schema, inner].
+        (None, Some([first, inner])) if is_null_schema(first) => schema_all_of(inner),
+        _ => None,
+    }
+}
+
+/// Whether a schema object carries no type-forming keywords besides its
+/// subschemas (metadata and extensions are fine).
+fn is_pure_composition(object: &schemars::schema::SchemaObject) -> bool {
+    object.instance_type.is_none()
+        && object.format.is_none()
+        && object.enum_values.is_none()
+        && object.const_value.is_none()
+        && object.reference.is_none()
+        && object.string.is_none()
+        && object.number.is_none()
+        && object.object.is_none()
+        && object.array.is_none()
 }
 
 fn is_null_schema(schema: &schemars::schema::Schema) -> bool {
@@ -350,6 +368,32 @@ schemas:
         assert!(
             !map.contains_key("Multi"),
             "multi-parent allOf must not yield a single parent"
+        );
+    }
+
+    #[test]
+    fn build_schema_supertype_map_requires_pure_composition() {
+        // An allOf that also carries type-forming keywords (here:
+        // `type: object` + `properties`, openapiv3's `SchemaKind::Any`)
+        // is not a plain "extends parent" pattern and must be excluded —
+        // matching the historical SchemaKind::AllOf-only behavior.
+        let schemas = schemas_from_yaml(
+            r#"
+schemas:
+  Problem:
+    type: object
+  Mixed:
+    type: object
+    properties:
+      extra: { type: string }
+    allOf:
+      - $ref: '#/components/schemas/Problem'
+"#,
+        );
+        let map = build_schema_supertype_map(&schemas);
+        assert!(
+            !map.contains_key("Mixed"),
+            "allOf alongside type-forming keywords must not register a supertype"
         );
     }
 

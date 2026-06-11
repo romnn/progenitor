@@ -7,7 +7,6 @@ use dropshot::{
 };
 use futures::StreamExt;
 use http::Response;
-use openapiv3::OpenAPI;
 use progenitor_impl::OpenApiDocument;
 use progenitor_impl::{GenerationSettings, Generator, InterfaceStyle, space_out_items};
 use schemars::JsonSchema;
@@ -77,7 +76,7 @@ fn test_renamed_parameters() {
 
     let out = from_utf8(&out).unwrap();
 
-    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
+    let spec = progenitor_impl::parse_openapi_str(out).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -108,7 +107,7 @@ fn test_freeform_response() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
+    let spec = progenitor_impl::parse_openapi_str(out).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -162,7 +161,7 @@ fn test_default_params() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
+    let spec = progenitor_impl::parse_openapi_str(out).unwrap();
 
     let mut generator = Generator::default();
     let output = generate_formatted(&mut generator, &spec);
@@ -231,7 +230,7 @@ async fn test_stream_pagination() {
         .unwrap();
 
     let out = from_utf8(&out).unwrap();
-    let spec = OpenApiDocument::try_from(&serde_json::from_str::<OpenAPI>(out).unwrap()).unwrap();
+    let spec = progenitor_impl::parse_openapi_str(out).unwrap();
 
     // Test both interface styles.
     let mut generator =

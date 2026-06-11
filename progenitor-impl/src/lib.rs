@@ -730,15 +730,6 @@ pub fn space_out_items(content: String) -> Result<String> {
     })
 }
 
-/// Do some very basic checks of an OpenAPI 3.0.x document.
-///
-/// This is a compatibility wrapper around lowering the document into the
-/// internal model, which performs the same checks (spec version, no
-/// referenced path items, present and unique operation IDs).
-pub fn validate_openapi(spec: &openapiv3::OpenAPI) -> Result<()> {
-    ir::v30::lower(spec).map(|_| ())
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
