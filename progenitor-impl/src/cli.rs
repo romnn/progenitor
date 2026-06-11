@@ -376,6 +376,12 @@ impl Generator {
             .map(|d| &d.first_page_params);
 
         for param in &method.params {
+            // deepObject query parameters are object-typed; there's no
+            // sensible single clap argument for them, so the CLI omits
+            // them (consumers can fall back to the generated client).
+            if param.deep_object_query {
+                continue;
+            }
             let innately_required = match &param.kind {
                 // We're not interetested in the body parameter yet.
                 OperationParameterKind::Body(_) => continue,

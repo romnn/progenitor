@@ -609,6 +609,58 @@ impl<'a, T> QueryParam<'a, T> {
         Self { name, value }
     }
 }
+
+/// Wrapper for `style: deepObject` query parameters: an object value
+/// `{"gt": 5}` under a parameter named `created` serializes as
+/// `created[gt]=5`. Nested objects extend the bracket path and arrays
+/// use indices (`filter[ids][0]=...`), matching the convention of the
+/// APIs that use this style. `null` members are omitted.
+#[doc(hidden)]
+pub struct DeepObjectQuery<'a, T> {
+    name: &'a str,
+    value: &'a T,
+}
+
+impl<'a, T> DeepObjectQuery<'a, T> {
+    #[doc(hidden)]
+    pub fn new(name: &'a str, value: &'a T) -> Self {
+        Self { name, value }
+    }
+}
+
+impl<T> Serialize for DeepObjectQuery<'_, T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let value = serde_json::to_value(self.value).map_err(serde::ser::Error::custom)?;
+        let mut pairs = Vec::new();
+        flatten_deep_object(self.name.to_string(), &value, &mut pairs);
+        pairs.serialize(serializer)
+    }
+}
+
+fn flatten_deep_object(prefix: String, value: &serde_json::Value, out: &mut Vec<(String, String)>) {
+    match value {
+        serde_json::Value::Null => {}
+        serde_json::Value::Bool(v) => out.push((prefix, v.to_string())),
+        serde_json::Value::Number(v) => out.push((prefix, v.to_string())),
+        serde_json::Value::String(v) => out.push((prefix, v.clone())),
+        serde_json::Value::Array(items) => {
+            for (index, item) in items.iter().enumerate() {
+                flatten_deep_object(format!("{prefix}[{index}]"), item, out);
+            }
+        }
+        serde_json::Value::Object(members) => {
+            for (key, member) in members {
+                flatten_deep_object(format!("{prefix}[{key}]"), member, out);
+            }
+        }
+    }
+}
 impl<T> Serialize for QueryParam<'_, T>
 where
     T: Serialize,

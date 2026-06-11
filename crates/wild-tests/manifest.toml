@@ -18,7 +18,7 @@ notes = "huge; official Asana OAS, YAML, heavy allOf composition"
 name = "box"
 url = "https://raw.githubusercontent.com/box/box-openapi/main/openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Box Platform API, bundled JSON with discriminators"
 
 [[spec]]
@@ -49,7 +49,7 @@ notes = "huge; vendor-hosted resolved single-file bundle of the multi-file sourc
 name = "elasticsearch"
 url = "https://raw.githubusercontent.com/elastic/elasticsearch-specification/main/output/openapi/elasticsearch-openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; generated from Elastic's TS spec compiler"
 
@@ -64,7 +64,7 @@ notes = "vendor-hosted JSON converted from swag-generated spec; sibling /swagger
 name = "github-30"
 url = "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; GitHub REST 3.0 variant from descriptions/; differential pair with github-31"
 
@@ -72,7 +72,7 @@ notes = "huge; GitHub REST 3.0 variant from descriptions/; differential pair wit
 name = "gitlab"
 url = "https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/openapi/openapi_v3.yaml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; Grape-generated YAML; openapi.yaml path no longer exists, openapi_v2.yaml is Swagger 2.0"
 
@@ -116,7 +116,7 @@ notes = "utoipa (Rust) generated spec for HF text-generation-inference, GitHub P
 name = "jira"
 url = "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "huge; 420 paths, anyOf grab-bags and additionalProperties soup; vendor-hosted"
 
 [[spec]]
@@ -145,7 +145,7 @@ notes = "huge; Akamai/Linode API v4; openapi.json at repo root on development de
 name = "mongodb-atlas"
 url = "https://raw.githubusercontent.com/mongodb/openapi/main/openapi/v2.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; Atlas Admin API v2 with versioned media types; one of the messiest large production specs"
 
@@ -183,7 +183,7 @@ notes = "huge; live vendor endpoint; openapi field not in first 8KB"
 name = "qdrant"
 url = "https://raw.githubusercontent.com/qdrant/qdrant/master/docs/redoc/master/openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "openapi field is not first key (paths come first); good parser-order test"
 
 [[spec]]
@@ -198,7 +198,7 @@ notes = "huge; official Square Connect API, full payments/commerce surface"
 name = "stripe"
 url = "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; classic messy payments spec, heavily anyOf/expandable-field based"
 
@@ -249,7 +249,7 @@ notes = "Adyen classic PaymentService v68, distinct document from adyen-checkout
 name = "anthropic"
 url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic/anthropic-5ce93251152bd7c4c288dacdf5a445383825ba50bc472ff9e9821ee9455e3564.yml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Stainless-published spec; .yml extension but JSON content; hash-pinned URL rotates, re-resolve from anthropic-sdk-python .stats.yml and snapshot locally"
 
 [[spec]]
@@ -263,7 +263,7 @@ notes = "official vendor-hosted YAML; old GitHub api-spec repo is gone"
 name = "chargebee"
 url = "https://raw.githubusercontent.com/chargebee/openapi/main/spec/chargebee_api_v2_pc_v2_spec.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; biggest in corpus at ~13.7 MB; very messy generated 3.1"
 
@@ -328,7 +328,7 @@ notes = "official Figma REST API, YAML, 3.1 with discriminated unions"
 name = "github-31"
 url = "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions-next/api.github.com/api.github.com.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; descriptions-next 3.1 variant; same API surface as github-30, good 3.0-vs-3.1 differential pair"
 
@@ -350,14 +350,14 @@ notes = "hand-maintained 3.1 JSON spec"
 name = "mistral"
 url = "https://raw.githubusercontent.com/mistralai/platform-docs-public/main/openapi.yaml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Mistral platform spec (drives their Speakeasy SDKs); YAML"
 
 [[spec]]
 name = "mollie"
 url = "https://raw.githubusercontent.com/mollie/openapi/main/specs.yaml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Mollie Public API spec, YAML"
 
 [[spec]]
@@ -387,7 +387,7 @@ notes = "served by Perplexity's Mintlify docs site; Sonar chat completions and s
 name = "polar"
 url = "https://api.polar.sh/openapi.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "FastAPI-generated 3.1 with const/discriminated unions; vendor-hosted"
 
 [[spec]]
@@ -429,7 +429,7 @@ notes = "live endpoint returns YAML; vendor warns spec is unstable, snapshot loc
 name = "together"
 url = "https://docs.together.ai/openapi.yaml"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "vendor-hosted YAML; old togethercomputer/openapi GitHub raw path 404s"
 
 [[spec]]

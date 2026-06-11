@@ -133,150 +133,159 @@ impl Generator {
 
         // Generate methods corresponding to each parameter so that callers
         // can specify a prescribed value for that parameter.
-        let when_methods = method.params.iter().map(
-            |OperationParameter {
-                 name,
-                 typ,
-                 kind,
-                 api_name,
-                 description: _,
-             }| {
-                let arg_type_name = match typ {
-                    OperationParameterType::Type(arg_type_id) => self
-                        .type_space
-                        .get_type(arg_type_id)
-                        .unwrap()
-                        .parameter_ident(),
-                    OperationParameterType::RawBody => match kind {
-                        OperationParameterKind::Body(BodyContentType::OctetStream) => quote! {
-                            ::serde_json::Value
-                        },
-                        OperationParameterKind::Body(
-                            BodyContentType::Text(_) | BodyContentType::Raw(_),
-                        ) => quote! {
-                            String
-                        },
-                        _ => unreachable!(),
-                    },
-                };
-
-                let name_ident = format_ident!("{}", name);
-                let (required, handler) = match kind {
-                    OperationParameterKind::Path => {
-                        let re_fmt = method.path.as_wildcard_param(api_name);
-                        (
-                            true,
-                            quote! {
-                                let re = regex::Regex::new(
-                                    &format!(#re_fmt, value.to_string())
-                                ).unwrap();
-                                Self(self.0.path_matches(re))
+        let when_methods = method
+            .params
+            .iter()
+            .filter(
+                // A deepObject matcher would need bracket-path expansion; mock
+                // authors can match those manually via `into_inner()`.
+                |param| !param.deep_object_query,
+            )
+            .map(
+                |OperationParameter {
+                     name,
+                     typ,
+                     kind,
+                     api_name,
+                     description: _,
+                     deep_object_query: _,
+                 }| {
+                    let arg_type_name = match typ {
+                        OperationParameterType::Type(arg_type_id) => self
+                            .type_space
+                            .get_type(arg_type_id)
+                            .unwrap()
+                            .parameter_ident(),
+                        OperationParameterType::RawBody => match kind {
+                            OperationParameterKind::Body(BodyContentType::OctetStream) => quote! {
+                                ::serde_json::Value
                             },
-                        )
-                    }
-                    OperationParameterKind::Query(true) => (
-                        true,
-                        quote! {
-                            Self(self.0.query_param(#api_name, value.to_string()))
-                        },
-                    ),
-                    OperationParameterKind::Header(true) => (
-                        true,
-                        quote! {
-                            Self(self.0.header(#api_name, value.to_string()))
-                        },
-                    ),
-
-                    OperationParameterKind::Query(false) => (
-                        false,
-                        quote! {
-                            if let Some(value) = value.into() {
-                                Self(self.0.query_param(
-                                    #api_name,
-                                    value.to_string(),
-                                ))
-                            } else {
-                                Self(self.0.query_param_missing(#api_name))
-                            }
-                        },
-                    ),
-                    OperationParameterKind::Header(false) => (
-                        false,
-                        quote! {
-                            if let Some(value) = value.into() {
-                                Self(self.0.header(
-                                    #api_name,
-                                    value.to_string()
-                                ))
-                            } else {
-                                Self(self.0.header_missing(#api_name))
-                            }
-                        },
-                    ),
-                    OperationParameterKind::Body(body_content_type) => match typ {
-                        OperationParameterType::Type(_) => (
-                            true,
-                            quote! {
-                                Self(self.0.json_body_obj(value))
+                            OperationParameterKind::Body(
+                                BodyContentType::Text(_) | BodyContentType::Raw(_),
+                            ) => quote! {
+                                String
                             },
-                        ),
-                        OperationParameterType::RawBody => match body_content_type {
-                            BodyContentType::OctetStream => (
-                                true,
-                                quote! {
-                                    Self(self.0.json_body(value))
-                                },
-                            ),
-                            BodyContentType::Text(_) | BodyContentType::Raw(_) => (
-                                true,
-                                quote! {
-                                    Self(self.0.body(value))
-                                },
-                            ),
                             _ => unreachable!(),
                         },
-                    },
-                };
-
-                if required {
-                    // The value is required so we just check for a simple
-                    // match.
-                    quote! {
-                        pub fn #name_ident(self, value: #arg_type_name) -> Self {
-                            #handler
-                        }
-                    }
-                } else {
-                    // For optional values we permit an input that's an
-                    // `Into<Option<T>`. This allows callers to specify a value
-                    // or specify that the parameter must be absent with None.
-
-                    // If the type is a ref, augment it with a lifetime that
-                    // we'll also use in the function
-                    let (lifetime, arg_type_name) = if let syn::Type::Reference(mut rr) =
-                        syn::parse2::<syn::Type>(arg_type_name.clone()).unwrap()
-                    {
-                        rr.lifetime =
-                            Some(syn::Lifetime::new("'a", proc_macro2::Span::call_site()));
-                        (Some(quote! { 'a, }), rr.to_token_stream())
-                    } else {
-                        (None, arg_type_name)
                     };
 
-                    quote! {
-                        pub fn #name_ident<#lifetime T>(
-                            self,
-                            value: T,
-                        ) -> Self
-                        where
-                            T: Into<Option<#arg_type_name>>,
+                    let name_ident = format_ident!("{}", name);
+                    let (required, handler) = match kind {
+                        OperationParameterKind::Path => {
+                            let re_fmt = method.path.as_wildcard_param(api_name);
+                            (
+                                true,
+                                quote! {
+                                    let re = regex::Regex::new(
+                                        &format!(#re_fmt, value.to_string())
+                                    ).unwrap();
+                                    Self(self.0.path_matches(re))
+                                },
+                            )
+                        }
+                        OperationParameterKind::Query(true) => (
+                            true,
+                            quote! {
+                                Self(self.0.query_param(#api_name, value.to_string()))
+                            },
+                        ),
+                        OperationParameterKind::Header(true) => (
+                            true,
+                            quote! {
+                                Self(self.0.header(#api_name, value.to_string()))
+                            },
+                        ),
+
+                        OperationParameterKind::Query(false) => (
+                            false,
+                            quote! {
+                                if let Some(value) = value.into() {
+                                    Self(self.0.query_param(
+                                        #api_name,
+                                        value.to_string(),
+                                    ))
+                                } else {
+                                    Self(self.0.query_param_missing(#api_name))
+                                }
+                            },
+                        ),
+                        OperationParameterKind::Header(false) => (
+                            false,
+                            quote! {
+                                if let Some(value) = value.into() {
+                                    Self(self.0.header(
+                                        #api_name,
+                                        value.to_string()
+                                    ))
+                                } else {
+                                    Self(self.0.header_missing(#api_name))
+                                }
+                            },
+                        ),
+                        OperationParameterKind::Body(body_content_type) => match typ {
+                            OperationParameterType::Type(_) => (
+                                true,
+                                quote! {
+                                    Self(self.0.json_body_obj(value))
+                                },
+                            ),
+                            OperationParameterType::RawBody => match body_content_type {
+                                BodyContentType::OctetStream => (
+                                    true,
+                                    quote! {
+                                        Self(self.0.json_body(value))
+                                    },
+                                ),
+                                BodyContentType::Text(_) | BodyContentType::Raw(_) => (
+                                    true,
+                                    quote! {
+                                        Self(self.0.body(value))
+                                    },
+                                ),
+                                _ => unreachable!(),
+                            },
+                        },
+                    };
+
+                    if required {
+                        // The value is required so we just check for a simple
+                        // match.
+                        quote! {
+                            pub fn #name_ident(self, value: #arg_type_name) -> Self {
+                                #handler
+                            }
+                        }
+                    } else {
+                        // For optional values we permit an input that's an
+                        // `Into<Option<T>`. This allows callers to specify a value
+                        // or specify that the parameter must be absent with None.
+
+                        // If the type is a ref, augment it with a lifetime that
+                        // we'll also use in the function
+                        let (lifetime, arg_type_name) = if let syn::Type::Reference(mut rr) =
+                            syn::parse2::<syn::Type>(arg_type_name.clone()).unwrap()
                         {
-                            #handler
+                            rr.lifetime =
+                                Some(syn::Lifetime::new("'a", proc_macro2::Span::call_site()));
+                            (Some(quote! { 'a, }), rr.to_token_stream())
+                        } else {
+                            (None, arg_type_name)
+                        };
+
+                        quote! {
+                            pub fn #name_ident<#lifetime T>(
+                                self,
+                                value: T,
+                            ) -> Self
+                            where
+                                T: Into<Option<#arg_type_name>>,
+                            {
+                                #handler
+                            }
                         }
                     }
-                }
-            },
-        );
+                },
+            );
 
         let when_impl = quote! {
             impl #when {

@@ -105,6 +105,9 @@ pub struct OperationParameter {
     pub description: Option<String>,
     pub typ: OperationParameterType,
     pub kind: OperationParameterKind,
+    /// Query parameter uses `style: deepObject` (`name[member]=value`
+    /// serialization) rather than the default form style.
+    pub deep_object_query: bool,
 }
 
 #[derive(Eq, PartialEq)]
@@ -536,14 +539,16 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Path,
+                            deep_object_query: false,
                         })
                     }
                     ir::ParameterKind::Query {
-                        style: ir::QueryStyle::Form,
+                        style: style @ (ir::QueryStyle::Form | ir::QueryStyle::DeepObject),
                         // We always encode reserved chars; allow_empty_value
                         // is irrelevant for this client.
                         ..
                     } => {
+                        let deep_object_query = *style == ir::QueryStyle::DeepObject;
                         let schema = parameter_schema(parameter);
                         let name = sanitize(
                             &format!("{}-{}", operation_id, &parameter.name),
@@ -571,6 +576,7 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Query(required),
+                            deep_object_query,
                         })
                     }
                     ir::ParameterKind::Header {
@@ -604,6 +610,7 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Header(required),
+                            deep_object_query: false,
                         })
                     }
                     ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
@@ -677,6 +684,7 @@ impl Generator {
                     description: None,
                     typ: OperationParameterType::Type(type_id),
                     kind: OperationParameterKind::Path,
+                    deep_object_query: false,
                 });
             }
         }
@@ -1084,8 +1092,14 @@ impl Generator {
                 OperationParameterKind::Query(_) => {
                     let qn = &param.api_name;
                     let qn_ident = format_ident!("{}", &param.name);
-                    Some(quote! {
-                        &progenitor_client::QueryParam::new(#qn, &#qn_ident)
+                    Some(if param.deep_object_query {
+                        quote! {
+                            &progenitor_client::DeepObjectQuery::new(#qn, &#qn_ident)
+                        }
+                    } else {
+                        quote! {
+                            &progenitor_client::QueryParam::new(#qn, &#qn_ident)
+                        }
                     })
                 }
                 _ => None,
@@ -2657,6 +2671,7 @@ impl Generator {
             description: body.description.clone(),
             typ,
             kind: OperationParameterKind::Body(content_type),
+            deep_object_query: false,
         }))
     }
 }
