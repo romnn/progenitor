@@ -93,10 +93,10 @@ fn compile_generated_clients() {
         return;
     }
     let run_slow = std::env::var_os("WILD_SLOW").is_some_and(|v| v == "1");
-    // Live under the workspace target dir — same disk as every other
-    // build artifact, covered by `cargo clean`, never bloating /tmp.
-    let out_root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/wild-compile");
+    // CARGO_TARGET_TMPDIR is cargo's scratch dir for integration tests
+    // (target/tmp): same disk as every other build artifact, covered by
+    // `cargo clean`, and it follows CARGO_TARGET_DIR overrides.
+    let out_root = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("wild-compile");
 
     let mut failures = Vec::new();
     let mut members = Vec::new();
