@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"cargo-progenitor",
+	"crates/wild-tests",
 	"example-build",
 	"example-macro",
 	"example-out-dir",

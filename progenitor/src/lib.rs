@@ -1,8 +1,9 @@
 // Copyright 2024 Oxide Computer Company
 
 //! Progenitor is a Rust crate for generating opinionated clients from API
-//! descriptions specified in the OpenAPI 3.0.x format. It makes use of Rust
-//! futures for async API calls and `Streams` for paginated interfaces.
+//! descriptions specified in the OpenAPI 3.0.x and 3.1.x formats. It makes
+//! use of Rust futures for async API calls and `Streams` for paginated
+//! interfaces.
 //!
 //! It generates a type called `Client` with methods that correspond to the
 //! operations specified in the OpenAPI document.

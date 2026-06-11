@@ -1,0 +1,447 @@
+# Wild-spec corpus manifest.
+#
+# Each entry pins the expected pipeline outcome (`expect`) so the suite
+# works as a ratchet: a regression fails the build, and so does an
+# unrecorded improvement. `slow = true` marks multi-minute documents only
+# exercised when WILD_SLOW=1. Outcomes: pass | parse-fail | generate-fail
+# | invalid-rust.
+
+[[spec]]
+name = "asana"
+url = "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; official Asana OAS, YAML, heavy allOf composition"
+
+[[spec]]
+name = "box"
+url = "https://raw.githubusercontent.com/box/box-openapi/main/openapi.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "official Box Platform API, bundled JSON with discriminators"
+
+[[spec]]
+name = "cloudflare"
+url = "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json"
+version = "3.0"
+expect = "parse-fail"
+slow = true
+notes = "huge; minified JSON with alphabetically sorted keys (openapi field not at top), notoriously messy"
+
+[[spec]]
+name = "datadog-v2"
+url = "https://raw.githubusercontent.com/DataDog/datadog-api-client-go/master/.generator/schemas/v2/openapi.yaml"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; drives all official Datadog clients; openapi key sits deep in alphabetized YAML"
+
+[[spec]]
+name = "digitalocean"
+url = "https://api-engineering.nyc3.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml"
+version = "3.0"
+expect = "parse-fail"
+slow = true
+notes = "huge; vendor-hosted resolved single-file bundle of the multi-file source repo"
+
+[[spec]]
+name = "elasticsearch"
+url = "https://raw.githubusercontent.com/elastic/elasticsearch-specification/main/output/openapi/elasticsearch-openapi.json"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; generated from Elastic's TS spec compiler"
+
+[[spec]]
+name = "fly-machines"
+url = "https://docs.machines.dev/spec/openapi3.json"
+version = "3.0"
+expect = "parse-fail"
+notes = "vendor-hosted JSON converted from swag-generated spec; sibling /swagger/doc.json is Swagger 2.0, do not use"
+
+[[spec]]
+name = "github-30"
+url = "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; GitHub REST 3.0 variant from descriptions/; differential pair with github-31"
+
+[[spec]]
+name = "gitlab"
+url = "https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/openapi/openapi_v3.yaml"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; Grape-generated YAML; openapi.yaml path no longer exists, openapi_v2.yaml is Swagger 2.0"
+
+[[spec]]
+name = "gocardless-bank-account-data"
+url = "https://bankaccountdata.gocardless.com/api/swagger.json"
+version = "3.0"
+expect = "pass"
+notes = "drf-spectacular generated; URL says swagger.json but document is OAS 3.0.3"
+
+[[spec]]
+name = "grafana"
+url = "https://raw.githubusercontent.com/grafana/grafana/main/public/openapi3.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "machine-converted from Swagger 2.0; components listed before openapi field; known-messy"
+
+[[spec]]
+name = "groq"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/groqcloud/groqcloud-0298a69b7d74303a353e8a586d85e5cc769b9560920487fadfe773c0100af249.yml"
+version = "3.0"
+expect = "generate-fail"
+notes = "official Stainless-published GroqCloud spec; hash-pinned URL rotates on updates, snapshot locally"
+
+[[spec]]
+name = "hetzner-cloud"
+url = "https://docs.hetzner.cloud/cloud.spec.json"
+version = "3.0"
+expect = "pass"
+slow = true
+notes = "huge; vendor-hosted JSON; older /spec.json path now returns HTML"
+
+[[spec]]
+name = "hf-tgi"
+url = "https://huggingface.github.io/text-generation-inference/openapi.json"
+version = "3.0"
+expect = "parse-fail"
+notes = "utoipa (Rust) generated spec for HF text-generation-inference, GitHub Pages hosted"
+
+[[spec]]
+name = "jira"
+url = "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "huge; 420 paths, anyOf grab-bags and additionalProperties soup; vendor-hosted"
+
+[[spec]]
+name = "keycloak"
+url = "https://www.keycloak.org/docs-api/latest/rest-api/openapi.json"
+version = "3.0"
+expect = "parse-fail"
+notes = "vendor-hosted JSON with unusual '\"openapi\" : \"3.0.3\"' spacing"
+
+[[spec]]
+name = "kong-admin-ee"
+url = "https://raw.githubusercontent.com/Kong/developer.konghq.com/main/api-specs/gateway/admin-ee/3.14/openapi.yaml"
+version = "3.0"
+expect = "generate-fail"
+notes = "YAML with openapi field at line ~7856 (components first); very messy key ordering"
+
+[[spec]]
+name = "linode"
+url = "https://raw.githubusercontent.com/linode/linode-api-docs/development/openapi.json"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; Akamai/Linode API v4; openapi.json at repo root on development default branch"
+
+[[spec]]
+name = "mongodb-atlas"
+url = "https://raw.githubusercontent.com/mongodb/openapi/main/openapi/v2.json"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; Atlas Admin API v2 with versioned media types; one of the messiest large production specs"
+
+[[spec]]
+name = "pagerduty"
+url = "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json"
+version = "3.0"
+expect = "parse-fail"
+slow = true
+notes = "huge; 254 paths, deep allOf chains and shared parameter components"
+
+[[spec]]
+name = "paypal-orders"
+url = "https://raw.githubusercontent.com/paypal/paypal-rest-api-specifications/main/openapi/checkout_orders_v2.json"
+version = "3.0"
+expect = "pass"
+notes = "official PayPal Checkout Orders v2; only 3.0.4 patch version in corpus"
+
+[[spec]]
+name = "plaid"
+url = "https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; single large YAML covering the whole fintech data API"
+
+[[spec]]
+name = "pulumi"
+url = "https://api.pulumi.com/api/openapi/pulumi-spec.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "huge; live vendor endpoint; openapi field not in first 8KB"
+
+[[spec]]
+name = "qdrant"
+url = "https://raw.githubusercontent.com/qdrant/qdrant/master/docs/redoc/master/openapi.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "openapi field is not first key (paths come first); good parser-order test"
+
+[[spec]]
+name = "square"
+url = "https://raw.githubusercontent.com/square/connect-api-specification/master/api.json"
+version = "3.0"
+expect = "parse-fail"
+slow = true
+notes = "huge; official Square Connect API, full payments/commerce surface"
+
+[[spec]]
+name = "stripe"
+url = "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; classic messy payments spec, heavily anyOf/expandable-field based"
+
+[[spec]]
+name = "supabase"
+url = "https://api.supabase.com/api/v1-json"
+version = "3.0"
+expect = "generate-fail"
+notes = "live NestJS-Swagger-generated minified JSON served by the Management API"
+
+[[spec]]
+name = "temporal"
+url = "https://raw.githubusercontent.com/temporalio/api/master/openapi/openapiv3.yaml"
+version = "3.0"
+expect = "parse-fail"
+notes = "generated from protobuf via grpc-gateway; YAML"
+
+[[spec]]
+name = "twilio-api-v2010"
+url = "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json"
+version = "3.0"
+expect = "generate-fail"
+notes = "Twilio core REST API; heavy form-encoded request bodies and vendor x- extensions"
+
+[[spec]]
+name = "vercel"
+url = "https://openapi.vercel.sh/"
+version = "3.0"
+expect = "generate-fail"
+slow = true
+notes = "huge; vendor endpoint returns full JSON spec directly; many inline anonymous schemas and oneOf unions"
+
+[[spec]]
+name = "adyen-checkout"
+url = "https://raw.githubusercontent.com/Adyen/adyen-openapi/main/json/CheckoutService-v71.json"
+version = "3.1"
+expect = "pass"
+notes = "real-world 3.1 with large oneOf payment-method unions; ~25 sibling 3.1 services in same repo"
+
+[[spec]]
+name = "adyen-payment"
+url = "https://raw.githubusercontent.com/Adyen/adyen-openapi/main/json/PaymentService-v68.json"
+version = "3.1"
+expect = "pass"
+notes = "Adyen classic PaymentService v68, distinct document from adyen-checkout"
+
+[[spec]]
+name = "anthropic"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic/anthropic-5ce93251152bd7c4c288dacdf5a445383825ba50bc472ff9e9821ee9455e3564.yml"
+version = "3.1"
+expect = "generate-fail"
+notes = "official Stainless-published spec; .yml extension but JSON content; hash-pinned URL rotates, re-resolve from anthropic-sdk-python .stats.yml and snapshot locally"
+
+[[spec]]
+name = "assemblyai"
+url = "https://www.assemblyai.com/docs/openapi.yaml"
+version = "3.1"
+expect = "generate-fail"
+notes = "official vendor-hosted YAML; old GitHub api-spec repo is gone"
+
+[[spec]]
+name = "chargebee"
+url = "https://raw.githubusercontent.com/chargebee/openapi/main/spec/chargebee_api_v2_pc_v2_spec.json"
+version = "3.1"
+expect = "generate-fail"
+slow = true
+notes = "huge; biggest in corpus at ~13.7 MB; very messy generated 3.1"
+
+[[spec]]
+name = "clickhouse-cloud"
+url = "https://api.clickhouse.cloud/v1"
+version = "3.1"
+expect = "generate-fail"
+notes = "live vendor endpoint returns the 3.1.2 JSON document directly"
+
+[[spec]]
+name = "codat-accounting"
+url = "https://raw.githubusercontent.com/codatio/oas/main/yaml/Codat-Accounting.yaml"
+version = "3.1"
+expect = "parse-fail"
+slow = true
+notes = "huge; large YAML; sibling 3.1 specs (banking, commerce) in same repo if more needed"
+
+[[spec]]
+name = "cohere"
+url = "https://raw.githubusercontent.com/cohere-ai/cohere-developer-experience/main/cohere-openapi.yaml"
+version = "3.1"
+expect = "parse-fail"
+notes = "large YAML with extensive examples, unions, and x- extensions"
+
+[[spec]]
+name = "deepgram"
+url = "https://raw.githubusercontent.com/deepgram/deepgram-api-specs/main/openapi.yml"
+version = "3.1"
+expect = "parse-fail"
+notes = "speech-to-text/TTS API with heavy query-parameter modeling; YAML"
+
+[[spec]]
+name = "discord"
+url = "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "official Discord spec, 150 paths; oneOf/discriminator-heavy real-world 3.1 with null types"
+
+[[spec]]
+name = "discourse"
+url = "https://docs.discourse.org/openapi.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "official Discourse API spec, vendor-hosted JSON"
+
+[[spec]]
+name = "elevenlabs"
+url = "https://api.elevenlabs.io/openapi.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "FastAPI-generated, served from live API host; lots of multipart/form-data schemas"
+
+[[spec]]
+name = "figma"
+url = "https://raw.githubusercontent.com/figma/rest-api-spec/main/openapi/openapi.yaml"
+version = "3.1"
+expect = "pass"
+notes = "official Figma REST API, YAML, 3.1 with discriminated unions"
+
+[[spec]]
+name = "github-31"
+url = "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions-next/api.github.com/api.github.com.json"
+version = "3.1"
+expect = "generate-fail"
+slow = true
+notes = "huge; descriptions-next 3.1 variant; same API surface as github-30, good 3.0-vs-3.1 differential pair"
+
+[[spec]]
+name = "hf-inference-endpoints"
+url = "https://api.endpoints.huggingface.cloud/openapi.json"
+version = "3.1"
+expect = "pass"
+notes = "HuggingFace managed Inference Endpoints API, served live from API host"
+
+[[spec]]
+name = "meilisearch"
+url = "https://raw.githubusercontent.com/meilisearch/open-api/main/open-api.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "hand-maintained 3.1 JSON spec"
+
+[[spec]]
+name = "mistral"
+url = "https://raw.githubusercontent.com/mistralai/platform-docs-public/main/openapi.yaml"
+version = "3.1"
+expect = "generate-fail"
+notes = "official Mistral platform spec (drives their Speakeasy SDKs); YAML"
+
+[[spec]]
+name = "mollie"
+url = "https://raw.githubusercontent.com/mollie/openapi/main/specs.yaml"
+version = "3.1"
+expect = "generate-fail"
+notes = "official Mollie Public API spec, YAML"
+
+[[spec]]
+name = "openai"
+url = "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml"
+version = "3.1"
+expect = "parse-fail"
+slow = true
+notes = "huge; famously messy (anyOf/oneOf-heavy, streaming events, deprecated shapes); YAML"
+
+[[spec]]
+name = "paddle"
+url = "https://raw.githubusercontent.com/PaddleHQ/paddle-openapi/main/v1/openapi.yaml"
+version = "3.1"
+expect = "pass"
+slow = true
+notes = "huge; Paddle Billing API v1, auto-generated YAML"
+
+[[spec]]
+name = "perplexity"
+url = "https://docs.perplexity.ai/openapi.json"
+version = "3.1"
+expect = "pass"
+notes = "served by Perplexity's Mintlify docs site; Sonar chat completions and search"
+
+[[spec]]
+name = "polar"
+url = "https://api.polar.sh/openapi.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "FastAPI-generated 3.1 with const/discriminated unions; vendor-hosted"
+
+[[spec]]
+name = "replicate"
+url = "https://api.replicate.com/openapi.json"
+version = "3.1"
+expect = "generate-fail"
+notes = "vendor-hosted from live API; openapi field not at top of document; quirky real-world 3.1"
+
+[[spec]]
+name = "resend"
+url = "https://raw.githubusercontent.com/resend/resend-openapi/main/resend.yaml"
+version = "3.1"
+expect = "parse-fail"
+notes = "uses newer 3.1.2 patch version string"
+
+[[spec]]
+name = "sendgrid-mail"
+url = "https://raw.githubusercontent.com/twilio/sendgrid-oai/main/spec/json/tsg_mail_v3.json"
+version = "3.1"
+expect = "pass"
+notes = "only 3 paths but famously dense mail-send request schema; ~45 sibling per-product 3.1 specs in repo"
+
+[[spec]]
+name = "svix"
+url = "https://api.svix.com/api/v1/openapi.json"
+version = "3.1"
+expect = "pass"
+notes = "live spec generated from Rust/aide; genuine 3.1 output"
+
+[[spec]]
+name = "tailscale"
+url = "https://api.tailscale.com/api/v2?outputOpenapiSchema=true"
+version = "3.1"
+expect = "pass"
+notes = "live endpoint returns YAML; vendor warns spec is unstable, snapshot locally"
+
+[[spec]]
+name = "together"
+url = "https://docs.together.ai/openapi.yaml"
+version = "3.1"
+expect = "parse-fail"
+notes = "vendor-hosted YAML; old togethercomputer/openapi GitHub raw path 404s"
+
+[[spec]]
+name = "unkey"
+url = "https://raw.githubusercontent.com/unkeyed/unkey/main/svc/api/openapi/openapi-generated.yaml"
+version = "3.1"
+expect = "pass"
+notes = "generated YAML with openapi: 3.1.0 field at line ~3843, not at top; good parser stress test"
+
+[[spec]]
+name = "valtown"
+url = "https://api.val.town/openapi.json"
+version = "3.1"
+expect = "parse-fail"
+notes = "Val Town REST API, vendor-hosted JSON"
