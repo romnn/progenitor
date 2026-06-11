@@ -1,0 +1,13 @@
+# tokei-specific ignore file (gitignore syntax). Keeps `tokei` focused on the
+# real, hand-written source we maintain and out of generated / vendored content.
+# This is honoured only by tokei, so ripgrep/fd searches are unaffected.
+# `target/` is already excluded via .gitignore.
+
+# Generated golden test output: the entire codegen the test suite emits.
+progenitor-impl/tests/output/
+
+# Vendored OpenAPI input specs used as fixtures (incl. the 3.7 MB GitHub spec).
+sample_openapi/
+
+# Generated lockfiles.
+Cargo.lock

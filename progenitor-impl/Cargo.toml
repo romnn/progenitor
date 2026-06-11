@@ -28,6 +28,7 @@ unicode-ident = { workspace = true }
 
 [dev-dependencies]
 dropshot = { workspace = true }
+indoc = { workspace = true }
 expectorate = { workspace = true }
 futures = { workspace = true }
 http = { workspace = true }

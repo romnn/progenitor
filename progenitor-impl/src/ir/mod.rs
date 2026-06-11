@@ -15,6 +15,7 @@
 //! resolved during lowering.
 
 pub(crate) mod v30;
+pub(crate) mod v31;
 
 use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashSet};
@@ -23,9 +24,10 @@ use crate::{Error, Result};
 
 /// A parsed and validated OpenAPI document, ready for code generation.
 ///
-/// Obtain one from [`crate::parse_openapi_str`] / [`crate::parse_openapi_value`]
-/// (any supported spec version), or from an already-parsed
-/// [`openapiv3::OpenAPI`] via `TryFrom`.
+/// Obtain one from [`crate::parse_openapi_str`] / [`crate::parse_openapi_value`],
+/// which accept any supported spec version. Callers holding an
+/// already-parsed document can round-trip it through
+/// `parse_openapi_value(serde_json::to_value(&spec)?)`.
 pub struct OpenApiDocument(pub(crate) Document);
 
 pub(crate) struct Document {
@@ -312,6 +314,7 @@ fn is_null_schema(schema: &schemars::schema::Schema) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
+    use indoc::indoc;
 
     use super::build_schema_supertype_map;
     use crate::to_schema::ToSchema;
@@ -327,21 +330,19 @@ mod tests {
 
     #[test]
     fn build_schema_supertype_map_captures_single_ref_allof() {
-        let schemas = schemas_from_yaml(
-            r#"
-schemas:
-  Problem:
-    type: object
-    properties:
-      detail: { type: string }
-  BadRequestProblem:
-    allOf:
-      - $ref: '#/components/schemas/Problem'
-      - type: object
-        properties:
-          violations: { type: object }
-"#,
-        );
+        let schemas = schemas_from_yaml(indoc! {"
+            schemas:
+              Problem:
+                type: object
+                properties:
+                  detail: { type: string }
+              BadRequestProblem:
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - type: object
+                    properties:
+                      violations: { type: object }
+        "});
         let map = build_schema_supertype_map(&schemas);
         assert_eq!(map.get("BadRequestProblem"), Some(&"Problem".to_string()));
         // The plain `Problem` schema has no allOf and shouldn't appear.
@@ -351,19 +352,17 @@ schemas:
     #[test]
     fn build_schema_supertype_map_skips_multiref_or_mixed_allof() {
         // Two parent refs — not a single-parent "extends" pattern.
-        let schemas = schemas_from_yaml(
-            r#"
-schemas:
-  ParentA:
-    type: object
-  ParentB:
-    type: object
-  Multi:
-    allOf:
-      - $ref: '#/components/schemas/ParentA'
-      - $ref: '#/components/schemas/ParentB'
-"#,
-        );
+        let schemas = schemas_from_yaml(indoc! {"
+            schemas:
+              ParentA:
+                type: object
+              ParentB:
+                type: object
+              Multi:
+                allOf:
+                  - $ref: '#/components/schemas/ParentA'
+                  - $ref: '#/components/schemas/ParentB'
+        "});
         let map = build_schema_supertype_map(&schemas);
         assert!(
             !map.contains_key("Multi"),
@@ -377,19 +376,17 @@ schemas:
         // `type: object` + `properties`, openapiv3's `SchemaKind::Any`)
         // is not a plain "extends parent" pattern and must be excluded —
         // matching the historical SchemaKind::AllOf-only behavior.
-        let schemas = schemas_from_yaml(
-            r#"
-schemas:
-  Problem:
-    type: object
-  Mixed:
-    type: object
-    properties:
-      extra: { type: string }
-    allOf:
-      - $ref: '#/components/schemas/Problem'
-"#,
-        );
+        let schemas = schemas_from_yaml(indoc! {"
+            schemas:
+              Problem:
+                type: object
+              Mixed:
+                type: object
+                properties:
+                  extra: { type: string }
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+        "});
         let map = build_schema_supertype_map(&schemas);
         assert!(
             !map.contains_key("Mixed"),
@@ -401,17 +398,15 @@ schemas:
     fn build_schema_supertype_map_sees_through_nullable_wrapper() {
         // `nullable: true` on an allOf schema makes the 3.0 frontend wrap
         // it in oneOf [null, allOf]; the supertype scan must look through.
-        let schemas = schemas_from_yaml(
-            r#"
-schemas:
-  Problem:
-    type: object
-  NullableChild:
-    nullable: true
-    allOf:
-      - $ref: '#/components/schemas/Problem'
-"#,
-        );
+        let schemas = schemas_from_yaml(indoc! {"
+            schemas:
+              Problem:
+                type: object
+              NullableChild:
+                nullable: true
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+        "});
         let map = build_schema_supertype_map(&schemas);
         assert_eq!(map.get("NullableChild"), Some(&"Problem".to_string()));
     }

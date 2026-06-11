@@ -63,19 +63,25 @@ pub fn parse_openapi_str(
 pub fn parse_openapi_value(
     value: Value,
 ) -> std::result::Result<OpenApiDocument, ParseOpenApiError> {
-    // Both 3.0.x and 3.1.x currently go through the `openapiv3` frontend,
-    // with 3.1 documents normalized into a 3.0-compatible shape first.
-    // 3.1 will grow a native frontend that handles the full JSON Schema
-    // 2020-12 surface.
-    let spec = normalized_openapiv3(value)?;
-    let document = crate::ir::v30::lower(&spec)?;
-    Ok(OpenApiDocument(document))
+    let version = value
+        .get(OPENAPI_VERSION_KEY)
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if version.trim().starts_with("3.1") {
+        let document = crate::ir::v31::parse(value)?;
+        Ok(OpenApiDocument(document))
+    } else {
+        let spec = normalized_openapiv3(value)?;
+        let document = crate::ir::v30::lower(&spec)?;
+        Ok(OpenApiDocument(document))
+    }
 }
 
-/// Normalize a serde value into the subset of OpenAPI 3.1 that `openapiv3`
-/// can represent directly, then deserialize it.
+/// Normalize a serde value into the shape `openapiv3` represents directly,
+/// then deserialize it. The nullable-union normalization is kept on the
+/// 3.0 path as tolerance for hybrid documents that mix 3.1 idioms into a
+/// 3.0 version stamp.
 fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseOpenApiError> {
-    downcast_openapi_version(&mut value);
     normalize_nullable_type_unions(&mut value);
 
     let json = serde_json::to_vec(&value).map_err(|err| ParseOpenApiError::Serialize {
@@ -88,22 +94,6 @@ fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseO
             message: err.inner().to_string(),
         }
     })
-}
-
-fn downcast_openapi_version(value: &mut Value) {
-    let Some(map) = value.as_object_mut() else {
-        return;
-    };
-    let needs_downgrade = map
-        .get(OPENAPI_VERSION_KEY)
-        .and_then(Value::as_str)
-        .is_some_and(|version| version.starts_with("3.1"));
-    if needs_downgrade {
-        map.insert(
-            OPENAPI_VERSION_KEY.to_string(),
-            Value::String("3.0.3".to_string()),
-        );
-    }
 }
 
 fn normalize_nullable_type_unions(value: &mut Value) {

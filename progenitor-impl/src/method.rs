@@ -2477,43 +2477,55 @@ impl Generator {
                 .expect("non-empty content map was checked above"),
         };
 
-        let schema_ref = media_type.schema.as_ref().ok_or_else(|| {
-            Error::UnexpectedFormat("No schema specified for request body".to_string())
-        })?;
-
         let content_type = BodyContentType::from_str(content_str)?;
 
         let typ = match content_type {
             BodyContentType::OctetStream => {
-                // For an octet stream, we expect a simple, specific schema:
-                // "schema": {
-                //     "type": "string",
-                //     "format": "binary"
-                // }
-                let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
-                if !is_plain_string_schema(resolved, Some("binary")) {
-                    return Err(Error::UnexpectedFormat(format!(
-                        "invalid schema for application/octet-stream: {:?}",
-                        resolved
-                    )));
+                // A raw binary body is either schema-less (the canonical
+                // OpenAPI 3.1 form) or a plain string schema marked binary:
+                // 3.0's `format: binary`, or 3.1's `contentEncoding` /
+                // `contentMediaType` keywords.
+                if let Some(schema_ref) = &media_type.schema {
+                    let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
+                    if !is_binary_string_schema(resolved) {
+                        return Err(Error::UnexpectedFormat(format!(
+                            "invalid schema for application/octet-stream: {:?}",
+                            resolved
+                        )));
+                    }
                 }
                 OperationParameterType::RawBody
             }
             BodyContentType::Text(_) => {
-                // For a plain text body, we expect a simple, specific schema:
+                // For a plain text body, we expect no schema or a simple,
+                // specific one:
                 // "schema": {
                 //     "type": "string",
                 // }
-                let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
-                if !is_plain_string_schema(resolved, None) {
-                    return Err(Error::UnexpectedFormat(format!(
-                        "invalid schema for {}: {:?}",
-                        content_type, resolved
-                    )));
+                if let Some(schema_ref) = &media_type.schema {
+                    let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
+                    if !is_plain_string_schema(resolved, None) {
+                        return Err(Error::UnexpectedFormat(format!(
+                            "invalid schema for {}: {:?}",
+                            content_type, resolved
+                        )));
+                    }
+                    // A `contentEncoding` here means the payload is not the
+                    // plain text we'd send (e.g. base64); passing the body
+                    // through raw would silently corrupt it.
+                    if has_content_keywords(resolved) {
+                        return Err(Error::UnexpectedFormat(format!(
+                            "content keywords on a {} body are not supported",
+                            content_type
+                        )));
+                    }
                 }
                 OperationParameterType::RawBody
             }
             BodyContentType::Json | BodyContentType::FormUrlencoded => {
+                let schema_ref = media_type.schema.as_ref().ok_or_else(|| {
+                    Error::UnexpectedFormat("No schema specified for request body".to_string())
+                })?;
                 // TODO it would be legal to have the encoding field set for
                 // application/x-www-form-urlencoded content, but I'm not sure
                 // how to interpret the values.
@@ -2550,6 +2562,24 @@ fn parameter_schema(parameter: &ir::Parameter) -> Result<&schemars::schema::Sche
             parameter.name,
         ))
     })
+}
+
+/// A binary payload schema: `type: string` marked binary via 3.0's
+/// `format: binary` or 3.1's `contentEncoding`/`contentMediaType` keywords
+/// (which land in the schema's extensions).
+fn is_binary_string_schema(schema: &schemars::schema::Schema) -> bool {
+    if is_plain_string_schema(schema, Some("binary")) {
+        return true;
+    }
+    is_plain_string_schema(schema, None) && has_content_keywords(schema)
+}
+
+fn has_content_keywords(schema: &schemars::schema::Schema) -> bool {
+    let schemars::schema::Schema::Object(object) = schema else {
+        return false;
+    };
+    object.extensions.contains_key("contentEncoding")
+        || object.extensions.contains_key("contentMediaType")
 }
 
 /// Check that a (resolved) schema is exactly the plain string shape the
