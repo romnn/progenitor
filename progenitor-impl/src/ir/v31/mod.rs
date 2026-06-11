@@ -53,6 +53,11 @@ fn lower(document: Document31) -> Result<ir::Document> {
 
     let mut operations = Vec::new();
     for (path, item_value) in &document.paths {
+        // Generators emit `null` path entries; skip them like the 3.0
+        // frontend does.
+        if item_value.is_null() {
+            continue;
+        }
         let item = resolve_path_item(item_value, &document.components)?;
         let item: PathItem31 = from_value(item.clone(), &format!("path item {path}"))?;
         for (method, operation_value) in item.operations() {
@@ -79,7 +84,7 @@ fn lower(document: Document31) -> Result<ir::Document> {
         })
         .collect();
 
-    let ir_document = ir::Document {
+    let mut ir_document = ir::Document {
         info: ir::Info {
             title: document.info.title,
             version: document.info.version,
@@ -90,6 +95,7 @@ fn lower(document: Document31) -> Result<ir::Document> {
         operations,
         tags,
     };
+    ir::ensure_operation_ids(&mut ir_document);
     ir::validate(&ir_document)?;
     Ok(ir_document)
 }
@@ -462,7 +468,11 @@ impl PathItem31 {
             ("trace", &self.trace),
         ]
         .into_iter()
-        .filter_map(|(method, op)| op.as_ref().map(|op| (method, op)))
+        // `null` members ("delete": null) count as absent.
+        .filter_map(|(method, op)| match op {
+            Some(op) if !op.is_null() => Some((method, op)),
+            _ => None,
+        })
     }
 }
 

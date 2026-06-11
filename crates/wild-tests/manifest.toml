@@ -10,7 +10,7 @@
 name = "asana"
 url = "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; official Asana OAS, YAML, heavy allOf composition"
 
@@ -25,7 +25,7 @@ notes = "official Box Platform API, bundled JSON with discriminators"
 name = "cloudflare"
 url = "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "generate-fail"
 slow = true
 notes = "huge; minified JSON with alphabetically sorted keys (openapi field not at top), notoriously messy"
 
@@ -33,7 +33,7 @@ notes = "huge; minified JSON with alphabetically sorted keys (openapi field not 
 name = "datadog-v2"
 url = "https://raw.githubusercontent.com/DataDog/datadog-api-client-go/master/.generator/schemas/v2/openapi.yaml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
 notes = "huge; drives all official Datadog clients; openapi key sits deep in alphabetized YAML"
 
@@ -41,7 +41,7 @@ notes = "huge; drives all official Datadog clients; openapi key sits deep in alp
 name = "digitalocean"
 url = "https://api-engineering.nyc3.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml"
 version = "3.0"
-expect = "parse-fail"
+expect = "pass"
 slow = true
 notes = "huge; vendor-hosted resolved single-file bundle of the multi-file source repo"
 
@@ -57,7 +57,7 @@ notes = "huge; generated from Elastic's TS spec compiler"
 name = "fly-machines"
 url = "https://docs.machines.dev/spec/openapi3.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "pass"
 notes = "vendor-hosted JSON converted from swag-generated spec; sibling /swagger/doc.json is Swagger 2.0, do not use"
 
 [[spec]]
@@ -87,14 +87,14 @@ notes = "drf-spectacular generated; URL says swagger.json but document is OAS 3.
 name = "grafana"
 url = "https://raw.githubusercontent.com/grafana/grafana/main/public/openapi3.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "machine-converted from Swagger 2.0; components listed before openapi field; known-messy"
 
 [[spec]]
 name = "groq"
 url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/groqcloud/groqcloud-0298a69b7d74303a353e8a586d85e5cc769b9560920487fadfe773c0100af249.yml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Stainless-published GroqCloud spec; hash-pinned URL rotates on updates, snapshot locally"
 
 [[spec]]
@@ -109,7 +109,7 @@ notes = "huge; vendor-hosted JSON; older /spec.json path now returns HTML"
 name = "hf-tgi"
 url = "https://huggingface.github.io/text-generation-inference/openapi.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "generate-fail"
 notes = "utoipa (Rust) generated spec for HF text-generation-inference, GitHub Pages hosted"
 
 [[spec]]
@@ -123,14 +123,14 @@ notes = "huge; 420 paths, anyOf grab-bags and additionalProperties soup; vendor-
 name = "keycloak"
 url = "https://www.keycloak.org/docs-api/latest/rest-api/openapi.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "pass"
 notes = "vendor-hosted JSON with unusual '\"openapi\" : \"3.0.3\"' spacing"
 
 [[spec]]
 name = "kong-admin-ee"
 url = "https://raw.githubusercontent.com/Kong/developer.konghq.com/main/api-specs/gateway/admin-ee/3.14/openapi.yaml"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "YAML with openapi field at line ~7856 (components first); very messy key ordering"
 
 [[spec]]
@@ -176,7 +176,7 @@ notes = "huge; single large YAML covering the whole fintech data API"
 name = "pulumi"
 url = "https://api.pulumi.com/api/openapi/pulumi-spec.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "huge; live vendor endpoint; openapi field not in first 8KB"
 
 [[spec]]
@@ -190,7 +190,7 @@ notes = "openapi field is not first key (paths come first); good parser-order te
 name = "square"
 url = "https://raw.githubusercontent.com/square/connect-api-specification/master/api.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "generate-fail"
 slow = true
 notes = "huge; official Square Connect API, full payments/commerce surface"
 
@@ -206,14 +206,14 @@ notes = "huge; classic messy payments spec, heavily anyOf/expandable-field based
 name = "supabase"
 url = "https://api.supabase.com/api/v1-json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 notes = "live NestJS-Swagger-generated minified JSON served by the Management API"
 
 [[spec]]
 name = "temporal"
 url = "https://raw.githubusercontent.com/temporalio/api/master/openapi/openapiv3.yaml"
 version = "3.0"
-expect = "parse-fail"
+expect = "pass"
 notes = "generated from protobuf via grpc-gateway; YAML"
 
 [[spec]]
@@ -286,14 +286,14 @@ notes = "huge; large YAML; sibling 3.1 specs (banking, commerce) in same repo if
 name = "cohere"
 url = "https://raw.githubusercontent.com/cohere-ai/cohere-developer-experience/main/cohere-openapi.yaml"
 version = "3.1"
-expect = "parse-fail"
+expect = "pass"
 notes = "large YAML with extensive examples, unions, and x- extensions"
 
 [[spec]]
 name = "deepgram"
 url = "https://raw.githubusercontent.com/deepgram/deepgram-api-specs/main/openapi.yml"
 version = "3.1"
-expect = "parse-fail"
+expect = "pass"
 notes = "speech-to-text/TTS API with heavy query-parameter modeling; YAML"
 
 [[spec]]
@@ -307,7 +307,7 @@ notes = "official Discord spec, 150 paths; oneOf/discriminator-heavy real-world 
 name = "discourse"
 url = "https://docs.discourse.org/openapi.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "official Discourse API spec, vendor-hosted JSON"
 
 [[spec]]
@@ -364,7 +364,7 @@ notes = "official Mollie Public API spec, YAML"
 name = "openai"
 url = "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml"
 version = "3.1"
-expect = "parse-fail"
+expect = "generate-fail"
 slow = true
 notes = "huge; famously messy (anyOf/oneOf-heavy, streaming events, deprecated shapes); YAML"
 
@@ -394,14 +394,14 @@ notes = "FastAPI-generated 3.1 with const/discriminated unions; vendor-hosted"
 name = "replicate"
 url = "https://api.replicate.com/openapi.json"
 version = "3.1"
-expect = "generate-fail"
+expect = "pass"
 notes = "vendor-hosted from live API; openapi field not at top of document; quirky real-world 3.1"
 
 [[spec]]
 name = "resend"
 url = "https://raw.githubusercontent.com/resend/resend-openapi/main/resend.yaml"
 version = "3.1"
-expect = "parse-fail"
+expect = "pass"
 notes = "uses newer 3.1.2 patch version string"
 
 [[spec]]
@@ -429,7 +429,7 @@ notes = "live endpoint returns YAML; vendor warns spec is unstable, snapshot loc
 name = "together"
 url = "https://docs.together.ai/openapi.yaml"
 version = "3.1"
-expect = "parse-fail"
+expect = "generate-fail"
 notes = "vendor-hosted YAML; old togethercomputer/openapi GitHub raw path 404s"
 
 [[spec]]
@@ -443,5 +443,5 @@ notes = "generated YAML with openapi: 3.1.0 field at line ~3843, not at top; goo
 name = "valtown"
 url = "https://api.val.town/openapi.json"
 version = "3.1"
-expect = "parse-fail"
+expect = "pass"
 notes = "Val Town REST API, vendor-hosted JSON"

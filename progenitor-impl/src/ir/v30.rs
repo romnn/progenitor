@@ -51,7 +51,7 @@ pub(crate) fn lower(spec: &OpenAPI) -> Result<ir::Document> {
         })
         .collect();
 
-    let document = ir::Document {
+    let mut document = ir::Document {
         info: ir::Info {
             title: spec.info.title.clone(),
             version: spec.info.version.clone(),
@@ -62,6 +62,7 @@ pub(crate) fn lower(spec: &OpenAPI) -> Result<ir::Document> {
         operations,
         tags,
     };
+    ir::ensure_operation_ids(&mut document);
     ir::validate(&document)?;
     Ok(document)
 }

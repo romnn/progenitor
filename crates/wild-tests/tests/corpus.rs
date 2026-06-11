@@ -31,7 +31,13 @@ fn corpus_matches_manifest() {
         }
         let outcome = check_entry(entry);
         let status = if outcome.matches(entry.expect) {
-            "ok".to_string()
+            let detail = outcome.detail().unwrap_or_default();
+            let detail: String = detail.chars().take(120).collect();
+            if detail.is_empty() {
+                "ok".to_string()
+            } else {
+                format!("ok — {detail}")
+            }
         } else if matches!(outcome, Outcome::Unavailable(_)) {
             // Network problems are not verdicts; report but don't fail.
             unavailable.push(format!(
@@ -101,7 +107,11 @@ fn compile_generated_clients() {
         println!(
             "{:<28} {}",
             entry.name,
-            if status.success() { "compiles" } else { "FAILS" }
+            if status.success() {
+                "compiles"
+            } else {
+                "FAILS"
+            }
         );
         if !status.success() {
             failures.push(format!("{}: generated client does not compile", entry.name));

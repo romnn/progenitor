@@ -9,6 +9,133 @@ const NULL_TYPE_NAME: &str = "null";
 const TYPE_KEY: &str = "type";
 const NULLABLE_KEY: &str = "nullable";
 
+/// YAML deserialization tolerant of real-world spec sloppiness that the
+/// straight `serde_json::Value` target rejects:
+///
+/// - integers beyond the i64/u64 range (JavaScript artifacts like
+///   `18446744073709552000`, u64::MAX rounded through a float) fold to
+///   `f64`, matching how the JSON parser and the tools that produced them
+///   treat such numbers;
+/// - non-string mapping keys (unquoted YAML response codes like `200:`)
+///   are stringified.
+mod tolerant {
+    use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+    use serde_json::{Map, Value};
+
+    pub(super) struct TolerantValue(pub Value);
+
+    struct ValueVisitor;
+
+    impl<'de> Visitor<'de> for ValueVisitor {
+        type Value = TolerantValue;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("any YAML value")
+        }
+
+        fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::Bool(v)))
+        }
+        fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::from(v)))
+        }
+        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::from(v)))
+        }
+        fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::from(v as f64)))
+        }
+        fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::from(v as f64)))
+        }
+        fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E> {
+            Ok(TolerantValue(
+                serde_json::Number::from_f64(v).map_or(Value::Null, Value::Number),
+            ))
+        }
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::String(v.to_string())))
+        }
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::String(v)))
+        }
+        fn visit_unit<E>(self) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::Null))
+        }
+        fn visit_none<E>(self) -> Result<Self::Value, E> {
+            Ok(TolerantValue(Value::Null))
+        }
+        fn visit_some<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+            d.deserialize_any(self)
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            let mut items = Vec::new();
+            while let Some(TolerantValue(item)) = seq.next_element()? {
+                items.push(item);
+            }
+            Ok(TolerantValue(Value::Array(items)))
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+            let mut map = Map::new();
+            while let Some((TolerantKey(key), TolerantValue(value))) = access.next_entry()? {
+                map.insert(key, value);
+            }
+            Ok(TolerantValue(Value::Object(map)))
+        }
+    }
+
+    impl<'de> Deserialize<'de> for TolerantValue {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            d.deserialize_any(ValueVisitor)
+        }
+    }
+
+    struct TolerantKey(String);
+
+    struct KeyVisitor;
+
+    impl Visitor<'_> for KeyVisitor {
+        type Value = TolerantKey;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("a scalar mapping key")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v))
+        }
+        fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+        fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E> {
+            Ok(TolerantKey(v.to_string()))
+        }
+    }
+
+    impl<'de> Deserialize<'de> for TolerantKey {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            d.deserialize_any(KeyVisitor)
+        }
+    }
+}
+
 /// Errors returned while normalizing and decoding an OpenAPI document.
 #[derive(Debug, Error)]
 pub enum ParseOpenApiError {
@@ -48,10 +175,12 @@ pub fn parse_openapi_str(
     let value = match serde_json::from_str(document) {
         Ok(value) => value,
         Err(json_err) => {
-            serde_yaml::from_str(document).map_err(|yaml_err| ParseOpenApiError::Format {
-                json_message: json_err.to_string(),
-                yaml_message: yaml_err.to_string(),
-            })?
+            serde_yaml::from_str::<tolerant::TolerantValue>(document)
+                .map_err(|yaml_err| ParseOpenApiError::Format {
+                    json_message: json_err.to_string(),
+                    yaml_message: yaml_err.to_string(),
+                })?
+                .0
         }
     };
 
@@ -82,6 +211,7 @@ pub fn parse_openapi_value(
 /// 3.0 path as tolerance for hybrid documents that mix 3.1 idioms into a
 /// 3.0 version stamp.
 fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseOpenApiError> {
+    strip_null_path_entries(&mut value);
     normalize_nullable_type_unions(&mut value);
 
     let json = serde_json::to_vec(&value).map_err(|err| ParseOpenApiError::Serialize {
@@ -103,6 +233,7 @@ fn normalize_nullable_type_unions(value: &mut Value) {
                 normalize_nullable_type_unions(entry);
             }
             normalize_object_type_union(map);
+            normalize_draft4_exclusive_bounds(map);
         }
         Value::Array(items) => {
             for item in items {
@@ -110,6 +241,60 @@ fn normalize_nullable_type_unions(value: &mut Value) {
             }
         }
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
+}
+
+/// 3.0 documents are supposed to spell exclusive bounds as booleans
+/// modifying `minimum`/`maximum`, but generators that think in JSON
+/// Schema 2020-12 emit the numeric form into 3.0 documents anyway.
+/// Fold the numeric form back into the boolean spelling `openapiv3`
+/// expects.
+fn normalize_draft4_exclusive_bounds(map: &mut Map<String, Value>) {
+    for (exclusive_key, bound_key) in [
+        ("exclusiveMinimum", "minimum"),
+        ("exclusiveMaximum", "maximum"),
+    ] {
+        if let Some(Value::Number(bound)) = map.get(exclusive_key) {
+            let bound = Value::Number(bound.clone());
+            map.insert(bound_key.to_string(), bound);
+            map.insert(exclusive_key.to_string(), Value::Bool(true));
+        }
+    }
+}
+
+/// Drop `null` path entries, `null` members inside path items
+/// (`"delete": null`, `"parameters": null`), and `null` members inside
+/// operations; generators emit them and `openapiv3` rejects them, which
+/// used to fail the whole document.
+fn strip_null_path_entries(value: &mut Value) {
+    let Some(paths) = value.get_mut("paths").and_then(Value::as_object_mut) else {
+        return;
+    };
+    paths.retain(|_, item| !item.is_null());
+    for item in paths.values_mut() {
+        let Some(item) = item.as_object_mut() else {
+            continue;
+        };
+        item.retain(|_, member| !member.is_null());
+        for operation in item.values_mut() {
+            let Some(operation) = operation.as_object_mut() else {
+                continue;
+            };
+            operation.retain(|_, member| !member.is_null());
+            // A security requirement maps scheme name → scopes array; a
+            // null scopes value means "no scopes" in the wild.
+            if let Some(Value::Array(requirements)) = operation.get_mut("security") {
+                for requirement in requirements {
+                    if let Some(requirement) = requirement.as_object_mut() {
+                        for scopes in requirement.values_mut() {
+                            if scopes.is_null() {
+                                *scopes = Value::Array(Vec::new());
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

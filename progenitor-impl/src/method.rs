@@ -143,6 +143,12 @@ pub enum BodyContentType {
     Json,
     FormUrlencoded,
     Text(String),
+    /// Any other media type (multipart/form-data, application/yaml,
+    /// image/*, …). The generated method takes a raw `reqwest::Body` and
+    /// sets this content type verbatim — the caller is responsible for
+    /// producing a conforming payload. Coarse, but it keeps one exotic
+    /// upload endpoint from failing generation of the whole client.
+    Raw(String),
 }
 
 /// Find the lowest common ancestor of `names` in the inheritance graph
@@ -225,10 +231,7 @@ impl FromStr for BodyContentType {
             "application/octet-stream" => Ok(Self::OctetStream),
             "application/x-www-form-urlencoded" => Ok(Self::FormUrlencoded),
             "text/plain" | "text/x-markdown" => Ok(Self::Text(String::from(base))),
-            _ => Err(Error::UnexpectedFormat(format!(
-                "unexpected content type: {}",
-                s
-            ))),
+            _ => Ok(Self::Raw(String::from(base))),
         }
     }
 }
@@ -240,6 +243,7 @@ impl std::fmt::Display for BodyContentType {
             Self::Json => "application/json",
             Self::FormUrlencoded => "application/x-www-form-urlencoded",
             Self::Text(typ) => typ,
+            Self::Raw(typ) => typ,
         })
     }
 }
@@ -646,8 +650,9 @@ impl Generator {
                     .iter()
                     .find_map(|(x, v)| is_json_content_type(x).then_some(v))
                 {
-                    assert!(!mt.has_encoding);
-
+                    // An `encoding` map on a JSON response has no defined
+                    // meaning; ignore it rather than reject specs that
+                    // carry one anyway.
                     if let Some(schema_ref) = &mt.schema {
                         // Capture the source component name when the
                         // response body is a `$ref` so `extract_responses`
@@ -788,7 +793,8 @@ impl Generator {
                         quote! { Option<#t> }
                     }
                     (OperationParameterType::RawBody, false) => match &param.kind {
-                        OperationParameterKind::Body(BodyContentType::OctetStream) => {
+                        OperationParameterKind::Body(BodyContentType::OctetStream)
+                        | OperationParameterKind::Body(BodyContentType::Raw(_)) => {
                             quote! { B }
                         }
                         OperationParameterKind::Body(BodyContentType::Text(_)) => {
@@ -806,7 +812,11 @@ impl Generator {
 
         let raw_body_param = method.params.iter().any(|param| {
             param.typ == OperationParameterType::RawBody
-                && param.kind == OperationParameterKind::Body(BodyContentType::OctetStream)
+                && matches!(
+                    &param.kind,
+                    OperationParameterKind::Body(BodyContentType::OctetStream)
+                        | OperationParameterKind::Body(BodyContentType::Raw(_))
+                )
         });
 
         let bounds = if raw_body_param {
@@ -1106,6 +1116,10 @@ impl Generator {
                 }),
                 (
                     OperationParameterKind::Body(BodyContentType::Text(mime_type)),
+                    OperationParameterType::RawBody,
+                )
+                | (
+                    OperationParameterKind::Body(BodyContentType::Raw(mime_type)),
                     OperationParameterType::RawBody,
                 ) => Some(quote! {
                     // Set the content type (this is handled by helper
@@ -2024,8 +2038,9 @@ impl Generator {
                         }
                     }
 
-                    OperationParameterType::RawBody => match param.kind {
-                        OperationParameterKind::Body(BodyContentType::OctetStream) => {
+                    OperationParameterType::RawBody => match &param.kind {
+                        OperationParameterKind::Body(BodyContentType::OctetStream)
+                        | OperationParameterKind::Body(BodyContentType::Raw(_)) => {
                             let err_msg =
                                 format!("conversion to `reqwest::Body` for {} failed", param.name,);
 
@@ -2477,7 +2492,25 @@ impl Generator {
                 .expect("non-empty content map was checked above"),
         };
 
-        let content_type = BodyContentType::from_str(content_str)?;
+        let mut content_type = BodyContentType::from_str(content_str)?;
+
+        // A JSON or form body without a schema can't be typed; fall back to
+        // the raw passthrough treatment rather than failing the operation
+        // ("returns/accepts some JSON, no promised shape" is common in the
+        // wild — the response side has the same fallback).
+        if matches!(
+            content_type,
+            BodyContentType::Json | BodyContentType::FormUrlencoded
+        ) && media_type.schema.is_none()
+        {
+            content_type = BodyContentType::Raw(
+                content_str
+                    .split(';')
+                    .next()
+                    .unwrap_or(content_str)
+                    .to_string(),
+            );
+        }
 
         let typ = match content_type {
             BodyContentType::OctetStream => {
@@ -2522,16 +2555,20 @@ impl Generator {
                 }
                 OperationParameterType::RawBody
             }
+            // The payload of any other media type is opaque to the
+            // generator; expose it as a raw body regardless of what the
+            // schema says.
+            BodyContentType::Raw(_) => OperationParameterType::RawBody,
             BodyContentType::Json | BodyContentType::FormUrlencoded => {
                 let schema_ref = media_type.schema.as_ref().ok_or_else(|| {
                     Error::UnexpectedFormat("No schema specified for request body".to_string())
                 })?;
-                // TODO it would be legal to have the encoding field set for
-                // application/x-www-form-urlencoded content, but I'm not sure
-                // how to interpret the values.
-                if media_type.has_encoding {
-                    todo!("media type encoding not empty for {}", content_str);
-                }
+                // The `encoding` map describes per-property serialization
+                // (style/explode/contentType) for form payloads. The
+                // default serde_urlencoded serialization matches the
+                // common cases; honoring the long tail isn't worth failing
+                // generation of the whole client, so encodings are
+                // intentionally ignored here.
                 let name = sanitize(
                     &format!("{}-body", operation.operation_id.as_ref().unwrap(),),
                     Case::Pascal,

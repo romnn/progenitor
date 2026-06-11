@@ -135,8 +135,12 @@ pub(crate) struct RequestBody {
 
 pub(crate) struct MediaTypeObject {
     pub schema: Option<SchemaRef>,
-    /// Whether the media type carries an `encoding` map. The generator
-    /// does not support encodings and needs to know they were present.
+    /// Whether the media type carries an `encoding` map. Currently
+    /// informational: encodings are deliberately ignored (the default
+    /// form/JSON serialization covers the common cases), but the IR
+    /// records their presence for when the generator learns to honor
+    /// them.
+    #[allow(dead_code)]
     pub has_encoding: bool,
 }
 
@@ -184,6 +188,38 @@ pub(crate) fn validate(doc: &Document) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Give every operation a usable, unique operation ID.
+///
+/// Wild specs routinely omit operation IDs or reuse one across
+/// operations — both used to abort generation of the whole document.
+/// Missing IDs are synthesized from the method and path
+/// (`GET /things/{id}` → `get_things_id`); duplicates keep their first
+/// occurrence verbatim and later ones get a numeric suffix. Both are
+/// deterministic, so generated method names are stable across runs.
+pub(crate) fn ensure_operation_ids(document: &mut Document) {
+    let mut seen: HashSet<String> = HashSet::new();
+    for operation in &mut document.operations {
+        let base = match operation.operation_id.as_deref() {
+            Some(id) if !id.is_empty() => id.to_string(),
+            _ => crate::util::sanitize(
+                &format!(
+                    "{}-{}",
+                    operation.method,
+                    operation.path.replace(['{', '}'], "")
+                ),
+                crate::util::Case::Snake,
+            ),
+        };
+        let mut candidate = base.clone();
+        let mut counter = 2;
+        while !seen.insert(candidate.clone()) {
+            candidate = format!("{base}_{counter}");
+            counter += 1;
+        }
+        operation.operation_id = Some(candidate);
+    }
 }
 
 /// Follow `$ref` chains through the document's component schemas.

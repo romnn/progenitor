@@ -151,7 +151,9 @@ impl Generator {
                         OperationParameterKind::Body(BodyContentType::OctetStream) => quote! {
                             ::serde_json::Value
                         },
-                        OperationParameterKind::Body(BodyContentType::Text(_)) => quote! {
+                        OperationParameterKind::Body(
+                            BodyContentType::Text(_) | BodyContentType::Raw(_),
+                        ) => quote! {
                             String
                         },
                         _ => unreachable!(),
@@ -225,7 +227,7 @@ impl Generator {
                                     Self(self.0.json_body(value))
                                 },
                             ),
-                            BodyContentType::Text(_) => (
+                            BodyContentType::Text(_) | BodyContentType::Raw(_) => (
                                 true,
                                 quote! {
                                     Self(self.0.body(value))

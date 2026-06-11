@@ -17,18 +17,32 @@ pub(crate) trait ComponentLookup: Sized {
 
 impl<T: ComponentLookup> ReferenceOrExt<T> for openapiv3::ReferenceOr<T> {
     fn item<'a>(&'a self, components: &'a Option<Components>) -> Result<&'a T> {
-        match self {
-            ReferenceOr::Item(item) => Ok(item),
-            ReferenceOr::Reference { reference } => {
-                let idx = reference.rfind('/').unwrap();
-                let key = &reference[idx + 1..];
-                let parameters = T::get_components(components.as_ref().unwrap());
-                parameters
-                    .get(key)
-                    .unwrap_or_else(|| panic!("key {} is missing", key))
-                    .item(components)
+        let mut current = self;
+        // References may chain through components; bound the walk so a
+        // reference cycle becomes an error rather than infinite recursion.
+        for _ in 0..32 {
+            match current {
+                ReferenceOr::Item(item) => return Ok(item),
+                ReferenceOr::Reference { reference } => {
+                    let key = reference.rsplit('/').next().unwrap_or(reference);
+                    let components = components.as_ref().ok_or_else(|| {
+                        crate::Error::UnexpectedFormat(format!(
+                            "reference {} but the document has no components",
+                            reference,
+                        ))
+                    })?;
+                    current = T::get_components(components).get(key).ok_or_else(|| {
+                        crate::Error::UnexpectedFormat(format!(
+                            "unresolved reference: {}",
+                            reference,
+                        ))
+                    })?;
+                }
             }
         }
+        Err(crate::Error::UnexpectedFormat(
+            "reference cycle in components".to_string(),
+        ))
     }
 }
 

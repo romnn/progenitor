@@ -101,8 +101,8 @@ pub fn manifest_dir() -> PathBuf {
 
 pub fn load_manifest() -> Result<Vec<SpecEntry>> {
     let path = manifest_dir().join("manifest.toml");
-    let text = std::fs::read_to_string(&path)
-        .with_context(|| format!("reading {}", path.display()))?;
+    let text =
+        std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
     let manifest: Manifest = toml::from_str(&text).context("parsing manifest.toml")?;
 
     let mut seen = BTreeMap::new();
@@ -125,7 +125,9 @@ pub fn cache_path(entry: &SpecEntry) -> PathBuf {
     } else {
         "json"
     };
-    manifest_dir().join("cache").join(format!("{}.{extension}", entry.name))
+    manifest_dir()
+        .join("cache")
+        .join(format!("{}.{extension}", entry.name))
 }
 
 /// Fetch a spec document, preferring the on-disk cache. Set
