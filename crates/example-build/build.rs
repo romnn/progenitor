@@ -9,9 +9,7 @@ fn main() {
     let spec = progenitor::parse_openapi_str(&content).unwrap();
     let mut generator = progenitor::Generator::default();
 
-    let tokens = generator.generate_tokens(&spec).unwrap();
-    let ast = syn::parse2(tokens).unwrap();
-    let content = prettyplease::unparse(&ast);
+    let content = generator.generate_text(&spec).unwrap();
 
     let mut out_file = Path::new(&env::var("OUT_DIR").unwrap()).to_path_buf();
     out_file.push("codegen.rs");

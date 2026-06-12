@@ -700,14 +700,11 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "chrono",
- "prettyplease",
  "progenitor",
  "progenitor-client",
  "rand 0.10.1",
  "reqwest",
  "serde",
- "serde_json",
- "syn",
  "uuid",
 ]
 
@@ -740,13 +737,10 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "chrono",
- "prettyplease",
  "progenitor",
  "progenitor-client",
  "reqwest",
  "serde",
- "serde_json",
- "syn",
  "uuid",
  "wasm-bindgen-test",
 ]

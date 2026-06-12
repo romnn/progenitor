@@ -119,8 +119,8 @@ fn main() -> Result<()> {
             .with_tag(args.tags.into()),
     );
 
-    match builder.generate_tokens(&api) {
-        Ok(api_code) => {
+    match builder.generate_text(&api) {
+        Ok(api_text) => {
             let type_space = builder.get_type_space();
 
             println!("-----------------------------------------------------");
@@ -175,11 +175,12 @@ fn main() -> Result<()> {
 
             // Create the Rust source file containing the generated client:
             let lib_code = if args.include_client {
-                format!("mod progenitor_client;\n\n{}", api_code)
+                // Prepend the vendored-client module declaration, then
+                // re-format so prettyplease places it correctly.
+                reformat_code(format!("mod progenitor_client;\n\n{}", api_text))?
             } else {
-                api_code.to_string()
+                api_text
             };
-            let lib_code = reformat_code(lib_code)?;
 
             let mut librs = src.clone();
             librs.push("lib.rs");
@@ -223,17 +224,17 @@ struct Dependencies {
 
 static DEPENDENCIES: Dependencies = Dependencies {
     base64: "0.22",
-    bytes: "1.9",
+    bytes: "1",
     chrono: "0.4",
     futures: "0.3",
     percent_encoding: "2.3",
-    rand: "0.8",
-    regress: "0.10",
+    rand: "0.10",
+    regress: "0.11",
     reqwest: "0.13",
-    serde: "1.0",
-    serde_json: "1.0",
+    serde: "1",
+    serde_json: "1",
     serde_urlencoded: "0.7",
-    uuid: "1.0",
+    uuid: "1",
 };
 
 pub fn dependencies(builder: Generator, include_client: bool) -> Vec<String> {
