@@ -122,8 +122,9 @@ fn for_each_positioned_ref(
                 };
                 match position {
                     RefPosition::Response => {
-                        let responses =
-                            operation.get_mut("responses").and_then(Value::as_object_mut);
+                        let responses = operation
+                            .get_mut("responses")
+                            .and_then(Value::as_object_mut);
                         for response in responses.into_iter().flat_map(Map::values_mut) {
                             visit_ref_string(response, visit);
                         }
@@ -337,7 +338,9 @@ fn assign_synthetic_names(doc: &Value, pointers: &[String]) -> Vec<(String, Stri
 /// `…/schemas/Tag/allOf/0` → `TagAllOf0`. The component name is returned
 /// separately as a collision-breaking prefix.
 fn synthetic_name_parts(pointer: &str) -> (String, Option<String>) {
-    let tail = pointer.strip_prefix(COMPONENT_REF_PREFIX).unwrap_or(pointer);
+    let tail = pointer
+        .strip_prefix(COMPONENT_REF_PREFIX)
+        .unwrap_or(pointer);
     let segments: Vec<String> = tail.split('/').map(decode_pointer_segment).collect();
     let component = segments.get(1).cloned().unwrap_or_default();
     let deeper = segments.get(2..).unwrap_or_default();
@@ -387,8 +390,17 @@ fn marker_suffix(segment: &str) -> Option<String> {
     }
     match segment {
         "items" => Some("Item".to_string()),
-        "allOf" | "anyOf" | "oneOf" | "not" | "if" | "then" | "else" | "prefixItems"
-        | "additionalProperties" | "additionalItems" | "contains" => Some(pascal_case(segment)),
+        "allOf"
+        | "anyOf"
+        | "oneOf"
+        | "not"
+        | "if"
+        | "then"
+        | "else"
+        | "prefixItems"
+        | "additionalProperties"
+        | "additionalItems"
+        | "contains" => Some(pascal_case(segment)),
         _ => None,
     }
 }
@@ -593,7 +605,9 @@ mod tests {
             "openapiv3 requires a response description",
         );
         assert!(
-            copied.pointer("/content/application~1json/schema").is_some(),
+            copied
+                .pointer("/content/application~1json/schema")
+                .is_some(),
             "copy keeps the original body",
         );
         assert!(
@@ -783,7 +797,9 @@ mod tests {
             "both sites share one hoisted definition",
         );
         assert_eq!(
-            schemas["AccountPrototype"].get("type").and_then(Value::as_str),
+            schemas["AccountPrototype"]
+                .get("type")
+                .and_then(Value::as_str),
             Some("object"),
         );
         for site in [
@@ -888,10 +904,8 @@ mod tests {
             Some("conflict body"),
         );
         assert_eq!(
-            doc.pointer(
-                "/components/responses/Conflict/content/application~1json/schema/$ref"
-            )
-            .and_then(Value::as_str),
+            doc.pointer("/components/responses/Conflict/content/application~1json/schema/$ref")
+                .and_then(Value::as_str),
             Some("#/components/schemas/Conflict"),
         );
         assert_eq!(
@@ -978,7 +992,10 @@ mod tests {
 
         let before = doc.clone();
         hoist_deep_pointer_refs(&mut doc);
-        assert_eq!(doc, before, "data-only refs must leave the document untouched");
+        assert_eq!(
+            doc, before,
+            "data-only refs must leave the document untouched"
+        );
     }
 
     #[test]

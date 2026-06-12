@@ -1769,8 +1769,7 @@ impl TypeSpace {
                 // instance of the type can take excludes nothing — so keep
                 // ref-guarded values as-is and drop mistyped ones instead
                 // of failing the conversion.
-                let Some(enum_values) = self.reconcile_enum_values(&type_entry, enum_values)
-                else {
+                let Some(enum_values) = self.reconcile_enum_values(&type_entry, enum_values) else {
                     return Ok((type_entry, metadata));
                 };
 
@@ -2651,11 +2650,7 @@ mod tests {
         let actual = type_space.to_stream().to_string();
         // The doc comment quotes the source schema verbatim (including the
         // dropped member); what matters is the TryFrom membership guard.
-        assert!(
-            actual.contains("[0.5_f64 ,] . contains"),
-            "{}",
-            actual
-        );
+        assert!(actual.contains("[0.5_f64 ,] . contains"), "{}", actual);
 
         // When NO member survives, the value constraint is vacuous and
         // the type degrades to its unconstrained base.

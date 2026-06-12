@@ -544,14 +544,11 @@ impl Generator {
                         let type_id = if ty.has_impl(typify::TypeSpaceImpl::Display) {
                             type_id
                         } else {
-                            let string: schemars::schema::Schema =
-                                schemars::schema::SchemaObject {
-                                    instance_type: Some(
-                                        schemars::schema::InstanceType::String.into(),
-                                    ),
-                                    ..Default::default()
-                                }
-                                .into();
+                            let string: schemars::schema::Schema = schemars::schema::SchemaObject {
+                                instance_type: Some(schemars::schema::InstanceType::String.into()),
+                                ..Default::default()
+                            }
+                            .into();
                             self.type_space.add_type(&string)?
                         };
 
@@ -638,14 +635,11 @@ impl Generator {
                         let type_id = if has_display {
                             type_id
                         } else {
-                            let string: schemars::schema::Schema =
-                                schemars::schema::SchemaObject {
-                                    instance_type: Some(
-                                        schemars::schema::InstanceType::String.into(),
-                                    ),
-                                    ..Default::default()
-                                }
-                                .into();
+                            let string: schemars::schema::Schema = schemars::schema::SchemaObject {
+                                instance_type: Some(schemars::schema::InstanceType::String.into()),
+                                ..Default::default()
+                            }
+                            .into();
                             self.type_space.add_type(&string)?
                         };
 

@@ -1427,9 +1427,7 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
                     let Some(reference) = o.reference.as_deref() else {
                         return true;
                     };
-                    match strip_ref(reference)
-                        .filter(|name| bases_to_rewrite.contains_key(name))
-                    {
+                    match strip_ref(reference).filter(|name| bases_to_rewrite.contains_key(name)) {
                         Some(name) => {
                             stripped_bases.push(name);
                             false
@@ -1475,8 +1473,7 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
                                     target.required.insert(name);
                                 }
                                 if target.additional_properties.is_none() {
-                                    target.additional_properties =
-                                        inline_obj.additional_properties;
+                                    target.additional_properties = inline_obj.additional_properties;
                                 }
                             }
                         }
@@ -2086,11 +2083,7 @@ mod tests {
             .unwrap();
 
         let actual = type_space.to_stream().to_string();
-        assert!(
-            actual.contains("enum CloudProviderContainer"),
-            "{}",
-            actual
-        );
+        assert!(actual.contains("enum CloudProviderContainer"), "{}", actual);
         // The mapped discriminator values drive serde dispatch.
         assert!(actual.contains("AWS"), "{}", actual);
         assert!(actual.contains("AZURE"), "{}", actual);
