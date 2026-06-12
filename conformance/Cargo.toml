@@ -85,14 +85,14 @@ members = [
     "superset",
     "twitter",
     "zoom",
+    "langsmith",
+    "opensearch",
     # staged — pending generator fixes (see notes in each spec.toml)
     # "binance",      # parse: null in paths field (openapiv3 limitation)
     # "deepinfra",   # parse: unhandled Schema variant for parameter
     # "finch",       # parse: unhandled Schema variant for EmploymentWithoutId
     # "influxdb",    # parse: missing version in info (invalid spec)
-    # "langsmith",   # generator: invalid Rust token in codegen (unreachable code path)
     # "miro",        # parse: unresolved reference $ref in components/responses
-    # "opensearch",  # generator: property_names assertion in merge.rs
     # "pokeapi",     # parse: unhandled Schema variant for EvolutionChainDetail
     # "vapi",        # generator: stack overflow (self-referential schema cycle)
     # "webflow",     # parse: unhandled Schema variant in well-known endpoint

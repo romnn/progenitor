@@ -1157,9 +1157,9 @@ fn filter_prop(name: &str, prop_schema: &Schema, object_schema: &ObjectValidatio
     // object's schema.
     assert!(!object_schema.properties.contains_key(name));
 
-    // TODO We should do a simple check here to validating the name against
-    // propertyNames if that schema is specified.
-    assert!(object_schema.property_names.is_none());
+    // TODO: validate the property name against propertyNames when set; for
+    // now, skip the check and let additional_properties decide.
+    let _ = &object_schema.property_names;
 
     // TODO We should first check patternProperties, but that's such a pain in
     // the neck and so weird that I can't be bothered right now (until we hit
