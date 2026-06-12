@@ -85,18 +85,17 @@ members = [
     "superset",
     "twitter",
     "zoom",
-    "langsmith",
-    "miro",
-    "opensearch",
-    "pokeapi",
-    "webflow",
-    "zendesk",
-    # formerly staged specs — now compile clean
     "binance",
     "deepinfra",
     "finch",
     "influxdb",
+    "langsmith",
+    "miro",
+    "opensearch",
+    "pokeapi",
     "vapi",
+    "webflow",
+    "zendesk",
 ]
 
 [workspace.dependencies]
