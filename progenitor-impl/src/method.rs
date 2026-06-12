@@ -2602,16 +2602,12 @@ impl Generator {
                 // A raw binary body is either schema-less (the canonical
                 // OpenAPI 3.1 form) or a plain string schema marked binary:
                 // 3.0's `format: binary`, or 3.1's `contentEncoding` /
-                // `contentMediaType` keywords.
-                if let Some(schema_ref) = &media_type.schema {
-                    let resolved = ir::resolve_schema(&schema_ref.schema, schemas);
-                    if !is_binary_string_schema(resolved) {
-                        return Err(Error::UnexpectedFormat(format!(
-                            "invalid schema for application/octet-stream: {:?}",
-                            resolved
-                        )));
-                    }
-                }
+                // `contentMediaType` keywords. Wild specs also attach
+                // fancier shapes (Cloudflare's Workers KV PUT body is
+                // `anyOf: [string, string+binary]`); the media type already
+                // dictates that the wire payload is raw bytes, so any
+                // schema here is advisory — never grounds to fail the
+                // operation.
                 OperationParameterType::RawBody
             }
             BodyContentType::Text(ref text_type) => {
@@ -2691,13 +2687,6 @@ fn parameter_schema(parameter: &ir::Parameter) -> std::borrow::Cow<'_, schemars:
 /// A binary payload schema: `type: string` marked binary via 3.0's
 /// `format: binary` or 3.1's `contentEncoding`/`contentMediaType` keywords
 /// (which land in the schema's extensions).
-fn is_binary_string_schema(schema: &schemars::schema::Schema) -> bool {
-    if is_plain_string_schema(schema, Some("binary")) {
-        return true;
-    }
-    is_plain_string_schema(schema, None) && has_content_keywords(schema)
-}
-
 fn has_content_keywords(schema: &schemars::schema::Schema) -> bool {
     let schemars::schema::Schema::Object(object) = schema else {
         return false;
@@ -2780,7 +2769,7 @@ fn make_doc_comment(method: &OperationMethod) -> String {
         }
     }
 
-    buf
+    crate::util::neutralize_doc_fences(&buf)
 }
 
 fn make_stream_doc_comment(method: &OperationMethod) -> String {
@@ -2824,7 +2813,7 @@ fn make_stream_doc_comment(method: &OperationMethod) -> String {
         }
     }
 
-    buf
+    crate::util::neutralize_doc_fences(&buf)
 }
 
 fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {

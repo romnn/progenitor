@@ -15,7 +15,8 @@ use crate::{validate::schema_value_validate, Error, Name, RefKey, Result, TypeSp
 pub(crate) fn metadata_description(metadata: &Option<Box<Metadata>>) -> Option<String> {
     metadata
         .as_ref()
-        .and_then(|metadata| metadata.description.as_ref().cloned())
+        .and_then(|metadata| metadata.description.as_ref())
+        .map(|description| neutralize_doc_fences(description))
 }
 
 pub(crate) fn metadata_title(metadata: &Option<Box<Metadata>>) -> Option<String> {
@@ -28,11 +29,42 @@ pub(crate) fn metadata_title_and_description(metadata: &Option<Box<Metadata>>) -
     metadata
         .as_ref()
         .and_then(|metadata| match (&metadata.title, &metadata.description) {
-            (Some(t), Some(d)) => Some(format!("{}\n\n{}", t, d)),
+            (Some(t), Some(d)) => Some(format!("{}\n\n{}", t, neutralize_doc_fences(d))),
             (Some(t), None) => Some(t.clone()),
-            (None, Some(d)) => Some(d.clone()),
+            (None, Some(d)) => Some(neutralize_doc_fences(d)),
             (None, None) => None,
         })
+}
+
+/// Rustdoc compiles untagged ``` fences in doc comments as Rust doctests.
+/// Spec descriptions fence prompts, shell commands, and payloads (the
+/// Anthropic API fences a raw prompt string in its `prompt` docs), which
+/// then fail `cargo test` in every consumer crate. Tag bare fence openers
+/// as `text` so the snippet stays documentation.
+fn neutralize_doc_fences(description: &str) -> String {
+    if !description.contains("```") {
+        return description.to_string();
+    }
+    let mut in_fence = false;
+    let lines = description.split('\n').map(|line| {
+        let trimmed = line.trim_start();
+        if !trimmed.starts_with("```") {
+            return line.to_string();
+        }
+        if in_fence {
+            // Closing fence; the info string position is meaningless here.
+            in_fence = false;
+            return line.to_string();
+        }
+        in_fence = true;
+        let info = trimmed.trim_start_matches('`');
+        if info.trim().is_empty() {
+            format!("{}text", line.trim_end())
+        } else {
+            line.to_string()
+        }
+    });
+    lines.collect::<Vec<_>>().join("\n")
 }
 
 /// Check if all schemas are mutually exclusive.
@@ -1195,5 +1227,19 @@ mod tests {
         assert!(number < string);
         assert!(string < array);
         assert!(array < object);
+    }
+
+    #[test]
+    fn test_neutralize_doc_fences() {
+        // A bare fence opener becomes ```text so rustdoc doesn't compile
+        // the snippet as a Rust doctest; tagged fences and closers are
+        // untouched.
+        let description = "Format your prompt like:\n\n```\n\"\\n\\nHuman:\"\n```\n\nAnd data:\n\n```json\n{\"a\": 1}\n```";
+        let expected = "Format your prompt like:\n\n```text\n\"\\n\\nHuman:\"\n```\n\nAnd data:\n\n```json\n{\"a\": 1}\n```";
+        assert_eq!(super::neutralize_doc_fences(description), expected);
+
+        // Without any fence the description passes through unchanged.
+        let plain = "Just words with `inline code`.";
+        assert_eq!(super::neutralize_doc_fences(plain), plain);
     }
 }

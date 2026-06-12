@@ -1156,6 +1156,11 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
         property_name: String,
         // subtype_name → discriminator value
         value_by_subtype: BTreeMap<String, String>,
+        // Plain object bases get replaced by a synthesized oneOf over
+        // their subtypes (the allOf-inheritance style). A base that
+        // already models the union itself keeps its body; only its
+        // member subtypes are rewritten.
+        rewrite_base: bool,
     }
     let bases_to_rewrite: BTreeMap<String, BaseInfo> = definitions
         .iter()
@@ -1170,7 +1175,52 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                 .extensions
                 .get("x-discriminator")
                 .or_else(|| obj.extensions.get("discriminator"))?;
-            let subtypes = subtypes_of.get(base_name)?;
+            // OpenAPI has two discriminator styles, and wild specs mix
+            // them, so the base's own shape decides what the prepass may
+            // touch.
+            //
+            // A plain object base (the allOf-inheritance style) is
+            // replaced by a oneOf over its subtypes, and every subtype is
+            // rewritten.
+            //
+            // A base that already models the union itself (`oneOf`/`anyOf`
+            // + discriminator as dispatch metadata) keeps its body:
+            // rewriting would replace the real union with a oneOf over
+            // whatever definitions happen to allOf-ref the base —
+            // Cloudflare's rulesets_ResponseRule "refines" its 20-variant
+            // rulesets_RequestRule union exactly that way (`allOf:
+            // [$ref union, {required: [...]}]`), and the rewrite destroyed
+            // the union and stamped a bogus discriminator value onto the
+            // refinement. But subtypes that ARE members of the union still
+            // need the usual treatment (MongoDB Atlas lists each variant
+            // in the base's oneOf AND has the variant allOf-ref the base
+            // back): stripping the backref breaks the reference cycle that
+            // otherwise recurses typify's allOf merge into a stack
+            // overflow, and stamping the mapped const turns the union into
+            // a properly tagged enum. Non-member refiners are left alone.
+            let union_members: Option<BTreeSet<String>> = obj
+                .subschemas
+                .as_ref()
+                .and_then(|sub| sub.one_of.as_ref().or(sub.any_of.as_ref()))
+                .map(|members| {
+                    members
+                        .iter()
+                        .filter_map(|member| match member {
+                            Schema::Object(o) => o.reference.as_deref(),
+                            Schema::Bool(_) => None,
+                        })
+                        .filter_map(strip_ref)
+                        .collect()
+                });
+            let subtypes: Vec<String> = match &union_members {
+                Some(members) => subtypes_of
+                    .get(base_name)?
+                    .iter()
+                    .filter(|subtype| members.contains(*subtype))
+                    .cloned()
+                    .collect(),
+                None => subtypes_of.get(base_name)?.clone(),
+            };
             if subtypes.is_empty() {
                 return None;
             }
@@ -1201,16 +1251,23 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                     }
                 }
             }
-            for subtype in subtypes {
+            for subtype in &subtypes {
                 value_by_subtype
                     .entry(subtype.clone())
                     .or_insert_with(|| subtype.clone());
+            }
+            // For a union-shaped base, only its member subtypes get
+            // rewritten — a mapping entry for a definition outside the
+            // union must not cause pass 3b to touch it.
+            if union_members.is_some() {
+                value_by_subtype.retain(|subtype, _| subtypes.contains(subtype));
             }
             Some((
                 base_name.clone(),
                 BaseInfo {
                     property_name,
                     value_by_subtype,
+                    rewrite_base: union_members.is_none(),
                 },
             ))
         })
@@ -1220,7 +1277,8 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
         return;
     }
 
-    // Pass 3a: rewrite each base to a `oneOf` over its subtypes.
+    // Pass 3a: rewrite each plain-object base to a `oneOf` over its
+    // subtypes (union-shaped bases keep their own oneOf/anyOf body).
     // `convert_one_of`'s `maybe_internally_tagged_enum` resolves
     // `$ref` subschemas against the type space's known definitions,
     // so once each subtype carries a const-valued discriminator
@@ -1231,7 +1289,10 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
         let RefKey::Def(base_name) = key else {
             continue;
         };
-        if !bases_to_rewrite.contains_key(base_name) {
+        if !bases_to_rewrite
+            .get(base_name)
+            .is_some_and(|info| info.rewrite_base)
+        {
             continue;
         }
         let Schema::Object(obj) = schema else {
@@ -1634,6 +1695,149 @@ mod tests {
         baz_baz: i32,
         /// eeeeee!
         e: E,
+    }
+
+    #[test]
+    fn test_cyclic_oneof_discriminator_members_terminate() {
+        // MongoDB Atlas encodes its discriminated unions BOTH ways at
+        // once: the base lists every variant in `oneOf` AND each variant
+        // `allOf`-refs the base back. The backref must be stripped (it
+        // only re-states membership) or the reference cycle recurses the
+        // allOf merge into a stack overflow; the mapped const must still
+        // be stamped so the union becomes a tagged enum.
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "CloudProviderContainer": {
+                "type": "object",
+                "properties": {
+                    "providerName": { "type": "string" }
+                },
+                "oneOf": [
+                    { "$ref": "#/components/schemas/AwsContainer" },
+                    { "$ref": "#/components/schemas/AzureContainer" }
+                ],
+                "x-discriminator": {
+                    "propertyName": "providerName",
+                    "mapping": {
+                        "AWS": "#/components/schemas/AwsContainer",
+                        "AZURE": "#/components/schemas/AzureContainer"
+                    }
+                }
+            },
+            "AwsContainer": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/CloudProviderContainer" },
+                    {
+                        "type": "object",
+                        "properties": { "regionName": { "type": "string" } }
+                    }
+                ]
+            },
+            "AzureContainer": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/CloudProviderContainer" },
+                    {
+                        "type": "object",
+                        "properties": { "azureSubscriptionId": { "type": "string" } }
+                    }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        assert!(
+            actual.contains("enum CloudProviderContainer"),
+            "{}",
+            actual
+        );
+        // The mapped discriminator values drive serde dispatch.
+        assert!(actual.contains("AWS"), "{}", actual);
+        assert!(actual.contains("AZURE"), "{}", actual);
+    }
+
+    #[test]
+    fn test_oneof_discriminator_union_survives_refinement() {
+        // Cloudflare's rulesets: the discriminated union is modelled as
+        // `oneOf` + `discriminator` (dispatch-metadata style), and a
+        // separate definition *refines* the whole union via
+        // `allOf: [$ref union, {required: [...]}]`. The allOf-inheritance
+        // prepass must not mistake that refinement for a subtype: it used
+        // to replace the 20-variant union with `oneOf: [TheRefinement]`
+        // and stamp the refinement with a bogus discriminator value.
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "BlockRule": {
+                "type": "object",
+                "properties": {
+                    "action": { "type": "string", "enum": ["block"] },
+                    "expression": { "type": "string" }
+                },
+                "required": ["action"]
+            },
+            "SkipRule": {
+                "type": "object",
+                "properties": {
+                    "action": { "type": "string", "enum": ["skip"] },
+                    "expression": { "type": "string" }
+                },
+                "required": ["action"]
+            },
+            "RequestRule": {
+                "oneOf": [
+                    { "$ref": "#/components/schemas/BlockRule" },
+                    { "$ref": "#/components/schemas/SkipRule" }
+                ],
+                "x-discriminator": {
+                    "propertyName": "action",
+                    "mapping": {
+                        "block": "#/components/schemas/BlockRule",
+                        "skip": "#/components/schemas/SkipRule"
+                    }
+                }
+            },
+            "ResponseRule": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/RequestRule" },
+                    { "required": ["expression", "action"] }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        // The union keeps both real variants...
+        assert!(actual.contains("enum RequestRule"), "{}", actual);
+        assert!(actual.contains("BlockRule"), "{}", actual);
+        assert!(actual.contains("SkipRule"), "{}", actual);
+        // ...and the refinement is not enrolled as a variant of it.
+        assert!(
+            !actual.contains("RequestRule :: ResponseRule"),
+            "refinement became a union variant:\n{}",
+            actual
+        );
     }
 
     #[test]

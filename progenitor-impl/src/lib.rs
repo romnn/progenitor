@@ -436,7 +436,9 @@ impl Generator {
 
             if let Some(ss) = &document.info.description {
                 s.push_str("\n\n");
-                s.push_str(ss);
+                // API-level descriptions are often long markdown intros
+                // whose bare code fences rustdoc would run as doctests.
+                s.push_str(&util::neutralize_doc_fences(ss));
             }
             if let Some(ss) = &document.info.terms_of_service {
                 s.push_str("\n\n");

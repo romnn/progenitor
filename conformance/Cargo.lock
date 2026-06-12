@@ -112,6 +112,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "conformance-discord"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "futures-core",
+ "percent-encoding",
+ "prettyplease",
+ "progenitor",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "syn",
+ "uuid",
+ "wild-tests",
+]
+
+[[package]]
 name = "conformance-figma"
 version = "0.0.0"
 dependencies = [

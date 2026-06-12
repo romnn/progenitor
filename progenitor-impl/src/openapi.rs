@@ -4,6 +4,8 @@ use thiserror::Error;
 
 use crate::ir::OpenApiDocument;
 
+mod ref_repair;
+
 const OPENAPI_VERSION_KEY: &str = "openapi";
 const NULL_TYPE_NAME: &str = "null";
 const TYPE_KEY: &str = "type";
@@ -190,8 +192,15 @@ pub fn parse_openapi_str(
 /// Parse an already-decoded OpenAPI document of any supported spec version
 /// into progenitor's internal model.
 pub fn parse_openapi_value(
-    value: Value,
+    mut value: Value,
 ) -> std::result::Result<OpenApiDocument, ParseOpenApiError> {
+    // Repair malformed `$ref`s on the raw value so both version frontends
+    // benefit. Kind mismatches first: a misfiled component's body may
+    // contain deep pointers that the hoisting pass must then see in its
+    // relocated copy as well.
+    ref_repair::relocate_kind_mismatched_component_refs(&mut value);
+    ref_repair::hoist_deep_pointer_refs(&mut value);
+
     let version = value
         .get(OPENAPI_VERSION_KEY)
         .and_then(Value::as_str)

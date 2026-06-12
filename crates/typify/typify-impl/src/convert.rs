@@ -492,7 +492,14 @@ impl TypeSpace {
                 ..
             } => self.convert_typed_enum(type_name, original_schema, schema, enum_values),
 
-            // Enum of unknown type
+            // Enum of unknown type. Validation keywords (string/number/
+            // array/object) may be present alongside the enum; with no
+            // `type` they're advisory annotation, not constraint — the enum
+            // itself is the closed set of values, and wild specs get the
+            // annotations wrong (Cloudflare ships
+            // `{"enum": [..., "managed_challenge"], "maxLength": 12}` where
+            // the enum violates its own length bound). Infer the type from
+            // the values and ignore the stale keywords.
             SchemaObject {
                 metadata,
                 instance_type: None,
@@ -500,10 +507,10 @@ impl TypeSpace {
                 enum_values: Some(enum_values),
                 const_value: None,
                 subschemas: None,
-                number: None,
-                string: None,
-                array: None,
-                object: None,
+                number: _,
+                string: _,
+                array: _,
+                object: _,
                 reference: None,
                 extensions: _,
             } => self.convert_unknown_enum(type_name, original_schema, metadata, enum_values),
@@ -1757,12 +1764,15 @@ impl TypeSpace {
                 let (type_entry, _) =
                     self.convert_schema_object(Name::Unknown, original_schema, &type_schema)?;
 
-                // Make sure all the values are valid.
-                // TODO this isn't strictly legal since we may not yet have
-                // resolved references.
-                enum_values
-                    .iter()
-                    .try_for_each(|value| type_entry.validate_value(self, value).map(|_| ()))?;
+                // Make sure all the values are valid. References can't be
+                // checked until they resolve, and a denied value no
+                // instance of the type can take excludes nothing — so keep
+                // ref-guarded values as-is and drop mistyped ones instead
+                // of failing the conversion.
+                let Some(enum_values) = self.reconcile_enum_values(&type_entry, enum_values)
+                else {
+                    return Ok((type_entry, metadata));
+                };
 
                 let type_id = self.assign_type(type_entry);
 
@@ -1771,7 +1781,7 @@ impl TypeSpace {
                     type_name,
                     metadata,
                     type_id,
-                    enum_values,
+                    &enum_values,
                     original_schema.clone(),
                 );
 
@@ -1823,12 +1833,14 @@ impl TypeSpace {
                             original_schema,
                             &typed_schema,
                         )?;
-                        // Make sure all the values are valid.
-                        // TODO this isn't strictly legal since we may not yet
-                        // have resolved references.
-                        enum_values.iter().try_for_each(|value| {
-                            type_entry.validate_value(self, value).map(|_| ())
-                        })?;
+                        // Make sure all the values are valid, with the
+                        // same reference/mistyped-member tolerance as the
+                        // typed arm above.
+                        let Some(enum_values) =
+                            self.reconcile_enum_values(&type_entry, enum_values)
+                        else {
+                            return Ok((type_entry, metadata));
+                        };
 
                         let type_id = self.assign_type(type_entry);
 
@@ -1837,7 +1849,7 @@ impl TypeSpace {
                             type_name,
                             metadata,
                             type_id,
-                            enum_values,
+                            &enum_values,
                             original_schema.clone(),
                         );
 
@@ -2014,6 +2026,60 @@ impl TypeSpace {
         Ok((ty, &None))
     }
 
+    /// Reconcile literal `enum`/`not.enum` members with the type they're
+    /// declared against, tolerating the mistakes wild specs make. Returns
+    /// the values to carry into the value-constrained newtype, or `None`
+    /// when no member survives (the constraint is unsatisfiable and should
+    /// be dropped entirely).
+    fn reconcile_enum_values(
+        &self,
+        type_entry: &TypeEntry,
+        enum_values: &[serde_json::Value],
+    ) -> Option<Vec<serde_json::Value>> {
+        // A reference can't be validated against until resolution, which
+        // happens after conversion; keep the values as-is. The generated
+        // newtype's TryFrom guard still enforces membership at runtime.
+        // (Discord stamps inline string enums alongside an `allOf` $ref to
+        // the shared enum component.)
+        if matches!(&type_entry.details, TypeEntryDetails::Reference(_)) {
+            return Some(enum_values.to_vec());
+        }
+        let mut kept = Vec::new();
+        for value in enum_values {
+            if type_entry.validate_value(self, value).is_ok() {
+                if !kept.contains(value) {
+                    kept.push(value.clone());
+                }
+                continue;
+            }
+            // Quoted numbers are a common authoring slip (ClickHouse Cloud
+            // ships `{"type": "number", "enum": ["0.5", "0.9", ...]}`).
+            // When the string parses as a number that does conform, the
+            // intent is plain — carry the numeric value.
+            if let serde_json::Value::String(s) = value {
+                if let Ok(n) = s.parse::<serde_json::Number>() {
+                    let candidate = serde_json::Value::Number(n);
+                    if type_entry.validate_value(self, &candidate).is_ok()
+                        && !kept.contains(&candidate)
+                    {
+                        kept.push(candidate);
+                    }
+                    continue;
+                }
+            }
+            // A member that can't inhabit the declared type constrains
+            // nothing — and emitting it would break the generated code
+            // (`output_value` produces no tokens for it). Drop it,
+            // mirroring the unsatisfiable-variant treatment in string
+            // enums.
+        }
+        if kept.is_empty() {
+            None
+        } else {
+            Some(kept)
+        }
+    }
+
     fn convert_typed_enum<'a>(
         &mut self,
         type_name: Name,
@@ -2034,10 +2100,20 @@ impl TypeSpace {
         let (type_entry, metadata) =
             self.convert_schema_object(inner_type_name, original_schema, &type_schema)?;
 
-        // Make sure all the values are valid.
-        enum_values
-            .iter()
-            .try_for_each(|value| type_entry.validate_value(self, value).map(|_| ()))?;
+        // Make sure all the values are valid, dropping or coercing the
+        // ones that aren't rather than failing the conversion.
+        let Some(enum_values) = self.reconcile_enum_values(&type_entry, enum_values) else {
+            // No member can inhabit the declared type, so the value
+            // constraint is vacuous; use the unconstrained inner type.
+            return Ok((
+                type_entry,
+                if metadata.is_some() {
+                    &schema.metadata
+                } else {
+                    &None
+                },
+            ));
+        };
 
         let type_id = self.assign_type(type_entry);
 
@@ -2046,7 +2122,7 @@ impl TypeSpace {
             type_name,
             metadata,
             type_id,
-            enum_values,
+            &enum_values,
             original_schema.clone(),
         );
 
@@ -2130,6 +2206,10 @@ impl TypeSpace {
                         instance_type: Some(schemars::schema::SingleOrVec::Single(Box::new(
                             *instance_type,
                         ))),
+                        // Keep the title: the value-constrained newtype this
+                        // becomes derives its name from it, and dropping it
+                        // panics downstream when no suggested name exists.
+                        metadata: metadata.clone(),
                         ..Default::default()
                     };
                     let (type_entry, new_metadata) = self.convert_typed_enum(
@@ -2486,6 +2566,147 @@ mod tests {
         assert!(actual.contains("Boolean (bool)"), "{}", actual);
         assert!(actual.contains("String"), "{}", actual);
         assert!(actual.contains("maybe"), "{}", actual);
+    }
+
+    #[test]
+    fn test_untyped_enum_with_advisory_validation() {
+        // Cloudflare attaches validation keywords to untyped enums — and
+        // gets them wrong: this real schema's `maxLength: 12` is violated
+        // by its own "managed_challenge" member (17 chars). With no `type`,
+        // such keywords are advisory annotation; the enum is the closed set
+        // of values, so infer `string` from the members and ignore the
+        // stale bound.
+        let schema_json = r#"
+        {
+            "title": "Action",
+            "description": "The action to apply to a matched request.",
+            "enum": ["block", "challenge", "js_challenge", "managed_challenge"],
+            "maxLength": 12
+        }
+        "#;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+        assert!(actual.contains("enum Action"), "{}", actual);
+        assert!(actual.contains("ManagedChallenge"), "{}", actual);
+
+        // The same tolerance for a numeric untyped enum carrying stale
+        // numeric bounds.
+        let schema_json = r#"
+        {
+            "title": "Level",
+            "enum": [1, 2, 3],
+            "minimum": 5
+        }
+        "#;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let type_id = type_space.add_type(&schema.schema.into()).unwrap();
+        let ty = type_space.get_type(&type_id).unwrap();
+        assert!(!ty.ident().to_string().is_empty());
+    }
+
+    #[test]
+    fn test_typed_enum_with_quoted_numbers() {
+        // ClickHouse Cloud quotes its numeric enum members:
+        // {"type": "number", "enum": ["0.5", "0.9", ...]}. Taken literally
+        // the schema admits no value at all; the intent is plainly the
+        // numbers, so coerce them rather than failing the document.
+        let schema_json = r#"
+        {
+            "title": "Level",
+            "type": "number",
+            "enum": ["0.5", "0.9", "0.95", "0.99"]
+        }
+        "#;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+        assert!(actual.contains("Level"), "{}", actual);
+        assert!(actual.contains("0.5"), "{}", actual);
+        assert!(actual.contains("0.99"), "{}", actual);
+    }
+
+    #[test]
+    fn test_typed_enum_drops_uninhabitable_members() {
+        // A member that can't inhabit the declared type constrains
+        // nothing; it must be dropped, not propagated (emitting it would
+        // produce invalid Rust) and not fatal.
+        let schema_json = r#"
+        {
+            "title": "Ratio",
+            "type": "number",
+            "enum": ["not-a-number", 0.5]
+        }
+        "#;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+        // The doc comment quotes the source schema verbatim (including the
+        // dropped member); what matters is the TryFrom membership guard.
+        assert!(
+            actual.contains("[0.5_f64 ,] . contains"),
+            "{}",
+            actual
+        );
+
+        // When NO member survives, the value constraint is vacuous and
+        // the type degrades to its unconstrained base.
+        let schema_json = r#"
+        {
+            "title": "Hopeless",
+            "type": "number",
+            "enum": ["red", "green"]
+        }
+        "#;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let type_id = type_space.add_type(&schema.schema.into()).unwrap();
+        let ty = type_space.get_type(&type_id).unwrap();
+        assert_eq!(ty.ident().to_string(), "f64");
+    }
+
+    #[test]
+    fn test_typed_enum_against_unresolved_ref() {
+        // Discord's discriminant pattern: an inline
+        // {"type": "string", "enum": ["pc"]} merged via `allOf` with a
+        // $ref to the shared enum component. At conversion time the ref
+        // is unresolved, so the old eager conformance check rejected
+        // values that do conform; membership is enforceable at runtime by
+        // the newtype's TryFrom guard instead.
+        let schema_json = r##"
+        {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Kind",
+            "type": "string",
+            "enum": ["pc"],
+            "allOf": [{ "$ref": "#/definitions/LocationKind" }],
+            "definitions": {
+                "LocationKind": {
+                    "type": "string",
+                    "oneOf": [
+                        { "title": "GC", "const": "gc" },
+                        { "title": "PC", "const": "pc" }
+                    ]
+                }
+            }
+        }
+        "##;
+
+        let root: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        type_space.add_root_schema(root).unwrap();
+        let actual = type_space.to_stream().to_string();
+        assert!(actual.contains("LocationKind"), "{}", actual);
+        assert!(actual.contains("pc"), "{}", actual);
     }
 
     #[test]

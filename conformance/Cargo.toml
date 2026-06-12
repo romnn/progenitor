@@ -5,18 +5,16 @@
 #
 # This is a separate workspace so the main one stays fast; build it with
 # `cargo check` / `cargo test` from this directory. Crates type-check in
-# parallel. For the monster clients (openai, github), the nightly
-# parallel frontend helps a lot:
-#
-#     RUSTFLAGS="-Z threads=8" cargo +nightly check
+# parallel. Plain stable `cargo check` is the right tool: measured on the
+# full workspace, nightly's parallel frontend (-Z threads=8) wins a cold
+# build only modestly (~80s -> ~53s) and is ~3x SLOWER than stable for
+# incremental single-crate recompiles, because the nightly compiler's
+# per-crate overhead exceeds what its threading recovers.
 [workspace]
 resolver = "2"
 members = [
     "anthropic",
-    # discord: blocked on a typify fix — the spec encodes discriminants as
-    # inline `enum` values merged with an allOf $ref, which typify rejects
-    # while the ref is unresolved (see corpus manifest: expect = generate-fail).
-    # "discord",
+    "discord",
     "figma",
     "github-31",
     "hetzner-cloud",

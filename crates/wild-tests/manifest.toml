@@ -25,9 +25,9 @@ notes = "official Box Platform API, bundled JSON with discriminators"
 name = "cloudflare"
 url = "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
-notes = "huge; minified JSON with alphabetically sorted keys (openapi field not at top), notoriously messy"
+notes = "huge; minified JSON with alphabetically sorted keys (openapi field not at top), notoriously messy; exercises untyped enums with stale validation keywords, oneOf+discriminator union refinement, and octet-stream bodies with anyOf schemas"
 
 [[spec]]
 name = "datadog-v2"
@@ -137,9 +137,9 @@ notes = "YAML with openapi field at line ~7856 (components first); very messy ke
 name = "linode"
 url = "https://raw.githubusercontent.com/linode/linode-api-docs/development/openapi.json"
 version = "3.0"
-expect = "generate-fail"
+expect = "pass"
 slow = true
-notes = "huge; Akamai/Linode API v4; openapi.json at repo root on development default branch"
+notes = "huge; Akamai/Linode API v4; openapi.json at repo root on development default branch; exercises mistyped enum-member tolerance"
 
 [[spec]]
 name = "mongodb-atlas"
@@ -153,9 +153,9 @@ notes = "huge; Atlas Admin API v2 with versioned media types; one of the messies
 name = "pagerduty"
 url = "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json"
 version = "3.0"
-expect = "parse-fail"
+expect = "pass"
 slow = true
-notes = "huge; 254 paths, deep allOf chains and shared parameter components"
+notes = "huge; 254 paths, deep allOf chains and shared parameter components; exercises kind-mismatched component repair (response filed under requestBodies) and deep JSON-pointer $ref hoisting incl. ~1 media-type segments and a $ref inside a schema example literal"
 
 [[spec]]
 name = "paypal-orders"
@@ -271,16 +271,16 @@ notes = "huge; biggest in corpus at ~13.7 MB; very messy generated 3.1"
 name = "clickhouse-cloud"
 url = "https://api.clickhouse.cloud/v1"
 version = "3.1"
-expect = "generate-fail"
-notes = "live vendor endpoint returns the 3.1.2 JSON document directly"
+expect = "pass"
+notes = "live vendor endpoint returns the 3.1.2 JSON document directly; exercises quoted-number enum coercion ({type: number, enum: ['0.5', ...]})"
 
 [[spec]]
 name = "codat-accounting"
 url = "https://raw.githubusercontent.com/codatio/oas/main/yaml/Codat-Accounting.yaml"
 version = "3.1"
-expect = "parse-fail"
+expect = "pass"
 slow = true
-notes = "huge; large YAML; sibling 3.1 specs (banking, commerce) in same repo if more needed"
+notes = "huge; large YAML; sibling 3.1 specs (banking, commerce) in same repo if more needed; exercises deep JSON-pointer $ref hoisting (119 distinct pointers: nested draft-04 definitions blocks, pointers nested inside other pointers' targets, a self-referential target, shared pointers referenced up to 20x)"
 
 [[spec]]
 name = "cohere"
@@ -300,8 +300,8 @@ notes = "speech-to-text/TTS API with heavy query-parameter modeling; YAML"
 name = "discord"
 url = "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json"
 version = "3.1"
-expect = "generate-fail"
-notes = "official Discord spec, 150 paths; oneOf/discriminator-heavy real-world 3.1 with null types"
+expect = "pass"
+notes = "official Discord spec, 150 paths; oneOf/discriminator-heavy real-world 3.1 with null types; exercises inline enum discriminants merged with an allOf $ref (membership deferred to the runtime TryFrom guard)"
 
 [[spec]]
 name = "discourse"

@@ -143,3 +143,51 @@ pub(crate) fn unique_ident_from(
         name.insert_str(0, "_");
     }
 }
+
+/// Rustdoc compiles untagged ``` fences in doc comments as Rust doctests.
+/// Operation descriptions fence shell commands and payloads (GitHub's
+/// code-scanning endpoints fence curl examples), which then fail
+/// `cargo test` in every consumer crate. Tag bare fence openers as `text`
+/// so the snippet stays documentation. Twin of the same neutralization in
+/// typify's `metadata_description`, which covers schema-level docs.
+pub(crate) fn neutralize_doc_fences(text: &str) -> String {
+    if !text.contains("```") {
+        return text.to_string();
+    }
+    let mut in_fence = false;
+    let lines = text.split('\n').map(|line| {
+        let trimmed = line.trim_start();
+        if !trimmed.starts_with("```") {
+            return line.to_string();
+        }
+        if in_fence {
+            // Closing fence; the info string position is meaningless here.
+            in_fence = false;
+            return line.to_string();
+        }
+        in_fence = true;
+        let info = trimmed.trim_start_matches('`');
+        if info.trim().is_empty() {
+            format!("{}text", line.trim_end())
+        } else {
+            line.to_string()
+        }
+    });
+    lines.collect::<Vec<_>>().join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_neutralize_doc_fences() {
+        // A bare fence opener becomes ```text so rustdoc doesn't compile
+        // the snippet as a Rust doctest; tagged fences and closers are
+        // untouched.
+        let text = "Upload it:\n\n```\ngzip -c analysis-data.sarif | base64 -w0\n```\n\nor:\n\n```shell\ncurl -X POST\n```";
+        let expected = "Upload it:\n\n```text\ngzip -c analysis-data.sarif | base64 -w0\n```\n\nor:\n\n```shell\ncurl -X POST\n```";
+        assert_eq!(super::neutralize_doc_fences(text), expected);
+
+        let plain = "Just words with `inline code`.";
+        assert_eq!(super::neutralize_doc_fences(plain), plain);
+    }
+}
