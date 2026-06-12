@@ -1,0 +1,54 @@
+//! Generated PagerDuty API client — conformance crate.
+//!
+//! Tests pin the two repairs that used to break generation:
+//! 1. A Response misfiled under components.requestBodies
+//! 2. Deep JSON-pointer refs hoisted to named shared components
+
+include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_cache_variable_data_200_response_deserializes_string_example() {
+        let payload = r#"{
+            "cache_variable_data": "Updated - Hello World!",
+            "updated_at": "2021-11-18T16:42:01Z"
+        }"#;
+        let response: types::UpdateExternalDataCacheVarDataOnGlobalOrchResponse =
+            serde_json::from_str(payload).expect("PUT 200 body deserializes");
+
+        match &response {
+            types::UpdateExternalDataCacheVarDataOnGlobalOrchResponse::Of0(string_data) => {
+                assert_eq!(
+                    string_data.cache_variable_data.as_deref(),
+                    Some("Updated - Hello World!")
+                );
+            }
+            _ => panic!("string payload must select the String Data branch"),
+        }
+    }
+
+    #[test]
+    fn client_constructs() {
+        let client = Client::new("https://api.pagerduty.com");
+        assert_eq!(client.baseurl(), "https://api.pagerduty.com");
+    }
+
+    #[test]
+    fn tag_round_trips() {
+        let payload = serde_json::json!({
+            "id": "ABCDEF1",
+            "type": "tag_reference",
+            "summary": "Team:Engineering",
+            "label": "Engineering"
+        });
+        let tag: types::TagReference =
+            serde_json::from_value(payload.clone()).expect("tag reference deserializes");
+        assert_eq!(tag.id.as_deref(), Some("ABCDEF1"));
+        assert_eq!(tag.label.as_deref(), Some("Engineering"));
+        let round_tripped = serde_json::to_value(&tag).expect("serializes");
+        assert_eq!(round_tripped, payload);
+    }
+}

@@ -1,0 +1,3 @@
+name = "perplexity"
+url = "https://docs.perplexity.ai/openapi.json"
+version = "3.1"

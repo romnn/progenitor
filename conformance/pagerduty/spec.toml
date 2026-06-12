@@ -1,0 +1,3 @@
+name = "pagerduty"
+url = "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json"
+version = "3.0"

@@ -13,6 +13,13 @@
 [workspace]
 resolver = "2"
 members = [
+    "support",
+    "clickhouse-cloud",
+    "cloudflare",
+    "codat-accounting",
+    "mongodb-atlas",
+    "pagerduty",
+    "petstore-31",
     "anthropic",
     "discord",
     "figma",
@@ -28,11 +35,9 @@ members = [
 ]
 
 [workspace.dependencies]
+conformance-support = { path = "support" }
 progenitor = { path = "../crates/progenitor", default-features = false }
 progenitor-client = { path = "../crates/progenitor-client" }
-wild-tests = { path = "../crates/wild-tests" }
-prettyplease = "0.2.37"
-syn = { version = "2.0.117", features = ["full", "parsing"] }
 bytes = "1"
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
 futures-core = "0.3"

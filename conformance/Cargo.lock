@@ -97,18 +97,70 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
+]
+
+[[package]]
+name = "conformance-clickhouse-cloud"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-cloudflare"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-codat-accounting"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
 ]
 
 [[package]]
@@ -117,18 +169,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -137,18 +187,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -157,18 +205,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -177,18 +223,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -197,18 +241,34 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
+]
+
+[[package]]
+name = "conformance-mongodb-atlas"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
 ]
 
 [[package]]
@@ -217,18 +277,34 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
+]
+
+[[package]]
+name = "conformance-pagerduty"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
 ]
 
 [[package]]
@@ -237,18 +313,34 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
+]
+
+[[package]]
+name = "conformance-petstore-31"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
 ]
 
 [[package]]
@@ -257,18 +349,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -277,18 +367,28 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
+]
+
+[[package]]
+name = "conformance-support"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "progenitor-impl",
+ "serde",
+ "serde_json",
+ "toml",
+ "ureq",
 ]
 
 [[package]]
@@ -297,18 +397,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -317,18 +415,16 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "chrono",
+ "conformance-support",
  "futures-core",
  "percent-encoding",
- "prettyplease",
- "progenitor",
  "progenitor-client",
  "regress",
  "reqwest",
  "serde",
  "serde_json",
- "syn",
+ "serde_urlencoded",
  "uuid",
- "wild-tests",
 ]
 
 [[package]]
@@ -817,13 +913,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "progenitor"
-version = "0.14.0"
-dependencies = [
- "progenitor-impl",
 ]
 
 [[package]]
@@ -1617,19 +1706,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52f5ee44c96cf55f1b349600768e3ece3a8f26010c05265ab73f945bb1a2eb9d"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "wild-tests"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "progenitor-impl",
- "serde",
- "serde_json",
- "syn",
- "toml",
- "ureq",
 ]
 
 [[package]]

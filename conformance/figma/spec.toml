@@ -1,0 +1,3 @@
+name = "figma"
+url = "https://raw.githubusercontent.com/figma/rest-api-spec/main/openapi/openapi.yaml"
+version = "3.1"

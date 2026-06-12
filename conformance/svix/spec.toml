@@ -1,0 +1,3 @@
+name = "svix"
+url = "https://api.svix.com/api/v1/openapi.json"
+version = "3.1"

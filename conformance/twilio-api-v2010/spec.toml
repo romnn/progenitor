@@ -1,0 +1,3 @@
+name = "twilio-api-v2010"
+url = "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json"
+version = "3.0"

@@ -1,0 +1,3 @@
+name = "codat-accounting"
+url = "https://raw.githubusercontent.com/codatio/oas/main/yaml/Codat-Accounting.yaml"
+version = "3.1"

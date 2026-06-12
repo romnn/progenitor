@@ -1,0 +1,3 @@
+name = "anthropic"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic/anthropic-5ce93251152bd7c4c288dacdf5a445383825ba50bc472ff9e9821ee9455e3564.yml"
+version = "3.1"

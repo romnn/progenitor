@@ -1,0 +1,3 @@
+name = "mongodb-atlas"
+url = "https://raw.githubusercontent.com/mongodb/openapi/main/openapi/v2.json"
+version = "3.0"

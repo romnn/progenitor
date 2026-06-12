@@ -12,7 +12,6 @@ members = [
 	"crates/typify",
 	"crates/typify-impl",
 	"crates/typify-macro",
-	"crates/wild-tests",
 ]
 resolver = "3"
 exclude = ["conformance"]

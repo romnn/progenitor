@@ -1056,15 +1056,15 @@ impl TypeEntry {
                 }
             });
 
-        let default_impl = default.as_ref().map(|value| {
-            let default_stream = self.output_value(type_space, &value.0, &quote! {}).unwrap();
-            quote! {
+        let default_impl = default.as_ref().and_then(|value| {
+            let default_stream = self.output_value(type_space, &value.0, &quote! {})?;
+            Some(quote! {
                 impl ::std::default::Default for #type_name {
                     fn default() -> Self {
                         #default_stream
                     }
                 }
-            }
+            })
         });
 
         let untagged_newtype_from_string_impl = bespoke_impls
@@ -1813,15 +1813,15 @@ impl TypeEntry {
             _ => None,
         };
 
-        let default_impl = default.as_ref().map(|value| {
-            let default_stream = self.output_value(type_space, &value.0, &quote! {}).unwrap();
-            quote! {
+        let default_impl = default.as_ref().and_then(|value| {
+            let default_stream = self.output_value(type_space, &value.0, &quote! {})?;
+            Some(quote! {
                 impl ::std::default::Default for #type_name {
                     fn default() -> Self {
                         #default_stream
                     }
                 }
-            }
+            })
         });
 
         let derives = strings_to_derives(

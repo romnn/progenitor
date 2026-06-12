@@ -14,10 +14,11 @@ regress = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_urlencoded = { workspace = true }
 uuid = { workspace = true }
 
 [build-dependencies]
-progenitor = { workspace = true }
-wild-tests = { workspace = true }
-prettyplease = { workspace = true }
-syn = { workspace = true }
+conformance-support = { workspace = true }
+
+[dev-dependencies]
+conformance-support = { workspace = true }

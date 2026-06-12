@@ -1,0 +1,3 @@
+name = "cloudflare"
+url = "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json"
+version = "3.0"

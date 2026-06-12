@@ -1,0 +1,4 @@
+name = "petstore-31"
+file = "petstore-31.yaml"
+version = "3.1"
+notes = "Hermetic tiny spec committed in the crate directory; used as a fast always-asserted PR-CI crate."

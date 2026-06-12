@@ -1,0 +1,272 @@
+// Copyright 2026
+
+//! Conformance suite support crate.
+//!
+//! Two faces:
+//!
+//! **Build face** — call from `[build-dependencies]` in every spec crate's
+//! build.rs:
+//!
+//! ```rust,ignore
+//! fn main() {
+//!     conformance_support::generate("spec.toml");
+//! }
+//! ```
+//!
+//! **Test face** — import from `[dev-dependencies]` for the T2 assertion
+//! macros (`roundtrip!`, `assert_off_wire!`, `assert_wire_enum!`,
+//! `assert_union_variants!`, `assert_rejects!`) and the `serde_json` re-export.
+
+pub use serde_json;
+
+mod fetch;
+
+pub use fetch::SpecManifest;
+
+use std::path::{Path, PathBuf};
+
+/// Root of the conformance workspace (one level above this crate).
+fn conformance_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("support crate has a parent dir")
+        .to_owned()
+}
+
+/// Shared spec cache directory (`conformance/support/cache/`).
+pub fn cache_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("cache")
+}
+
+/// Drive build.rs generation from an explicit spec manifest.
+///
+/// Reads `spec_manifest` relative to the crate root (cargo sets cwd to the
+/// package root for build scripts). Parses `spec.toml`, asserts that the
+/// `name` field matches the crate directory name, fetches or retrieves the
+/// spec from cache, runs [`progenitor_impl::Generator::generate_text`], and
+/// writes `$OUT_DIR/codegen.rs`.
+///
+/// Set `CONFORMANCE_REFRESH=1` to force re-download even when cached.
+///
+/// Panics with an actionable message on any failure — appropriate for
+/// build.rs where a panic is surfaced as a clear build error.
+pub fn generate(spec_manifest: impl AsRef<Path>) {
+    let manifest_path = spec_manifest.as_ref();
+    let text = std::fs::read_to_string(manifest_path).unwrap_or_else(|err| {
+        panic!(
+            "conformance_support::generate: cannot read {}: {err}",
+            manifest_path.display()
+        )
+    });
+
+    let manifest: SpecManifest = toml::from_str(&text).unwrap_or_else(|err| {
+        panic!(
+            "conformance_support::generate: {} is not valid spec.toml: {err}",
+            manifest_path.display()
+        )
+    });
+
+    // Assert that the name in spec.toml matches the crate directory name.
+    // This catches copy-paste errors where the name field was not updated.
+    let crate_dir_name = std::env::current_dir()
+        .expect("cwd")
+        .file_name()
+        .and_then(|n| n.to_str())
+        .expect("cwd has a UTF-8 filename")
+        .to_owned();
+    assert_eq!(
+        manifest.name, crate_dir_name,
+        "spec.toml `name = {:?}` must match the crate directory name {:?}; \
+         update the name field (copy-paste artifact?)",
+        manifest.name, crate_dir_name
+    );
+
+    // Tell cargo when to re-run this build script.
+    println!("cargo:rerun-if-changed={}", manifest_path.display());
+    println!(
+        "cargo:rerun-if-env-changed=CONFORMANCE_REFRESH"
+    );
+
+    let document = fetch::fetch_spec(&manifest).unwrap_or_else(|err| {
+        panic!(
+            "conformance_support::generate: cannot fetch spec for {:?}: {err}\n\
+             Hint: populate conformance/support/cache/{name}.* or set CONFORMANCE_REFRESH=1",
+            manifest.name,
+            name = manifest.name,
+        )
+    });
+
+    // Emit rerun-if-changed for the cached spec file so cargo re-generates
+    // when the spec is refreshed.
+    let cache_path = fetch::cache_path_for(&manifest);
+    println!("cargo:rerun-if-changed={}", cache_path.display());
+
+    let spec = progenitor_impl::parse_openapi_str(&document).unwrap_or_else(|err| {
+        panic!(
+            "conformance_support::generate: spec {:?} does not parse: {err}",
+            manifest.name
+        )
+    });
+
+    let generated = progenitor_impl::Generator::default()
+        .generate_text(&spec)
+        .unwrap_or_else(|err| {
+            panic!(
+                "conformance_support::generate: code generation failed for {:?}: {err}",
+                manifest.name
+            )
+        });
+
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR set by cargo"));
+    std::fs::write(out_dir.join("codegen.rs"), &generated).unwrap_or_else(|err| {
+        panic!("conformance_support::generate: cannot write codegen.rs: {err}")
+    });
+}
+
+/// Enumerate all spec crates in the conformance workspace by globbing
+/// `conformance/*/spec.toml` (excluding the support crate itself).
+pub fn all_spec_manifests() -> Vec<(PathBuf, SpecManifest)> {
+    let root = conformance_root();
+    let mut result = Vec::new();
+    let entries = std::fs::read_dir(&root)
+        .unwrap_or_else(|err| panic!("cannot read conformance root {}: {err}", root.display()));
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let spec_toml = path.join("spec.toml");
+        if !spec_toml.exists() {
+            continue;
+        }
+        let text = std::fs::read_to_string(&spec_toml).unwrap_or_else(|err| {
+            panic!("cannot read {}: {err}", spec_toml.display())
+        });
+        let manifest: SpecManifest = toml::from_str(&text).unwrap_or_else(|err| {
+            panic!("{} is not valid spec.toml: {err}", spec_toml.display())
+        });
+        result.push((path, manifest));
+    }
+    result.sort_by(|a, b| a.1.name.cmp(&b.1.name));
+    result
+}
+
+/// Deserialize → serialize → deserialize and assert the two deserialized
+/// values are `PartialEq`. Returns the first deserialized value for
+/// further assertions.
+///
+/// ```rust,ignore
+/// let val = roundtrip!(MyType, serde_json::json!({"key": "value"}));
+/// ```
+#[macro_export]
+macro_rules! roundtrip {
+    ($ty:ty, $json:expr) => {{
+        let json: $crate::serde_json::Value = $json;
+        let first: $ty = $crate::serde_json::from_value(json.clone())
+            .expect(concat!("first deserialization of ", stringify!($ty), " failed"));
+        let serialized = $crate::serde_json::to_value(&first)
+            .expect(concat!("serialization of ", stringify!($ty), " failed"));
+        let second: $ty = $crate::serde_json::from_value(serialized)
+            .expect(concat!("second deserialization of ", stringify!($ty), " failed"));
+        assert_eq!(
+            $crate::serde_json::to_value(&first).unwrap(),
+            $crate::serde_json::to_value(&second).unwrap(),
+            concat!(stringify!($ty), " round-trip is not idempotent")
+        );
+        first
+    }};
+}
+
+/// Assert that none of the given field names appear in the serialized JSON of
+/// `$value`. Use to verify that unset `Option` fields stay off the wire.
+///
+/// ```rust,ignore
+/// assert_off_wire!(value, "field_a", "field_b");
+/// ```
+#[macro_export]
+macro_rules! assert_off_wire {
+    ($value:expr, $($field:literal),+ $(,)?) => {{
+        let serialized = $crate::serde_json::to_value(&$value)
+            .expect("serialization failed in assert_off_wire");
+        $(
+            assert!(
+                serialized.get($field).is_none(),
+                "field {:?} must be absent from wire representation but was present: {}",
+                $field,
+                serialized
+            );
+        )+
+    }};
+}
+
+/// Assert wire string ↔ variant ↔ Display/FromStr agreement for an enum.
+///
+/// ```rust,ignore
+/// assert_wire_enum!(MyEnum, "variant-a" => MyEnum::VariantA, "b" => MyEnum::B);
+/// ```
+#[macro_export]
+macro_rules! assert_wire_enum {
+    ($ty:ty, $($wire:literal => $variant:expr),+ $(,)?) => {{
+        $(
+            let deserialized: $ty = $crate::serde_json::from_value(
+                $crate::serde_json::Value::String($wire.to_string())
+            )
+            .expect(concat!("deserialization from wire string failed for ", stringify!($ty)));
+            assert_eq!(
+                deserialized, $variant,
+                concat!("wire {:?} should deserialize to ", stringify!($variant)),
+                $wire
+            );
+            let reserialized = $crate::serde_json::to_value(&deserialized)
+                .expect("serialization failed");
+            assert_eq!(
+                reserialized,
+                $crate::serde_json::Value::String($wire.to_string()),
+                "round-trip serialization mismatch for {:?}",
+                $wire
+            );
+        )+
+    }};
+}
+
+/// Assert that each JSON value deserializes to the expected union variant.
+///
+/// ```rust,ignore
+/// assert_union_variants!(MyUnion, json_a => MyUnion::VariantA, json_b => MyUnion::VariantB);
+/// ```
+#[macro_export]
+macro_rules! assert_union_variants {
+    ($ty:ty, $($json:expr => $variant:pat),+ $(,)?) => {{
+        $(
+            let deserialized: $ty = $crate::serde_json::from_value($json)
+                .expect(concat!("deserialization to ", stringify!($ty), " failed"));
+            assert!(
+                matches!(deserialized, $variant),
+                concat!("expected variant ", stringify!($variant), " but got {:?}"),
+                // $ty doesn't necessarily impl Debug, so avoid it
+            );
+        )+
+    }};
+}
+
+/// Assert that deserializing a JSON value into `$ty` fails.
+///
+/// ```rust,ignore
+/// assert_rejects!(MyType, serde_json::json!({"bad": "data"}), "expected reason substr");
+/// ```
+#[macro_export]
+macro_rules! assert_rejects {
+    ($ty:ty, $json:expr, $reason:literal) => {{
+        let result: Result<$ty, _> = $crate::serde_json::from_value($json);
+        assert!(
+            result.is_err(),
+            concat!(
+                "expected deserialization of ",
+                stringify!($ty),
+                " to fail (",
+                $reason,
+                ") but it succeeded"
+            )
+        );
+    }};
+}

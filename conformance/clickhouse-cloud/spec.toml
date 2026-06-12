@@ -1,0 +1,3 @@
+name = "clickhouse-cloud"
+url = "https://api.clickhouse.cloud/v1"
+version = "3.1"
