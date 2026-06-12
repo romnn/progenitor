@@ -151,13 +151,13 @@ pub struct ObjectBs {
 impl ::std::default::Default for ObjectBs {
     fn default() -> Self {
         Self {
-            ok: Default::default(),
+            ok: ::std::default::Default::default(),
         }
     }
 }
 impl ObjectBs {
     pub fn builder() -> builder::ObjectBs {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = r" Types for composing complex structures."]
@@ -169,7 +169,7 @@ pub mod builder {
     impl ::std::default::Default for ObjectBs {
         fn default() -> Self {
             Self {
-                ok: Ok(Default::default()),
+                ok: Ok(::std::default::Default::default()),
             }
         }
     }

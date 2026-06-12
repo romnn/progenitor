@@ -44,7 +44,7 @@ pub struct AnythingWorks {
 }
 impl AnythingWorks {
     pub fn builder() -> builder::AnythingWorks {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`FloatsArentTerribleImTold`"]
@@ -71,13 +71,13 @@ pub struct FloatsArentTerribleImTold {
 impl ::std::default::Default for FloatsArentTerribleImTold {
     fn default() -> Self {
         Self {
-            flush_timeout: Default::default(),
+            flush_timeout: ::std::default::Default::default(),
         }
     }
 }
 impl FloatsArentTerribleImTold {
     pub fn builder() -> builder::FloatsArentTerribleImTold {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`JustOne`"]
@@ -192,7 +192,7 @@ pub struct UintMinimumAndMaximum {
 }
 impl UintMinimumAndMaximum {
     pub fn builder() -> builder::UintMinimumAndMaximum {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = r" Types for composing complex structures."]
@@ -244,7 +244,7 @@ pub mod builder {
     impl ::std::default::Default for FloatsArentTerribleImTold {
         fn default() -> Self {
             Self {
-                flush_timeout: Ok(Default::default()),
+                flush_timeout: Ok(::std::default::Default::default()),
             }
         }
     }

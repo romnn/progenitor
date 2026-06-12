@@ -672,6 +672,21 @@ fn clap_arg(
 
     let value_parser = if let Some(enum_parser) = maybe_enum_parser {
         enum_parser
+    } else if !arg_type.has_impl(typify::TypeSpaceImpl::FromStr) {
+        // `clap::value_parser!` needs `FromStr` (or a `ValueParserFactory`
+        // override) to infer a parser; types like buildomat's
+        // string-or-array path id have neither. Every generated type is
+        // `Deserialize`, so accept a string and route it through serde.
+        quote! {
+            ::clap::builder::TypedValueParser::try_map(
+                ::clap::builder::StringValueParser::new(),
+                |s: ::std::string::String| {
+                    ::serde_json::from_value::<#arg_type_name>(
+                        ::serde_json::Value::String(s),
+                    )
+                },
+            )
+        }
     } else {
         // Let clap pick a value parser for us. This has the benefit of
         // allowing for override implementations. A generated client may

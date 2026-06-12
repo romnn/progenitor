@@ -220,7 +220,7 @@ pub mod types {
 
     impl ObjWithOptionArray {
         pub fn builder() -> builder::ObjWithOptionArray {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -274,7 +274,7 @@ pub mod types {
 
     impl Task {
         pub fn builder() -> builder::Task {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -323,7 +323,7 @@ pub mod types {
 
     impl TaskEvent {
         pub fn builder() -> builder::TaskEvent {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -366,7 +366,7 @@ pub mod types {
 
     impl TaskOutput {
         pub fn builder() -> builder::TaskOutput {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -415,7 +415,7 @@ pub mod types {
 
     impl TaskSubmit {
         pub fn builder() -> builder::TaskSubmit {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -446,7 +446,7 @@ pub mod types {
 
     impl TaskSubmitResult {
         pub fn builder() -> builder::TaskSubmitResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -477,7 +477,7 @@ pub mod types {
 
     impl UploadedChunk {
         pub fn builder() -> builder::UploadedChunk {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -508,7 +508,7 @@ pub mod types {
 
     impl UserCreate {
         pub fn builder() -> builder::UserCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -549,7 +549,7 @@ pub mod types {
 
     impl UserCreateResult {
         pub fn builder() -> builder::UserCreateResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -585,7 +585,7 @@ pub mod types {
 
     impl WhoamiResult {
         pub fn builder() -> builder::WhoamiResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -645,7 +645,7 @@ pub mod types {
 
     impl Worker {
         pub fn builder() -> builder::Worker {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -690,7 +690,7 @@ pub mod types {
 
     impl WorkerAddOutput {
         pub fn builder() -> builder::WorkerAddOutput {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -732,7 +732,7 @@ pub mod types {
 
     impl WorkerAppendTask {
         pub fn builder() -> builder::WorkerAppendTask {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -768,7 +768,7 @@ pub mod types {
 
     impl WorkerBootstrap {
         pub fn builder() -> builder::WorkerBootstrap {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -799,7 +799,7 @@ pub mod types {
 
     impl WorkerBootstrapResult {
         pub fn builder() -> builder::WorkerBootstrapResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -830,7 +830,7 @@ pub mod types {
 
     impl WorkerCompleteTask {
         pub fn builder() -> builder::WorkerCompleteTask {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -866,7 +866,7 @@ pub mod types {
 
     impl WorkerPingResult {
         pub fn builder() -> builder::WorkerPingResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -910,7 +910,7 @@ pub mod types {
 
     impl WorkerPingTask {
         pub fn builder() -> builder::WorkerPingTask {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -951,7 +951,7 @@ pub mod types {
 
     impl WorkerTask {
         pub fn builder() -> builder::WorkerTask {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -985,7 +985,7 @@ pub mod types {
 
     impl WorkersResult {
         pub fn builder() -> builder::WorkersResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1337,7 +1337,7 @@ pub mod types {
                 Self {
                     default: Err("no value supplied for default".to_string()),
                     name: Err("no value supplied for name".to_string()),
-                    output_rules: Ok(Default::default()),
+                    output_rules: Ok(::std::default::Default::default()),
                     script: Err("no value supplied for script".to_string()),
                 }
             }
@@ -1689,8 +1689,8 @@ pub mod types {
                 Self {
                     deleted: Err("no value supplied for deleted".to_string()),
                     id: Err("no value supplied for id".to_string()),
-                    instance_id: Ok(Default::default()),
-                    lastping: Ok(Default::default()),
+                    instance_id: Ok(::std::default::Default::default()),
+                    lastping: Ok(::std::default::Default::default()),
                     recycle: Err("no value supplied for recycle".to_string()),
                     tasks: Err("no value supplied for tasks".to_string()),
                 }
@@ -2101,7 +2101,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     poweroff: Err("no value supplied for poweroff".to_string()),
-                    task: Ok(Default::default()),
+                    task: Ok(::std::default::Default::default()),
                 }
             }
         }

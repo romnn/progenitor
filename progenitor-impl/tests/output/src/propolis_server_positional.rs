@@ -440,7 +440,7 @@ pub mod types {
     impl ::std::default::Default for InstanceEnsureResponse {
         fn default() -> Self {
             Self {
-                migrate: Default::default(),
+                migrate: ::std::default::Default::default(),
             }
         }
     }

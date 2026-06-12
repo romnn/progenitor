@@ -129,7 +129,7 @@ pub mod types {
 
     impl CrucibleOpts {
         pub fn builder() -> builder::CrucibleOpts {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -171,7 +171,7 @@ pub mod types {
 
     impl DiskAttachment {
         pub fn builder() -> builder::DiskAttachment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -274,7 +274,7 @@ pub mod types {
 
     impl DiskRequest {
         pub fn builder() -> builder::DiskRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -314,7 +314,7 @@ pub mod types {
 
     impl Error {
         pub fn builder() -> builder::Error {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -364,7 +364,7 @@ pub mod types {
 
     impl Instance {
         pub fn builder() -> builder::Instance {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -436,7 +436,7 @@ pub mod types {
 
     impl InstanceEnsureRequest {
         pub fn builder() -> builder::InstanceEnsureRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -476,14 +476,14 @@ pub mod types {
     impl ::std::default::Default for InstanceEnsureResponse {
         fn default() -> Self {
             Self {
-                migrate: Default::default(),
+                migrate: ::std::default::Default::default(),
             }
         }
     }
 
     impl InstanceEnsureResponse {
         pub fn builder() -> builder::InstanceEnsureResponse {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -512,7 +512,7 @@ pub mod types {
 
     impl InstanceGetResponse {
         pub fn builder() -> builder::InstanceGetResponse {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -553,7 +553,7 @@ pub mod types {
 
     impl InstanceMigrateInitiateRequest {
         pub fn builder() -> builder::InstanceMigrateInitiateRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -583,7 +583,7 @@ pub mod types {
 
     impl InstanceMigrateInitiateResponse {
         pub fn builder() -> builder::InstanceMigrateInitiateResponse {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -613,7 +613,7 @@ pub mod types {
 
     impl InstanceMigrateStatusRequest {
         pub fn builder() -> builder::InstanceMigrateStatusRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -642,7 +642,7 @@ pub mod types {
 
     impl InstanceMigrateStatusResponse {
         pub fn builder() -> builder::InstanceMigrateStatusResponse {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -723,7 +723,7 @@ pub mod types {
 
     impl InstanceProperties {
         pub fn builder() -> builder::InstanceProperties {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -864,7 +864,7 @@ pub mod types {
 
     impl InstanceStateMonitorRequest {
         pub fn builder() -> builder::InstanceStateMonitorRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -901,7 +901,7 @@ pub mod types {
 
     impl InstanceStateMonitorResponse {
         pub fn builder() -> builder::InstanceStateMonitorResponse {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1127,7 +1127,7 @@ pub mod types {
 
     impl NetworkInterface {
         pub fn builder() -> builder::NetworkInterface {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1204,7 +1204,7 @@ pub mod types {
 
     impl NetworkInterfaceRequest {
         pub fn builder() -> builder::NetworkInterfaceRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1487,15 +1487,15 @@ pub mod types {
         impl ::std::default::Default for CrucibleOpts {
             fn default() -> Self {
                 Self {
-                    cert_pem: Ok(Default::default()),
-                    control: Ok(Default::default()),
-                    flush_timeout: Ok(Default::default()),
+                    cert_pem: Ok(::std::default::Default::default()),
+                    control: Ok(::std::default::Default::default()),
+                    flush_timeout: Ok(::std::default::Default::default()),
                     id: Err("no value supplied for id".to_string()),
-                    key: Ok(Default::default()),
-                    key_pem: Ok(Default::default()),
+                    key: Ok(::std::default::Default::default()),
+                    key_pem: Ok(::std::default::Default::default()),
                     lossy: Err("no value supplied for lossy".to_string()),
                     read_only: Err("no value supplied for read_only".to_string()),
-                    root_cert_pem: Ok(Default::default()),
+                    root_cert_pem: Ok(::std::default::Default::default()),
                     target: Err("no value supplied for target".to_string()),
                 }
             }
@@ -1845,7 +1845,7 @@ pub mod types {
         impl ::std::default::Default for Error {
             fn default() -> Self {
                 Self {
-                    error_code: Ok(Default::default()),
+                    error_code: Ok(::std::default::Default::default()),
                     message: Err("no value supplied for message".to_string()),
                     request_id: Err("no value supplied for request_id".to_string()),
                 }
@@ -2023,10 +2023,10 @@ pub mod types {
         impl ::std::default::Default for InstanceEnsureRequest {
             fn default() -> Self {
                 Self {
-                    cloud_init_bytes: Ok(Default::default()),
-                    disks: Ok(Default::default()),
-                    migrate: Ok(Default::default()),
-                    nics: Ok(Default::default()),
+                    cloud_init_bytes: Ok(::std::default::Default::default()),
+                    disks: Ok(::std::default::Default::default()),
+                    migrate: Ok(::std::default::Default::default()),
+                    nics: Ok(::std::default::Default::default()),
                     properties: Err("no value supplied for properties".to_string()),
                 }
             }
@@ -2125,7 +2125,7 @@ pub mod types {
         impl ::std::default::Default for InstanceEnsureResponse {
             fn default() -> Self {
                 Self {
-                    migrate: Ok(Default::default()),
+                    migrate: Ok(::std::default::Default::default()),
                 }
             }
         }

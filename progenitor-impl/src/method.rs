@@ -533,6 +533,28 @@ impl Generator {
                                 type_id
                             };
 
+                        // The generated path encoding renders the value
+                        // with `Display`. Wild specs declare path
+                        // parameters whose types can't (Keycloak ships a
+                        // free-form `{type: object}`, Mollie a nullable
+                        // enum); degrade those to a plain string the
+                        // caller formats rather than emitting code that
+                        // doesn't compile.
+                        let ty = self.type_space.get_type(&type_id).unwrap();
+                        let type_id = if ty.has_impl(typify::TypeSpaceImpl::Display) {
+                            type_id
+                        } else {
+                            let string: schemars::schema::Schema =
+                                schemars::schema::SchemaObject {
+                                    instance_type: Some(
+                                        schemars::schema::InstanceType::String.into(),
+                                    ),
+                                    ..Default::default()
+                                }
+                                .into();
+                            self.type_space.add_type(&string)?
+                        };
+
                         Ok(OperationParameter {
                             name: sanitize(&parameter.name, Case::Snake),
                             api_name: parameter.name.clone(),
@@ -595,14 +617,37 @@ impl Generator {
                         // the generated header encoding needs the inner
                         // type (calling `.to_string()` on an `Option` does
                         // not compile).
-                        let ty = self.type_space.get_type(&type_id).unwrap();
-                        let details = ty.details();
-                        let (type_id, required) =
-                            if let typify::TypeDetails::Option(inner_type_id) = details {
+                        let (type_id, required) = {
+                            let ty = self.type_space.get_type(&type_id).unwrap();
+                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
                                 (inner_type_id, false)
                             } else {
                                 (type_id, parameter.required)
-                            };
+                            }
+                        };
+
+                        // The header encoding also renders with `Display`.
+                        // Linode types its X-Filter header as a free-form
+                        // JSON object; degrade such parameters to a plain
+                        // string the caller serializes, exactly like path
+                        // parameters.
+                        let has_display = {
+                            let ty = self.type_space.get_type(&type_id).unwrap();
+                            ty.has_impl(typify::TypeSpaceImpl::Display)
+                        };
+                        let type_id = if has_display {
+                            type_id
+                        } else {
+                            let string: schemars::schema::Schema =
+                                schemars::schema::SchemaObject {
+                                    instance_type: Some(
+                                        schemars::schema::InstanceType::String.into(),
+                                    ),
+                                    ..Default::default()
+                                }
+                                .into();
+                            self.type_space.add_type(&string)?
+                        };
 
                         Ok(OperationParameter {
                             name: sanitize(&parameter.name, Case::Snake),
@@ -627,20 +672,6 @@ impl Generator {
                 }
             })
             .collect::<Result<Vec<_>>>()?;
-
-        // Distinct API parameter names can sanitize to the same Rust
-        // identifier (`filter.workflowId` and `filter.workflow_id` both
-        // become `filter_workflow_id`); disambiguate deterministically so
-        // the generated function signature compiles.
-        let mut seen_names = std::collections::HashSet::new();
-        for param in &mut params {
-            let base = param.name.clone();
-            let mut counter = 2;
-            while !seen_names.insert(param.name.clone()) {
-                param.name = format!("{base}_{counter}");
-                counter += 1;
-            }
-        }
 
         let dropshot_websocket = operation.extensions.get("x-dropshot-websocket").is_some();
         if dropshot_websocket {
@@ -686,6 +717,23 @@ impl Generator {
                     kind: OperationParameterKind::Path,
                     deep_object_query: false,
                 });
+            }
+        }
+
+        // Distinct API parameter names can sanitize to the same Rust
+        // identifier (`filter.workflowId` and `filter.workflow_id` both
+        // become `filter_workflow_id`, and Elasticsearch declares
+        // `scroll_id` as both a path and a query parameter); disambiguate
+        // deterministically so the generated function signature compiles.
+        // This must run after every source of parameters — declared, body,
+        // and template-synthesized — has been collected.
+        let mut seen_names = std::collections::HashSet::new();
+        for param in &mut params {
+            let base = param.name.clone();
+            let mut counter = 2;
+            while !seen_names.insert(param.name.clone()) {
+                param.name = format!("{base}_{counter}");
+                counter += 1;
             }
         }
 
@@ -1449,7 +1497,17 @@ impl Generator {
         });
 
         let operation_id = &method.operation_id;
-        let method_func = format_ident!("{}", method.method.as_str());
+        // reqwest::Client only has convenience helpers for the common
+        // verbs; OPTIONS and TRACE operations (Box, Kong) go through
+        // `request` with an explicit Method.
+        let method_call = match method.method {
+            HttpMethod::Options => quote! { request(::reqwest::Method::OPTIONS, #url_ident) },
+            HttpMethod::Trace => quote! { request(::reqwest::Method::TRACE, #url_ident) },
+            _ => {
+                let method_func = format_ident!("{}", method.method.as_str());
+                quote! { #method_func (#url_ident) }
+            }
+        };
 
         let body_impl = quote! {
             #url_path
@@ -1458,7 +1516,7 @@ impl Generator {
 
             #[allow(unused_mut)]
             let mut #request_ident = #client_value.client
-                . #method_func (#url_ident)
+                . #method_call
                 #accept_header
                 #(#body_func)*
                 #( .query(#query_params) )*

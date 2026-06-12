@@ -8231,12 +8231,12 @@ pub struct AxisEncode {
 impl ::std::default::Default for AxisEncode {
     fn default() -> Self {
         Self {
-            axis: Default::default(),
-            domain: Default::default(),
-            grid: Default::default(),
-            labels: Default::default(),
-            ticks: Default::default(),
-            title: Default::default(),
+            axis: ::std::default::Default::default(),
+            domain: ::std::default::Default::default(),
+            grid: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            ticks: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -20664,8 +20664,8 @@ pub struct DataVariant2FormatVariant0Subtype0 {
 impl ::std::default::Default for DataVariant2FormatVariant0Subtype0 {
     fn default() -> Self {
         Self {
-            parse: Default::default(),
-            type_: Default::default(),
+            parse: ::std::default::Default::default(),
+            type_: ::std::default::Default::default(),
         }
     }
 }
@@ -21148,10 +21148,10 @@ pub struct DataVariant2FormatVariant0Subtype1 {
 impl ::std::default::Default for DataVariant2FormatVariant0Subtype1 {
     fn default() -> Self {
         Self {
-            copy: Default::default(),
-            parse: Default::default(),
-            property: Default::default(),
-            type_: Default::default(),
+            copy: ::std::default::Default::default(),
+            parse: ::std::default::Default::default(),
+            property: ::std::default::Default::default(),
+            type_: ::std::default::Default::default(),
         }
     }
 }
@@ -23378,8 +23378,8 @@ pub struct DataVariant3FormatVariant0Subtype0 {
 impl ::std::default::Default for DataVariant3FormatVariant0Subtype0 {
     fn default() -> Self {
         Self {
-            parse: Default::default(),
-            type_: Default::default(),
+            parse: ::std::default::Default::default(),
+            type_: ::std::default::Default::default(),
         }
     }
 }
@@ -23862,10 +23862,10 @@ pub struct DataVariant3FormatVariant0Subtype1 {
 impl ::std::default::Default for DataVariant3FormatVariant0Subtype1 {
     fn default() -> Self {
         Self {
-            copy: Default::default(),
-            parse: Default::default(),
-            property: Default::default(),
-            type_: Default::default(),
+            copy: ::std::default::Default::default(),
+            parse: ::std::default::Default::default(),
+            property: ::std::default::Default::default(),
+            type_: ::std::default::Default::default(),
         }
     }
 }
@@ -29436,75 +29436,75 @@ pub struct EncodeEntry {
 impl ::std::default::Default for EncodeEntry {
     fn default() -> Self {
         Self {
-            align: Default::default(),
-            angle: Default::default(),
-            aria: Default::default(),
-            aria_role: Default::default(),
-            aria_role_description: Default::default(),
-            aspect: Default::default(),
-            baseline: Default::default(),
-            blend: Default::default(),
-            clip: Default::default(),
-            corner_radius: Default::default(),
-            corner_radius_bottom_left: Default::default(),
-            corner_radius_bottom_right: Default::default(),
-            corner_radius_top_left: Default::default(),
-            corner_radius_top_right: Default::default(),
-            cursor: Default::default(),
-            defined: Default::default(),
-            description: Default::default(),
-            dir: Default::default(),
-            dx: Default::default(),
-            dy: Default::default(),
-            ellipsis: Default::default(),
-            end_angle: Default::default(),
-            fill: Default::default(),
-            fill_opacity: Default::default(),
-            font: Default::default(),
-            font_size: Default::default(),
-            font_style: Default::default(),
-            font_weight: Default::default(),
-            height: Default::default(),
-            inner_radius: Default::default(),
-            interpolate: Default::default(),
-            limit: Default::default(),
-            line_break: Default::default(),
-            line_height: Default::default(),
-            opacity: Default::default(),
-            orient: Default::default(),
-            outer_radius: Default::default(),
-            pad_angle: Default::default(),
-            path: Default::default(),
-            radius: Default::default(),
-            scale_x: Default::default(),
-            scale_y: Default::default(),
-            shape: Default::default(),
-            size: Default::default(),
-            smooth: Default::default(),
-            start_angle: Default::default(),
-            stroke: Default::default(),
-            stroke_cap: Default::default(),
-            stroke_dash: Default::default(),
-            stroke_dash_offset: Default::default(),
-            stroke_foreground: Default::default(),
-            stroke_join: Default::default(),
-            stroke_miter_limit: Default::default(),
-            stroke_offset: Default::default(),
-            stroke_opacity: Default::default(),
-            stroke_width: Default::default(),
-            tension: Default::default(),
-            text: Default::default(),
-            theta: Default::default(),
-            tooltip: Default::default(),
-            url: Default::default(),
-            width: Default::default(),
-            x: Default::default(),
-            x2: Default::default(),
-            xc: Default::default(),
-            y: Default::default(),
-            y2: Default::default(),
-            yc: Default::default(),
-            zindex: Default::default(),
+            align: ::std::default::Default::default(),
+            angle: ::std::default::Default::default(),
+            aria: ::std::default::Default::default(),
+            aria_role: ::std::default::Default::default(),
+            aria_role_description: ::std::default::Default::default(),
+            aspect: ::std::default::Default::default(),
+            baseline: ::std::default::Default::default(),
+            blend: ::std::default::Default::default(),
+            clip: ::std::default::Default::default(),
+            corner_radius: ::std::default::Default::default(),
+            corner_radius_bottom_left: ::std::default::Default::default(),
+            corner_radius_bottom_right: ::std::default::Default::default(),
+            corner_radius_top_left: ::std::default::Default::default(),
+            corner_radius_top_right: ::std::default::Default::default(),
+            cursor: ::std::default::Default::default(),
+            defined: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            dir: ::std::default::Default::default(),
+            dx: ::std::default::Default::default(),
+            dy: ::std::default::Default::default(),
+            ellipsis: ::std::default::Default::default(),
+            end_angle: ::std::default::Default::default(),
+            fill: ::std::default::Default::default(),
+            fill_opacity: ::std::default::Default::default(),
+            font: ::std::default::Default::default(),
+            font_size: ::std::default::Default::default(),
+            font_style: ::std::default::Default::default(),
+            font_weight: ::std::default::Default::default(),
+            height: ::std::default::Default::default(),
+            inner_radius: ::std::default::Default::default(),
+            interpolate: ::std::default::Default::default(),
+            limit: ::std::default::Default::default(),
+            line_break: ::std::default::Default::default(),
+            line_height: ::std::default::Default::default(),
+            opacity: ::std::default::Default::default(),
+            orient: ::std::default::Default::default(),
+            outer_radius: ::std::default::Default::default(),
+            pad_angle: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            radius: ::std::default::Default::default(),
+            scale_x: ::std::default::Default::default(),
+            scale_y: ::std::default::Default::default(),
+            shape: ::std::default::Default::default(),
+            size: ::std::default::Default::default(),
+            smooth: ::std::default::Default::default(),
+            start_angle: ::std::default::Default::default(),
+            stroke: ::std::default::Default::default(),
+            stroke_cap: ::std::default::Default::default(),
+            stroke_dash: ::std::default::Default::default(),
+            stroke_dash_offset: ::std::default::Default::default(),
+            stroke_foreground: ::std::default::Default::default(),
+            stroke_join: ::std::default::Default::default(),
+            stroke_miter_limit: ::std::default::Default::default(),
+            stroke_offset: ::std::default::Default::default(),
+            stroke_opacity: ::std::default::Default::default(),
+            stroke_width: ::std::default::Default::default(),
+            tension: ::std::default::Default::default(),
+            text: ::std::default::Default::default(),
+            theta: ::std::default::Default::default(),
+            tooltip: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
+            width: ::std::default::Default::default(),
+            x: ::std::default::Default::default(),
+            x2: ::std::default::Default::default(),
+            xc: ::std::default::Default::default(),
+            y: ::std::default::Default::default(),
+            y2: ::std::default::Default::default(),
+            yc: ::std::default::Default::default(),
+            zindex: ::std::default::Default::default(),
         }
     }
 }
@@ -29676,26 +29676,26 @@ pub struct Everything {
 impl ::std::default::Default for Everything {
     fn default() -> Self {
         Self {
-            autosize: Default::default(),
-            axes: Default::default(),
-            background: Default::default(),
-            config: Default::default(),
-            data: Default::default(),
-            description: Default::default(),
-            encode: Default::default(),
-            height: Default::default(),
-            layout: Default::default(),
-            legends: Default::default(),
-            marks: Default::default(),
-            padding: Default::default(),
-            projections: Default::default(),
-            scales: Default::default(),
-            schema: Default::default(),
-            signals: Default::default(),
-            style: Default::default(),
-            title: Default::default(),
-            usermeta: Default::default(),
-            width: Default::default(),
+            autosize: ::std::default::Default::default(),
+            axes: ::std::default::Default::default(),
+            background: ::std::default::Default::default(),
+            config: ::std::default::Default::default(),
+            data: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            encode: ::std::default::Default::default(),
+            height: ::std::default::Default::default(),
+            layout: ::std::default::Default::default(),
+            legends: ::std::default::Default::default(),
+            marks: ::std::default::Default::default(),
+            padding: ::std::default::Default::default(),
+            projections: ::std::default::Default::default(),
+            scales: ::std::default::Default::default(),
+            schema: ::std::default::Default::default(),
+            signals: ::std::default::Default::default(),
+            style: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
+            usermeta: ::std::default::Default::default(),
+            width: ::std::default::Default::default(),
         }
     }
 }
@@ -30232,10 +30232,10 @@ pub struct FacetFacetVariant1Aggregate {
 impl ::std::default::Default for FacetFacetVariant1Aggregate {
     fn default() -> Self {
         Self {
-            as_: Default::default(),
-            cross: Default::default(),
-            fields: Default::default(),
-            ops: Default::default(),
+            as_: ::std::default::Default::default(),
+            cross: ::std::default::Default::default(),
+            fields: ::std::default::Default::default(),
+            ops: ::std::default::Default::default(),
         }
     }
 }
@@ -34478,7 +34478,7 @@ pub struct From {
 impl ::std::default::Default for From {
     fn default() -> Self {
         Self {
-            data: Default::default(),
+            data: ::std::default::Default::default(),
         }
     }
 }
@@ -36428,9 +36428,9 @@ pub struct GuideEncode {
 impl ::std::default::Default for GuideEncode {
     fn default() -> Self {
         Self {
-            interactive: Default::default(),
-            name: Default::default(),
-            style: Default::default(),
+            interactive: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
+            style: ::std::default::Default::default(),
         }
     }
 }
@@ -46821,12 +46821,12 @@ pub struct LegendVariant0Encode {
 impl ::std::default::Default for LegendVariant0Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -49416,12 +49416,12 @@ pub struct LegendVariant1Encode {
 impl ::std::default::Default for LegendVariant1Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -52011,12 +52011,12 @@ pub struct LegendVariant2Encode {
 impl ::std::default::Default for LegendVariant2Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -54606,12 +54606,12 @@ pub struct LegendVariant3Encode {
 impl ::std::default::Default for LegendVariant3Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -57201,12 +57201,12 @@ pub struct LegendVariant4Encode {
 impl ::std::default::Default for LegendVariant4Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -59796,12 +59796,12 @@ pub struct LegendVariant5Encode {
 impl ::std::default::Default for LegendVariant5Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -62391,12 +62391,12 @@ pub struct LegendVariant6Encode {
 impl ::std::default::Default for LegendVariant6Encode {
     fn default() -> Self {
         Self {
-            entries: Default::default(),
-            gradient: Default::default(),
-            labels: Default::default(),
-            legend: Default::default(),
-            symbols: Default::default(),
-            title: Default::default(),
+            entries: ::std::default::Default::default(),
+            gradient: ::std::default::Default::default(),
+            labels: ::std::default::Default::default(),
+            legend: ::std::default::Default::default(),
+            symbols: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -67473,13 +67473,13 @@ pub struct NumberModifiers {
 impl ::std::default::Default for NumberModifiers {
     fn default() -> Self {
         Self {
-            band: Default::default(),
-            exponent: Default::default(),
-            extra: Default::default(),
-            mult: Default::default(),
-            offset: Default::default(),
-            round: Default::default(),
-            scale: Default::default(),
+            band: ::std::default::Default::default(),
+            exponent: ::std::default::Default::default(),
+            extra: ::std::default::Default::default(),
+            mult: ::std::default::Default::default(),
+            offset: ::std::default::Default::default(),
+            round: ::std::default::Default::default(),
+            scale: ::std::default::Default::default(),
         }
     }
 }
@@ -77646,7 +77646,7 @@ pub struct Rule {
 impl ::std::default::Default for Rule {
     fn default() -> Self {
         Self {
-            test: Default::default(),
+            test: ::std::default::Default::default(),
         }
     }
 }
@@ -90469,17 +90469,17 @@ pub struct Scope {
 impl ::std::default::Default for Scope {
     fn default() -> Self {
         Self {
-            axes: Default::default(),
-            data: Default::default(),
-            encode: Default::default(),
-            layout: Default::default(),
-            legends: Default::default(),
-            marks: Default::default(),
-            projections: Default::default(),
-            scales: Default::default(),
-            signals: Default::default(),
-            title: Default::default(),
-            usermeta: Default::default(),
+            axes: ::std::default::Default::default(),
+            data: ::std::default::Default::default(),
+            encode: ::std::default::Default::default(),
+            layout: ::std::default::Default::default(),
+            legends: ::std::default::Default::default(),
+            marks: ::std::default::Default::default(),
+            projections: ::std::default::Default::default(),
+            scales: ::std::default::Default::default(),
+            signals: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
+            usermeta: ::std::default::Default::default(),
         }
     }
 }
@@ -92263,7 +92263,7 @@ pub struct StringModifiers {
 impl ::std::default::Default for StringModifiers {
     fn default() -> Self {
         Self {
-            scale: Default::default(),
+            scale: ::std::default::Default::default(),
         }
     }
 }
@@ -100335,8 +100335,8 @@ pub struct TitleObjectEncode {
 impl ::std::default::Default for TitleObjectEncode {
     fn default() -> Self {
         Self {
-            subtype_0: Default::default(),
-            subtype_1: Default::default(),
+            subtype_0: ::std::default::Default::default(),
+            subtype_1: ::std::default::Default::default(),
         }
     }
 }
@@ -100447,9 +100447,9 @@ pub struct TitleObjectEncodeSubtype1 {
 impl ::std::default::Default for TitleObjectEncodeSubtype1 {
     fn default() -> Self {
         Self {
-            group: Default::default(),
-            subtitle: Default::default(),
-            title: Default::default(),
+            group: ::std::default::Default::default(),
+            subtitle: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }

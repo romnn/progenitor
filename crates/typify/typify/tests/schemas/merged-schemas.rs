@@ -47,13 +47,13 @@ pub struct BarProp {
 impl ::std::default::Default for BarProp {
     fn default() -> Self {
         Self {
-            bar: Default::default(),
+            bar: ::std::default::Default::default(),
         }
     }
 }
 impl BarProp {
     pub fn builder() -> builder::BarProp {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`ButNotThat`"]
@@ -83,13 +83,13 @@ pub struct ButNotThat {
 impl ::std::default::Default for ButNotThat {
     fn default() -> Self {
         Self {
-            this: Default::default(),
+            this: ::std::default::Default::default(),
         }
     }
 }
 impl ButNotThat {
     pub fn builder() -> builder::ButNotThat {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "if we don't see this, we dropped the metadata"]
@@ -124,14 +124,14 @@ pub struct CommentedTypeMerged {
 impl ::std::default::Default for CommentedTypeMerged {
     fn default() -> Self {
         Self {
-            x: Default::default(),
-            y: Default::default(),
+            x: ::std::default::Default::default(),
+            y: ::std::default::Default::default(),
         }
     }
 }
 impl CommentedTypeMerged {
     pub fn builder() -> builder::CommentedTypeMerged {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`HereAndThere`"]
@@ -210,13 +210,13 @@ pub struct JsonResponseBase {
 impl ::std::default::Default for JsonResponseBase {
     fn default() -> Self {
         Self {
-            result: Default::default(),
+            result: ::std::default::Default::default(),
         }
     }
 }
 impl JsonResponseBase {
     pub fn builder() -> builder::JsonResponseBase {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`JsonSuccess`"]
@@ -248,7 +248,7 @@ pub struct JsonSuccess {
 }
 impl JsonSuccess {
     pub fn builder() -> builder::JsonSuccess {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "x"]
@@ -289,7 +289,7 @@ pub struct JsonSuccessBase {
 }
 impl JsonSuccessBase {
     pub fn builder() -> builder::JsonSuccessBase {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`JsonSuccessBaseResult`"]
@@ -478,7 +478,7 @@ impl ::std::default::Default for MergeEmpty {
 }
 impl MergeEmpty {
     pub fn builder() -> builder::MergeEmpty {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`MergeNumberBounds`"]
@@ -718,7 +718,7 @@ pub struct OrderDependentMerge {
 }
 impl OrderDependentMerge {
     pub fn builder() -> builder::OrderDependentMerge {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`Pickingone`"]
@@ -753,7 +753,7 @@ pub struct Pickingone {
 }
 impl Pickingone {
     pub fn builder() -> builder::Pickingone {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`PickingoneInstallation`"]
@@ -786,13 +786,13 @@ pub struct PickingoneInstallation {
 impl ::std::default::Default for PickingoneInstallation {
     fn default() -> Self {
         Self {
-            suspended_by: Default::default(),
+            suspended_by: ::std::default::Default::default(),
         }
     }
 }
 impl PickingoneInstallation {
     pub fn builder() -> builder::PickingoneInstallation {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`PickingoneSuspendedBy`"]
@@ -833,13 +833,13 @@ pub struct PickingoneSuspendedBy {
 impl ::std::default::Default for PickingoneSuspendedBy {
     fn default() -> Self {
         Self {
-            email: Default::default(),
+            email: ::std::default::Default::default(),
         }
     }
 }
 impl PickingoneSuspendedBy {
     pub fn builder() -> builder::PickingoneSuspendedBy {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`PickingoneUser`"]
@@ -868,13 +868,13 @@ pub struct PickingoneUser {
 impl ::std::default::Default for PickingoneUser {
     fn default() -> Self {
         Self {
-            email: Default::default(),
+            email: ::std::default::Default::default(),
         }
     }
 }
 impl PickingoneUser {
     pub fn builder() -> builder::PickingoneUser {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`TrimFat`"]
@@ -915,7 +915,7 @@ pub struct TrimFat {
 }
 impl TrimFat {
     pub fn builder() -> builder::TrimFat {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`TriplePattern`"]
@@ -1048,7 +1048,7 @@ pub struct UnchangedByMerge {
 }
 impl UnchangedByMerge {
     pub fn builder() -> builder::UnchangedByMerge {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`UnchangedByMergeTag`"]
@@ -1337,13 +1337,13 @@ pub struct Unsatisfiable3A {
 impl ::std::default::Default for Unsatisfiable3A {
     fn default() -> Self {
         Self {
-            action: Default::default(),
+            action: ::std::default::Default::default(),
         }
     }
 }
 impl Unsatisfiable3A {
     pub fn builder() -> builder::Unsatisfiable3A {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`Unsatisfiable3B`"]
@@ -1632,7 +1632,7 @@ pub mod builder {
     impl ::std::default::Default for BarProp {
         fn default() -> Self {
             Self {
-                bar: Ok(Default::default()),
+                bar: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -1669,7 +1669,7 @@ pub mod builder {
     impl ::std::default::Default for ButNotThat {
         fn default() -> Self {
             Self {
-                this: Ok(Default::default()),
+                this: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -1708,8 +1708,8 @@ pub mod builder {
     impl ::std::default::Default for CommentedTypeMerged {
         fn default() -> Self {
             Self {
-                x: Ok(Default::default()),
-                y: Ok(Default::default()),
+                x: Ok(::std::default::Default::default()),
+                y: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -1764,7 +1764,7 @@ pub mod builder {
     impl ::std::default::Default for JsonResponseBase {
         fn default() -> Self {
             Self {
-                result: Ok(Default::default()),
+                result: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -1937,7 +1937,7 @@ pub mod builder {
     impl ::std::default::Default for OrderDependentMerge {
         fn default() -> Self {
             Self {
-                bar: Ok(Default::default()),
+                bar: Ok(::std::default::Default::default()),
                 baz: Err("no value supplied for baz".to_string()),
             }
         }
@@ -2033,7 +2033,7 @@ pub mod builder {
     impl ::std::default::Default for PickingoneInstallation {
         fn default() -> Self {
             Self {
-                suspended_by: Ok(Default::default()),
+                suspended_by: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -2076,7 +2076,7 @@ pub mod builder {
     impl ::std::default::Default for PickingoneSuspendedBy {
         fn default() -> Self {
             Self {
-                email: Ok(Default::default()),
+                email: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -2119,7 +2119,7 @@ pub mod builder {
     impl ::std::default::Default for PickingoneUser {
         fn default() -> Self {
             Self {
-                email: Ok(Default::default()),
+                email: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -2232,7 +2232,7 @@ pub mod builder {
     impl ::std::default::Default for Unsatisfiable3A {
         fn default() -> Self {
             Self {
-                action: Ok(Default::default()),
+                action: Ok(::std::default::Default::default()),
             }
         }
     }

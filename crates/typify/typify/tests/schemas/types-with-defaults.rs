@@ -56,7 +56,7 @@ impl ::std::default::Default for Doodad {
 }
 impl Doodad {
     pub fn builder() -> builder::Doodad {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`MrDefaultNumbers`"]
@@ -112,7 +112,7 @@ impl ::std::default::Default for MrDefaultNumbers {
 }
 impl MrDefaultNumbers {
     pub fn builder() -> builder::MrDefaultNumbers {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`OuterThing`"]
@@ -151,13 +151,13 @@ pub struct OuterThing {
 impl ::std::default::Default for OuterThing {
     fn default() -> Self {
         Self {
-            thing: Default::default(),
+            thing: ::std::default::Default::default(),
         }
     }
 }
 impl OuterThing {
     pub fn builder() -> builder::OuterThing {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`TestBed`"]
@@ -211,7 +211,7 @@ impl ::std::default::Default for TestBed {
 }
 impl TestBed {
     pub fn builder() -> builder::TestBed {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`ThingWithDefaults`"]
@@ -252,14 +252,14 @@ pub struct ThingWithDefaults {
 impl ::std::default::Default for ThingWithDefaults {
     fn default() -> Self {
         ThingWithDefaults {
-            a: Default::default(),
+            a: ::std::default::Default::default(),
             type_: ::std::option::Option::Some("bee".to_string()),
         }
     }
 }
 impl ThingWithDefaults {
     pub fn builder() -> builder::ThingWithDefaults {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`UInt`"]
@@ -348,7 +348,7 @@ impl ::std::default::Default for UIntContainer {
 }
 impl UIntContainer {
     pub fn builder() -> builder::UIntContainer {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = r" Types for composing complex structures."]
@@ -471,7 +471,7 @@ pub mod builder {
     impl ::std::default::Default for OuterThing {
         fn default() -> Self {
             Self {
-                thing: Ok(Default::default()),
+                thing: Ok(::std::default::Default::default()),
             }
         }
     }
@@ -570,8 +570,8 @@ pub mod builder {
     impl ::std::default::Default for ThingWithDefaults {
         fn default() -> Self {
             Self {
-                a: Ok(Default::default()),
-                type_: Ok(Default::default()),
+                a: Ok(::std::default::Default::default()),
+                type_: Ok(::std::default::Default::default()),
             }
         }
     }

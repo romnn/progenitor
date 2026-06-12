@@ -359,6 +359,19 @@ impl Generator {
         Ok(map)
     }
 
+    /// Emit the generated client as formatted Rust source. This is the
+    /// canonical text form: token-stream `to_string` puts the whole
+    /// client on one line (a large spec yields a 100 MB single-line
+    /// file whose rustc diagnostics each embed the entire line), so
+    /// every consumer that writes source to disk should go through
+    /// here.
+    pub fn generate_text(&mut self, spec: &OpenApiDocument) -> Result<String> {
+        let tokens = self.generate_tokens(spec)?;
+        let file = syn::parse2::<syn::File>(tokens)
+            .map_err(|e| Error::InternalError(format!("generated code does not parse: {e}")))?;
+        Ok(prettyplease::unparse(&file))
+    }
+
     /// Emit a [TokenStream] containing the generated client code.
     pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
         let document = &spec.0;

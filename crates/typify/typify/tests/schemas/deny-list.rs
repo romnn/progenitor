@@ -67,7 +67,7 @@ pub struct TestType {
 }
 impl TestType {
     pub fn builder() -> builder::TestType {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`TestTypeWhereNot`"]

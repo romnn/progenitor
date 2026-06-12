@@ -193,6 +193,22 @@ fn copy_misfiled_component(doc: &mut Value, position: RefPosition, name: &str) -
         }
     }
 
+    if matches!(position, RefPosition::RequestBody) {
+        // The misfiled original stays behind under `components.responses`,
+        // where openapiv3::Response still demands a description even if
+        // nothing references the entry anymore. A request-body-shaped
+        // object naturally lacks one, which would fail the whole 3.0
+        // parse, so patch the original in place.
+        if let Some(original) = components
+            .get_mut(position.misfiled_kind())
+            .and_then(|kind| kind.get_mut(name))
+            .and_then(Value::as_object_mut)
+            && !original.contains_key("description")
+        {
+            original.insert("description".to_string(), Value::String(String::new()));
+        }
+    }
+
     let target = components
         .entry(position.expected_kind())
         .or_insert_with(|| Value::Object(Map::new()));
@@ -634,6 +650,61 @@ mod tests {
             "response-only fields are stripped from the request-body copy",
         );
         assert!(copied.pointer("/content/application~1json").is_some());
+    }
+
+    #[test]
+    fn request_body_relocation_leaves_a_parseable_response_original() {
+        // The original stays under `components.responses`, where
+        // openapiv3::Response requires a description the request-body
+        // shaped object lacks; without patching it the whole 3.0 parse
+        // fails even though nothing references the leftover anymore.
+        let fixture = indoc! {r##"
+            {
+                "openapi": "3.0.3",
+                "info": {"title": "t", "version": "1"},
+                "paths": {
+                    "/things": {
+                        "post": {
+                            "operationId": "postThing",
+                            "requestBody": {
+                                "$ref": "#/components/responses/ThingPostRequest"
+                            },
+                            "responses": {
+                                "201": {"description": "created"}
+                            }
+                        }
+                    }
+                },
+                "components": {
+                    "responses": {
+                        "ThingPostRequest": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"type": "object"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        "##};
+
+        let mut doc = parse(fixture);
+        relocate_kind_mismatched_component_refs(&mut doc);
+
+        assert_eq!(
+            doc.pointer("/components/responses/ThingPostRequest/description")
+                .and_then(Value::as_str),
+            Some(""),
+            "the leftover original must satisfy openapiv3::Response",
+        );
+        assert_eq!(
+            doc.pointer("/paths/~1things/post/requestBody/$ref")
+                .and_then(Value::as_str),
+            Some("#/components/requestBodies/ThingPostRequest"),
+        );
+
+        crate::parse_openapi_str(fixture).expect("repaired document parses end to end");
     }
 
     #[test]

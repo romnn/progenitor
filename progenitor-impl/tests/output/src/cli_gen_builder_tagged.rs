@@ -62,7 +62,7 @@ pub mod types {
 
     impl UnoBody {
         pub fn builder() -> builder::UnoBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -80,7 +80,7 @@ pub mod types {
         impl ::std::default::Default for UnoBody {
             fn default() -> Self {
                 Self {
-                    gateway: Ok(Default::default()),
+                    gateway: Ok(::std::default::Default::default()),
                     required: Err("no value supplied for required".to_string()),
                 }
             }

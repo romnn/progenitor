@@ -68,7 +68,7 @@ pub mod types {
 
     impl EnrolBody {
         pub fn builder() -> builder::EnrolBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -103,7 +103,7 @@ pub mod types {
 
     impl GlobalJobsResult {
         pub fn builder() -> builder::GlobalJobsResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -145,7 +145,7 @@ pub mod types {
 
     impl OutputRecord {
         pub fn builder() -> builder::OutputRecord {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -182,7 +182,7 @@ pub mod types {
 
     impl PingResult {
         pub fn builder() -> builder::PingResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -232,7 +232,7 @@ pub mod types {
 
     impl ReportFinishBody {
         pub fn builder() -> builder::ReportFinishBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -286,7 +286,7 @@ pub mod types {
 
     impl ReportId {
         pub fn builder() -> builder::ReportId {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -323,7 +323,7 @@ pub mod types {
 
     impl ReportOutputBody {
         pub fn builder() -> builder::ReportOutputBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -355,7 +355,7 @@ pub mod types {
 
     impl ReportResult {
         pub fn builder() -> builder::ReportResult {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -398,7 +398,7 @@ pub mod types {
 
     impl ReportStartBody {
         pub fn builder() -> builder::ReportStartBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -458,7 +458,7 @@ pub mod types {
 
     impl ReportSummary {
         pub fn builder() -> builder::ReportSummary {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 

@@ -9,7 +9,6 @@ use std::{
 use anyhow::{Result, bail};
 use clap::{Parser, ValueEnum};
 use progenitor::{GenerationSettings, Generator, InterfaceStyle, OpenApiDocument, TagStyle};
-use progenitor_impl::space_out_items;
 
 fn is_non_release() -> bool {
     cfg!(debug_assertions)
@@ -85,13 +84,12 @@ impl From<TagArg> for TagStyle {
     }
 }
 
-fn reformat_code(input: String) -> String {
-    let config = rustfmt_wrapper::config::Config {
-        normalize_doc_attributes: Some(true),
-        wrap_comments: Some(true),
-        ..Default::default()
-    };
-    space_out_items(rustfmt_wrapper::rustfmt_config(config, input).unwrap()).unwrap()
+/// Format generated code with prettyplease: fast, in-process, and — unlike
+/// shelling out to rustfmt — incapable of panicking on a toolchain that
+/// lacks it.
+fn reformat_code(input: String) -> Result<String> {
+    let file = syn::parse_file(&input)?;
+    Ok(prettyplease::unparse(&file))
 }
 
 fn save<P>(p: P, data: &str) -> Result<()>
@@ -181,7 +179,7 @@ fn main() -> Result<()> {
             } else {
                 api_code.to_string()
             };
-            let lib_code = reformat_code(lib_code);
+            let lib_code = reformat_code(lib_code)?;
 
             let mut librs = src.clone();
             librs.push("lib.rs");

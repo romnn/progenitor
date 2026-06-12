@@ -55,13 +55,13 @@ pub struct LetterBox {
 impl ::std::default::Default for LetterBox {
     fn default() -> Self {
         Self {
-            letter: Default::default(),
+            letter: ::std::default::Default::default(),
         }
     }
 }
 impl LetterBox {
     pub fn builder() -> builder::LetterBox {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`LetterBoxLetter`"]
@@ -150,7 +150,7 @@ pub mod builder {
     impl ::std::default::Default for LetterBox {
         fn default() -> Self {
             Self {
-                letter: Ok(Default::default()),
+                letter: Ok(::std::default::Default::default()),
             }
         }
     }

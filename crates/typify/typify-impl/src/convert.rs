@@ -2710,6 +2710,133 @@ mod tests {
     }
 
     #[test]
+    fn test_deferred_ref_enum_values_reconciled_at_finalize() {
+        // Conversion defers membership checks against unresolved $refs;
+        // finalization must then re-validate. A member the resolved type
+        // can't represent ("zzz" against gc/pc) used to emit invalid Rust
+        // (`[LocationKind :: Pc , ,]`); now it's dropped, and when nothing
+        // survives the guard rejects unconditionally.
+        let schema_json = r##"
+        {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Kind",
+            "type": "string",
+            "enum": ["pc", "zzz"],
+            "allOf": [{ "$ref": "#/definitions/LocationKind" }],
+            "definitions": {
+                "LocationKind": {
+                    "type": "string",
+                    "oneOf": [
+                        { "title": "GC", "const": "gc" },
+                        { "title": "PC", "const": "pc" }
+                    ]
+                }
+            }
+        }
+        "##;
+
+        let root: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        type_space.add_root_schema(root).unwrap();
+        let actual = type_space.to_stream().to_string();
+        assert!(
+            actual.contains("[LocationKind :: Pc ,] . contains"),
+            "{}",
+            actual
+        );
+        assert!(!actual.contains(", ,]"), "{}", actual);
+
+        // No surviving member: the constraint admits nothing, and the
+        // guard must still be valid Rust.
+        let schema_json = r##"
+        {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Kind",
+            "type": "string",
+            "enum": ["zzz"],
+            "allOf": [{ "$ref": "#/definitions/LocationKind" }],
+            "definitions": {
+                "LocationKind": {
+                    "type": "string",
+                    "oneOf": [
+                        { "title": "GC", "const": "gc" },
+                        { "title": "PC", "const": "pc" }
+                    ]
+                }
+            }
+        }
+        "##;
+
+        let root: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        type_space.add_root_schema(root).unwrap();
+        let actual = type_space.to_stream().to_string();
+        assert!(
+            actual.contains("no value satisfies the enumeration"),
+            "{}",
+            actual
+        );
+        syn::parse2::<syn::File>(type_space.to_stream()).expect("valid Rust");
+    }
+
+    #[test]
+    fn test_deferred_ref_integer_consts_get_partial_eq() {
+        // Discord's integer discriminants: {type: integer, enum: [N]}
+        // merged with a $ref to a shared untagged enum of int consts. The
+        // membership guard compares with `contains`, so the referenced
+        // composite (and its variant payloads) must pick up a PartialEq
+        // derive — they only carry Clone/Debug by default, which made all
+        // 128 such sites fail to compile.
+        let schema_json = r##"
+        {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "ThreadType",
+            "type": "integer",
+            "enum": [11],
+            "allOf": [{ "$ref": "#/definitions/ChannelTypes" }],
+            "definitions": {
+                "ChannelTypes": {
+                    "oneOf": [
+                        { "type": "integer", "enum": [0] },
+                        { "type": "integer", "enum": [11] }
+                    ]
+                }
+            }
+        }
+        "##;
+
+        let root: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        type_space.add_root_schema(root).unwrap();
+        let actual = type_space.to_stream().to_string();
+        let channel_types = actual
+            .split("pub enum ChannelTypes")
+            .next()
+            .expect("ChannelTypes emitted");
+        let derive = channel_types
+            .rsplit("# [derive (")
+            .next()
+            .expect("derive list precedes the enum");
+        assert!(derive.contains("PartialEq"), "{}", actual);
+        // The membership guard must select the variant whose const
+        // actually matches — the const-11 newtype is the union's SECOND
+        // variant. Stuffing 11 into Variant0 (the const-0 newtype) gives
+        // a guard literal the runtime deserializer can never produce, so
+        // every valid payload would be rejected.
+        let guard = actual
+            .split("impl :: std :: convert :: TryFrom < ChannelTypes > for ThreadType")
+            .nth(1)
+            .expect("guard impl exists");
+        let guard = &guard[..guard.find("invalid value").unwrap()];
+        assert!(
+            guard.contains("Variant1 (ChannelTypesVariant1 (11_i64))"),
+            "{}",
+            actual
+        );
+        syn::parse2::<syn::File>(type_space.to_stream()).expect("valid Rust");
+    }
+
+    #[test]
     fn test_missing_ref_is_an_error() {
         // A $ref that names a schema absent from the registered definitions
         // (seen in the Square spec) must surface as a proper error--not a

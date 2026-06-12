@@ -4999,8 +4999,8 @@ pub mod types {
     impl ::std::default::Default for IpPoolUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
@@ -6242,9 +6242,9 @@ pub mod types {
     impl ::std::default::Default for NetworkInterfaceUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
-                primary: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
+                primary: ::std::default::Default::default(),
             }
         }
     }
@@ -6657,8 +6657,8 @@ pub mod types {
     impl ::std::default::Default for OrganizationUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
@@ -7283,8 +7283,8 @@ pub mod types {
     impl ::std::default::Default for ProjectUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
@@ -11581,9 +11581,9 @@ pub mod types {
     impl ::std::default::Default for VpcFirewallRuleFilter {
         fn default() -> Self {
             Self {
-                hosts: Default::default(),
-                ports: Default::default(),
-                protocols: Default::default(),
+                hosts: ::std::default::Default::default(),
+                ports: ::std::default::Default::default(),
+                protocols: ::std::default::Default::default(),
             }
         }
     }
@@ -12515,8 +12515,8 @@ pub mod types {
     impl ::std::default::Default for VpcRouterUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
@@ -12778,8 +12778,8 @@ pub mod types {
     impl ::std::default::Default for VpcSubnetUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
@@ -12845,9 +12845,9 @@ pub mod types {
     impl ::std::default::Default for VpcUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                dns_name: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                dns_name: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }

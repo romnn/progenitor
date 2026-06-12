@@ -56,12 +56,25 @@ where
     refs.iter().map(|r| r.item(components))
 }
 
+/// A parameter's identity is (name, location): wild specs (Elasticsearch)
+/// declare the same name as both a path and a query parameter of one
+/// operation, so keying by name alone would collapse them.
 pub(crate) fn parameter_map<'a>(
     refs: &'a [ReferenceOr<Parameter>],
     components: &'a Option<Components>,
-) -> Result<BTreeMap<&'a String, &'a Parameter>> {
+) -> Result<BTreeMap<(&'a String, &'static str), &'a Parameter>> {
     items(refs, components)
-        .map(|res| res.map(|param| (&param.parameter_data_ref().name, param)))
+        .map(|res| {
+            res.map(|param| {
+                let location = match param {
+                    Parameter::Query { .. } => "query",
+                    Parameter::Header { .. } => "header",
+                    Parameter::Path { .. } => "path",
+                    Parameter::Cookie { .. } => "cookie",
+                };
+                ((&param.parameter_data_ref().name, location), param)
+            })
+        })
         .collect()
 }
 

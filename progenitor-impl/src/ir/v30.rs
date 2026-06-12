@@ -100,12 +100,19 @@ fn lower_operation(
     path_parameters: &[ReferenceOr<openapiv3::Parameter>],
 ) -> Result<ir::Operation> {
     // Merge path-item and operation parameters; operation parameters
-    // override path-item parameters of the same name. The BTreeMap keying
-    // makes the result name-ordered, which downstream code relies on.
+    // override path-item parameters with the same (name, location)
+    // identity. The BTreeMap keying makes the result name-ordered, which
+    // downstream code relies on.
     let mut merged = parameter_map(path_parameters, components)?;
     for operation_param in items(&operation.parameters, components) {
         let parameter = operation_param?;
-        merged.insert(&parameter.parameter_data_ref().name, parameter);
+        let location = match parameter {
+            openapiv3::Parameter::Query { .. } => "query",
+            openapiv3::Parameter::Header { .. } => "header",
+            openapiv3::Parameter::Path { .. } => "path",
+            openapiv3::Parameter::Cookie { .. } => "cookie",
+        };
+        merged.insert((&parameter.parameter_data_ref().name, location), parameter);
     }
 
     let parameters = merged

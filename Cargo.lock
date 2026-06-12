@@ -257,12 +257,13 @@ dependencies = [
  "env_logger",
  "expectorate",
  "openapiv3",
+ "prettyplease",
  "progenitor",
  "progenitor-client",
  "progenitor-impl",
- "rustfmt-wrapper",
  "serde_json",
  "serde_yaml",
+ "syn",
 ]
 
 [[package]]
@@ -1819,6 +1820,7 @@ dependencies = [
  "indexmap",
  "indoc",
  "openapiv3",
+ "prettyplease",
  "proc-macro2",
  "progenitor-client",
  "quote",

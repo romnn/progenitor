@@ -83,7 +83,7 @@ pub mod types {
 
     impl BodyWithDefaults {
         pub fn builder() -> builder::BodyWithDefaults {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -103,7 +103,7 @@ pub mod types {
                     forty_two: Ok(super::defaults::default_u64::<u32, 42>()),
                     s: Err("no value supplied for s".to_string()),
                     something: Ok(super::defaults::body_with_defaults_something()),
-                    yes: Ok(Default::default()),
+                    yes: Ok(::std::default::Default::default()),
                 }
             }
         }

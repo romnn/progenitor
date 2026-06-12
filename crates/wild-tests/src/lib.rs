@@ -288,14 +288,17 @@ pub fn write_compile_crate(entry: &SpecEntry, out_root: &Path) -> Result<PathBuf
     let text = fetch(entry).map_err(anyhow::Error::msg)?;
     let parsed = progenitor_impl::parse_openapi_str(&text)?;
     let mut generator = progenitor_impl::Generator::default();
-    let tokens = generator.generate_tokens(&parsed)?;
+    // Formatted source, not token-stream text: a single-line 100 MB
+    // lib.rs makes every rustc diagnostic embed the whole line, which
+    // once ballooned one failing check's stderr to 14 GB.
+    let generated = generator.generate_text(&parsed)?;
 
     let root = out_root.join(&entry.name);
     let src = root.join("src");
     std::fs::create_dir_all(&src)?;
 
     let mut lib_source = "mod progenitor_client;\n\n".to_string();
-    lib_source.push_str(&tokens.to_string());
+    lib_source.push_str(&generated);
     std::fs::write(src.join("lib.rs"), lib_source)?;
     std::fs::write(src.join("progenitor_client.rs"), progenitor_client_code())?;
 
@@ -312,6 +315,13 @@ pub fn write_compile_crate(entry: &SpecEntry, out_root: &Path) -> Result<PathBuf
 name = "wild-{name}"
 version = "0.0.0"
 edition = "2021"
+
+# The embedded progenitor_client.rs module carries doc examples written
+# for the external `progenitor_client` crate; as this crate's own
+# doctests they cannot resolve. The behavioral spec-tests are
+# integration tests and still run.
+[lib]
+doctest = false
 
 [dependencies]
 bytes = "1"

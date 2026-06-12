@@ -55,7 +55,33 @@ impl TypeEntry {
                 let ident = format_ident!("{}", name);
                 quote! { #scope #ident { #( #props ),* }}
             }
-            TypeEntryDetails::Newtype(TypeEntryNewtype { name, type_id, .. }) => {
+            TypeEntryDetails::Newtype(TypeEntryNewtype {
+                name,
+                type_id,
+                constraints,
+                ..
+            }) => {
+                // Construction must honor the same membership guards the
+                // generated TryFrom enforces. Untagged-union variant
+                // selection relies on this: Discord's component
+                // discriminants are twenty const-newtypes over one shared
+                // integer union, and ignoring the constraint here selected
+                // the first variant for every value — a guard literal the
+                // runtime deserializer (which picks the variant whose
+                // const actually matches) could never equal.
+                match constraints {
+                    crate::type_entry::TypeEntryNewtypeConstraints::EnumValue(values)
+                        if !values.iter().any(|v| &v.0 == value) =>
+                    {
+                        return None;
+                    }
+                    crate::type_entry::TypeEntryNewtypeConstraints::DenyValue(values)
+                        if values.iter().any(|v| &v.0 == value) =>
+                    {
+                        return None;
+                    }
+                    _ => {}
+                }
                 let inner = type_space
                     .id_to_entry
                     .get(type_id)
@@ -400,7 +426,9 @@ fn value_for_struct_props(
 
             Some(quote! { #name_ident: #prop_value })
         } else {
-            Some(quote! { #name_ident: Default::default() })
+            // Fully qualified: a generated type named `Default` (Stripe)
+            // shadows the trait inside the module.
+            Some(quote! { #name_ident: ::std::default::Default::default() })
         }
     });
 
@@ -643,7 +671,7 @@ mod tests {
                         a: "aaaa".to_string(),
                         b: 7_u32,
                         c: ::std::option::Option::Some("cccc".to_string()),
-                        d: Default::default()
+                        d: ::std::default::Default::default()
                     }
                 }
                 .to_string()
@@ -685,7 +713,7 @@ mod tests {
                         a: "aaaa".to_string(),
                         b: 7_u32,
                         c: ::std::option::Option::Some("cccc".to_string()),
-                        d: Default::default()
+                        d: ::std::default::Default::default()
                     }
                 }
                 .to_string()

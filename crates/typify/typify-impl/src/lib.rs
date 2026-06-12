@@ -1078,7 +1078,7 @@ impl TypeSpace {
 /// The discriminator keyword is OpenAPI-specific (not standard JSON
 /// Schema), so we look for it in `extensions`. The pre-pass is a no-op
 /// for schemas that don't use the OpenAPI `discriminator` keyword.
-fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
+fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
     use schemars::schema::{InstanceType, SchemaObject, SubschemaValidation};
     use std::collections::{BTreeMap, BTreeSet};
 
@@ -1154,10 +1154,21 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
     #[derive(Debug)]
     struct BaseInfo {
         property_name: String,
-        // subtype_name → discriminator value
+        // subtype_name → discriminator value, ONLY for genuine
+        // allOf-subtypes. Mapping targets that don't extend the base are
+        // standalone types shared with other contexts (or other bases'
+        // mappings) — stamping a required const onto them would corrupt
+        // every other use, so they join the union untouched.
         value_by_subtype: BTreeMap<String, String>,
+        // The full variant list for the synthesized oneOf: allOf-subtypes
+        // plus mapping targets that exist as definitions. MongoDB Atlas's
+        // DiskBackupSnapshotExportBucketResponse maps its AWS variant
+        // without an allOf backref — building the union from backrefs
+        // alone silently dropped it, making every AWS payload
+        // undeserializable.
+        union_variants: Vec<String>,
         // Plain object bases get replaced by a synthesized oneOf over
-        // their subtypes (the allOf-inheritance style). A base that
+        // `union_variants` (the allOf-inheritance style). A base that
         // already models the union itself keeps its body; only its
         // member subtypes are rewritten.
         rewrite_base: bool,
@@ -1234,7 +1245,7 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
             // → discriminator_value` for lookup below. If no explicit
             // mapping, fall back to using the subtype name itself as the
             // discriminator value.
-            let mut value_by_subtype: BTreeMap<String, String> = BTreeMap::new();
+            let mut mapped: Vec<(String, String)> = Vec::new();
             if let Some(mapping) = discriminator
                 .get("mapping")
                 .and_then(serde_json::Value::as_object)
@@ -1246,40 +1257,92 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                             .or_else(|| ref_str.strip_prefix("#/definitions/"))
                             .or_else(|| ref_str.strip_prefix("#/"))
                         {
-                            value_by_subtype.insert(subtype_name.to_string(), disc_value.clone());
+                            mapped.push((subtype_name.to_string(), disc_value.clone()));
                         }
                     }
                 }
             }
+            // Stamps go to genuine allOf-subtypes only; a definition the
+            // mapping merely points at is shared with other contexts and
+            // must not be mutated.
+            let mut value_by_subtype: BTreeMap<String, String> = BTreeMap::new();
             for subtype in &subtypes {
-                value_by_subtype
-                    .entry(subtype.clone())
-                    .or_insert_with(|| subtype.clone());
+                let value = mapped
+                    .iter()
+                    .find(|(name, _)| name == subtype)
+                    .map(|(_, value)| value.clone())
+                    .unwrap_or_else(|| subtype.clone());
+                value_by_subtype.insert(subtype.clone(), value);
             }
-            // For a union-shaped base, only its member subtypes get
-            // rewritten — a mapping entry for a definition outside the
-            // union must not cause pass 3b to touch it.
-            if union_members.is_some() {
-                value_by_subtype.retain(|subtype, _| subtypes.contains(subtype));
+            // The synthesized union covers the allOf-subtypes plus every
+            // mapping target that exists as a definition (deterministic:
+            // backref order, then mapping order).
+            let mut union_variants = subtypes.clone();
+            for (name, _) in &mapped {
+                if def_names.contains(name) && !union_variants.contains(name) {
+                    union_variants.push(name.clone());
+                }
             }
             Some((
                 base_name.clone(),
                 BaseInfo {
                     property_name,
                     value_by_subtype,
+                    union_variants,
                     rewrite_base: union_members.is_none(),
                 },
             ))
         })
         .collect();
 
+    // A discriminated base that is itself a variant or subtype of another
+    // discriminated base would have its body replaced by pass 3a while the
+    // parent still needs it — chained unions corrupt the whole cluster
+    // (tag dispatch degrades to untagged, intermediate fields vanish).
+    // Leave such bases, and thereby their sub-clusters, untouched.
+    let involved: BTreeSet<String> = bases_to_rewrite
+        .values()
+        .flat_map(|info| {
+            info.value_by_subtype
+                .keys()
+                .chain(info.union_variants.iter())
+                .cloned()
+        })
+        .collect();
+    let bases_to_rewrite: BTreeMap<String, BaseInfo> = bases_to_rewrite
+        .into_iter()
+        .filter(|(name, info)| !(info.rewrite_base && involved.contains(name)))
+        .collect();
+
     if bases_to_rewrite.is_empty() {
         return;
     }
 
+    // A subtype's `$ref` to its base means "inherit the base's own object
+    // content" — dropping the ref without substituting that content
+    // silently loses the shared fields from the standalone subtype types
+    // (MongoDB Atlas declares id/provisioned/… once on the base). Capture
+    // the inheritable surface before pass 3a replaces plain bases.
+    let shared_content_by_base: BTreeMap<String, schemars::schema::ObjectValidation> = definitions
+        .iter()
+        .filter_map(|(key, schema)| {
+            let RefKey::Def(base_name) = key else {
+                return None;
+            };
+            if !bases_to_rewrite.contains_key(base_name) {
+                return None;
+            }
+            let Schema::Object(obj) = schema else {
+                return None;
+            };
+            let object = obj.object.as_deref().cloned()?;
+            Some((base_name.clone(), object))
+        })
+        .collect();
+
     // Pass 3a: rewrite each plain-object base to a `oneOf` over its
-    // subtypes (union-shaped bases keep their own oneOf/anyOf body).
-    // `convert_one_of`'s `maybe_internally_tagged_enum` resolves
+    // union variants (union-shaped bases keep their own oneOf/anyOf
+    // body). `convert_one_of`'s `maybe_internally_tagged_enum` resolves
     // `$ref` subschemas against the type space's known definitions,
     // so once each subtype carries a const-valued discriminator
     // property (stamped in pass 3b below) the resulting enum gets the
@@ -1289,17 +1352,17 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
         let RefKey::Def(base_name) = key else {
             continue;
         };
-        if !bases_to_rewrite
+        let Some(info) = bases_to_rewrite
             .get(base_name)
-            .is_some_and(|info| info.rewrite_base)
-        {
+            .filter(|info| info.rewrite_base)
+        else {
             continue;
-        }
+        };
         let Schema::Object(obj) = schema else {
             continue;
         };
-        let subtypes = subtypes_of.get(base_name).expect("base was in rewrite set");
-        let one_of: Vec<Schema> = subtypes
+        let one_of: Vec<Schema> = info
+            .union_variants
             .iter()
             .map(|name| {
                 Schema::Object(SchemaObject::new_ref(format!(
@@ -1354,6 +1417,7 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
         let Schema::Object(obj) = schema else {
             continue;
         };
+        let mut stripped_bases: Vec<String> = Vec::new();
         if let Some(subschemas) = obj.subschemas.as_mut() {
             if let Some(all_of) = subschemas.all_of.as_mut() {
                 all_of.retain(|member| {
@@ -1363,7 +1427,15 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                     let Some(reference) = o.reference.as_deref() else {
                         return true;
                     };
-                    !strip_ref(reference).is_some_and(|name| bases_to_rewrite.contains_key(&name))
+                    match strip_ref(reference)
+                        .filter(|name| bases_to_rewrite.contains_key(name))
+                    {
+                        Some(name) => {
+                            stripped_bases.push(name);
+                            false
+                        }
+                        None => true,
+                    }
                 });
                 // If exactly one inline `allOf` member survives (the
                 // common pattern: `allOf: [{$ref: <base>}, {type: object,
@@ -1371,24 +1443,40 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                 // the base ref), merge its object validation into the
                 // subtype itself. typify's `maybe_internally_tagged_enum`
                 // requires `get_object()` to succeed, which only happens
-                // when the schema has `subschemas: None`.
-                if all_of.len() == 1 {
+                // when the schema has `subschemas: None`. Only a PURE
+                // inline object qualifies: hoisting a surviving `$ref` (or
+                // a member carrying non-object constraints) would discard
+                // it outright — a mixin ref's fields must stay, even at
+                // the cost of the tagged-dispatch optimisation, so
+                // anything else keeps its `allOf` for typify's merge.
+                let lone_pure_object = all_of.len() == 1
+                    && matches!(
+                        &all_of[0],
+                        Schema::Object(inline) if inline.reference.is_none()
+                            && inline.subschemas.is_none()
+                            && inline.enum_values.is_none()
+                            && inline.const_value.is_none()
+                            && inline.string.is_none()
+                            && inline.number.is_none()
+                            && inline.array.is_none()
+                    );
+                if lone_pure_object {
                     if let Schema::Object(inline) = all_of[0].clone() {
                         let inline_obj = inline.object;
-                        let inline_props = inline_obj.as_ref().map(|o| o.properties.clone());
-                        let inline_required = inline_obj.as_ref().map(|o| o.required.clone());
                         if obj.object.is_none() {
                             obj.object = Some(Box::default());
                         }
                         if let Some(target) = obj.object.as_mut() {
-                            if let Some(props) = inline_props {
-                                for (name, schema) in props {
+                            if let Some(inline_obj) = inline_obj {
+                                for (name, schema) in inline_obj.properties {
                                     target.properties.entry(name).or_insert(schema);
                                 }
-                            }
-                            if let Some(required) = inline_required {
-                                for name in required {
+                                for name in inline_obj.required {
                                     target.required.insert(name);
+                                }
+                                if target.additional_properties.is_none() {
+                                    target.additional_properties =
+                                        inline_obj.additional_properties;
                                 }
                             }
                         }
@@ -1410,6 +1498,33 @@ fn discriminator_to_oneof_prepass(definitions: &mut Vec<(RefKey, Schema)>) {
                 && subschemas.else_schema.is_none()
             {
                 obj.subschemas = None;
+            }
+        }
+        // The stripped `$ref` meant "inherit the base's fields"; fold the
+        // base's own object content into the subtype so the standalone
+        // subtype type keeps the shared properties. The subtype's own
+        // declarations (already merged above) take precedence, and the
+        // discriminator const stamped below still overrides its property.
+        for base in &stripped_bases {
+            let Some(shared) = shared_content_by_base.get(base) else {
+                continue;
+            };
+            if obj.object.is_none() {
+                obj.object = Some(Box::default());
+            }
+            if let Some(target) = obj.object.as_mut() {
+                for (name, schema) in &shared.properties {
+                    target
+                        .properties
+                        .entry(name.clone())
+                        .or_insert_with(|| schema.clone());
+                }
+                for name in &shared.required {
+                    target.required.insert(name.clone());
+                }
+                if target.additional_properties.is_none() {
+                    target.additional_properties = shared.additional_properties.clone();
+                }
             }
         }
         // Stamp the discriminator property as a `const`-valued string.
@@ -1698,6 +1813,220 @@ mod tests {
     }
 
     #[test]
+    fn test_mapping_only_variants_join_the_union_unstamped() {
+        // MongoDB Atlas's DiskBackupSnapshotExportBucketResponse maps its
+        // AWS variant in `discriminator.mapping` but the AWS definition
+        // does NOT allOf-ref the base (Azure does). The union must cover
+        // both — building it from backrefs alone made every AWS payload
+        // fail with "unknown variant" — and the standalone mapped-only
+        // definition must NOT be mutated (it is shared with other
+        // contexts; it already declares its own discriminator property).
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "ExportBucket": {
+                "type": "object",
+                "x-discriminator": {
+                    "propertyName": "cloudProvider",
+                    "mapping": {
+                        "AWS": "#/components/schemas/AwsBucket",
+                        "AZURE": "#/components/schemas/AzureBucket"
+                    }
+                },
+                "properties": {
+                    "cloudProvider": { "type": "string" },
+                    "bucketName": { "type": "string" }
+                }
+            },
+            "AwsBucket": {
+                "type": "object",
+                "properties": {
+                    "cloudProvider": { "type": "string", "enum": ["AWS"] },
+                    "bucketName": { "type": "string" },
+                    "iamRoleId": { "type": "string" }
+                },
+                "required": ["cloudProvider"]
+            },
+            "AzureBucket": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/ExportBucket" },
+                    {
+                        "type": "object",
+                        "properties": { "serviceUrl": { "type": "string" } }
+                    }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        assert!(actual.contains("enum ExportBucket"), "{}", actual);
+        // Both the backref subtype and the mapping-only variant are in.
+        assert!(actual.contains("AzureBucket"), "{}", actual);
+        // Tagged dispatch with both variants, including the mapped-only
+        // AWS one (struct variants — slicing to the first brace would
+        // stop inside Azure's body, so assert on the variant headers).
+        assert!(
+            actual.contains("(tag = \"cloudProvider\")] pub enum ExportBucket"),
+            "{}",
+            actual
+        );
+        let union_body = actual.split("pub enum ExportBucket").nth(1).unwrap();
+        assert!(union_body.contains("\"AWS\")] Aws"), "{}", actual);
+        assert!(union_body.contains("\"AZURE\")] Azure"), "{}", actual);
+        // The standalone mapped-only struct keeps its own (optional)
+        // bucketName — no required-const stamping beyond what it
+        // declared itself.
+        let aws_struct = actual
+            .split("pub struct AwsBucket")
+            .nth(1)
+            .expect("AwsBucket struct exists");
+        let aws_fields = &aws_struct[..aws_struct.find('}').unwrap()];
+        assert!(aws_fields.contains("iam_role_id"), "{}", actual);
+    }
+
+    #[test]
+    fn test_chained_discriminated_bases_left_untouched() {
+        // A base that is itself a subtype/variant of another discriminated
+        // base must not be rewritten: replacing its body with a synthesized
+        // oneOf would destroy content its parent union (and its own
+        // standalone uses) still need. The middle link keeps its own
+        // fields; its child still inherits through the untouched chain.
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "Node": {
+                "type": "object",
+                "properties": { "kind": { "type": "string" } },
+                "oneOf": [{ "$ref": "#/components/schemas/Branch" }],
+                "x-discriminator": { "propertyName": "kind" }
+            },
+            "Branch": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/Node" },
+                    {
+                        "type": "object",
+                        "properties": { "branchOwn": { "type": "string" } }
+                    }
+                ],
+                "x-discriminator": { "propertyName": "branchKind" }
+            },
+            "Leaf": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/Branch" },
+                    {
+                        "type": "object",
+                        "properties": { "leafOwn": { "type": "string" } }
+                    }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        // The middle link keeps its own field...
+        let branch = actual
+            .split("pub struct Branch")
+            .nth(1)
+            .expect("Branch struct exists");
+        assert!(
+            branch[..branch.find('}').unwrap()].contains("branch_own"),
+            "{}",
+            actual
+        );
+        // ...and the leaf still sees the whole inheritance chain.
+        let leaf = actual
+            .split("pub struct Leaf")
+            .nth(1)
+            .expect("Leaf struct exists");
+        let leaf_fields = &leaf[..leaf.find('}').unwrap()];
+        assert!(leaf_fields.contains("leaf_own"), "{}", actual);
+        assert!(leaf_fields.contains("branch_own"), "{}", actual);
+    }
+
+    #[test]
+    fn test_allof_inheritance_subtypes_keep_base_fields() {
+        // The allOf-inheritance style: a plain object base declares the
+        // discriminator and the shared fields; subtypes extend it via
+        // allOf. The prepass synthesizes the union — and must fold the
+        // base's fields into each subtype, since the stripped `$ref`
+        // carried them.
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "Pet": {
+                "type": "object",
+                "properties": {
+                    "petType": { "type": "string" },
+                    "name": { "type": "string" }
+                },
+                "required": ["petType", "name"],
+                "x-discriminator": { "propertyName": "petType" }
+            },
+            "Dog": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/Pet" },
+                    {
+                        "type": "object",
+                        "properties": { "bark": { "type": "boolean" } }
+                    }
+                ]
+            },
+            "Cat": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/Pet" },
+                    {
+                        "type": "object",
+                        "properties": { "lives": { "type": "integer" } }
+                    }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        assert!(actual.contains("enum Pet"), "{}", actual);
+        let dog_struct = actual
+            .split("pub struct Dog")
+            .nth(1)
+            .expect("Dog struct exists");
+        let dog_fields = &dog_struct[..dog_struct.find('}').unwrap()];
+        assert!(dog_fields.contains("bark"), "{}", actual);
+        // Inherited from the stripped base ref.
+        assert!(dog_fields.contains("name"), "{}", actual);
+    }
+
+    #[test]
     fn test_cyclic_oneof_discriminator_members_terminate() {
         // MongoDB Atlas encodes its discriminated unions BOTH ways at
         // once: the base lists every variant in `oneOf` AND each variant
@@ -1765,6 +2094,15 @@ mod tests {
         // The mapped discriminator values drive serde dispatch.
         assert!(actual.contains("AWS"), "{}", actual);
         assert!(actual.contains("AZURE"), "{}", actual);
+        // The backref strip must substitute the base's shared fields, not
+        // drop them: the standalone subtype structs keep them.
+        let aws_struct = actual
+            .split("pub struct AwsContainer")
+            .nth(1)
+            .expect("AwsContainer struct exists");
+        let aws_fields = &aws_struct[..aws_struct.find('}').unwrap()];
+        assert!(aws_fields.contains("region_name"), "{}", actual);
+        assert!(aws_fields.contains("provider_name"), "{}", actual);
     }
 
     #[test]

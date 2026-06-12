@@ -61,7 +61,7 @@ mod types {
     }
     impl AllTheTraits {
         pub fn builder() -> builder::AllTheTraits {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
     #[doc = "`CompoundType`"]
@@ -96,7 +96,7 @@ mod types {
     }
     impl CompoundType {
         pub fn builder() -> builder::CompoundType {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
     #[doc = "`Pair`"]
@@ -137,7 +137,7 @@ mod types {
     }
     impl Pair {
         pub fn builder() -> builder::Pair {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
     #[doc = "`StringEnum`"]

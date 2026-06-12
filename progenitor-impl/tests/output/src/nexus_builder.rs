@@ -75,7 +75,7 @@ pub mod types {
 
     impl Baseboard {
         pub fn builder() -> builder::Baseboard {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -331,7 +331,7 @@ pub mod types {
 
     impl Bindouble {
         pub fn builder() -> builder::Bindouble {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -379,7 +379,7 @@ pub mod types {
 
     impl Binint64 {
         pub fn builder() -> builder::Binint64 {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -584,7 +584,7 @@ pub mod types {
 
     impl Certificate {
         pub fn builder() -> builder::Certificate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -658,7 +658,7 @@ pub mod types {
 
     impl CertificateCreate {
         pub fn builder() -> builder::CertificateCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -706,7 +706,7 @@ pub mod types {
 
     impl CertificateResultsPage {
         pub fn builder() -> builder::CertificateResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -770,7 +770,7 @@ pub mod types {
 
     impl ComponentUpdate {
         pub fn builder() -> builder::ComponentUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -818,7 +818,7 @@ pub mod types {
 
     impl ComponentUpdateResultsPage {
         pub fn builder() -> builder::ComponentUpdateResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -857,7 +857,7 @@ pub mod types {
 
     impl Cumulativedouble {
         pub fn builder() -> builder::Cumulativedouble {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -896,7 +896,7 @@ pub mod types {
 
     impl Cumulativeint64 {
         pub fn builder() -> builder::Cumulativeint64 {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1308,7 +1308,7 @@ pub mod types {
 
     impl DerEncodedKeyPair {
         pub fn builder() -> builder::DerEncodedKeyPair {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1350,7 +1350,7 @@ pub mod types {
 
     impl DeviceAccessTokenRequest {
         pub fn builder() -> builder::DeviceAccessTokenRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1382,7 +1382,7 @@ pub mod types {
 
     impl DeviceAuthRequest {
         pub fn builder() -> builder::DeviceAuthRequest {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1413,7 +1413,7 @@ pub mod types {
 
     impl DeviceAuthVerify {
         pub fn builder() -> builder::DeviceAuthVerify {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1566,7 +1566,7 @@ pub mod types {
 
     impl Disk {
         pub fn builder() -> builder::Disk {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1627,7 +1627,7 @@ pub mod types {
 
     impl DiskCreate {
         pub fn builder() -> builder::DiskCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1663,7 +1663,7 @@ pub mod types {
 
     impl DiskIdentifier {
         pub fn builder() -> builder::DiskIdentifier {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1793,7 +1793,7 @@ pub mod types {
 
     impl DiskPath {
         pub fn builder() -> builder::DiskPath {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -1841,7 +1841,7 @@ pub mod types {
 
     impl DiskResultsPage {
         pub fn builder() -> builder::DiskResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2164,7 +2164,7 @@ pub mod types {
 
     impl Distribution {
         pub fn builder() -> builder::Distribution {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2206,7 +2206,7 @@ pub mod types {
 
     impl Error {
         pub fn builder() -> builder::Error {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2243,7 +2243,7 @@ pub mod types {
 
     impl ExternalIp {
         pub fn builder() -> builder::ExternalIp {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2350,7 +2350,7 @@ pub mod types {
 
     impl ExternalIpResultsPage {
         pub fn builder() -> builder::ExternalIpResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2393,7 +2393,7 @@ pub mod types {
 
     impl FieldSchema {
         pub fn builder() -> builder::FieldSchema {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2699,7 +2699,7 @@ pub mod types {
 
     impl FleetRolePolicy {
         pub fn builder() -> builder::FleetRolePolicy {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2751,7 +2751,7 @@ pub mod types {
 
     impl FleetRoleRoleAssignment {
         pub fn builder() -> builder::FleetRoleRoleAssignment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2886,7 +2886,7 @@ pub mod types {
 
     impl GlobalImage {
         pub fn builder() -> builder::GlobalImage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -2958,7 +2958,7 @@ pub mod types {
 
     impl GlobalImageCreate {
         pub fn builder() -> builder::GlobalImageCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3006,7 +3006,7 @@ pub mod types {
 
     impl GlobalImageResultsPage {
         pub fn builder() -> builder::GlobalImageResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3054,7 +3054,7 @@ pub mod types {
 
     impl Group {
         pub fn builder() -> builder::Group {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3102,7 +3102,7 @@ pub mod types {
 
     impl GroupResultsPage {
         pub fn builder() -> builder::GroupResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3222,7 +3222,7 @@ pub mod types {
 
     impl Histogramdouble {
         pub fn builder() -> builder::Histogramdouble {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3342,7 +3342,7 @@ pub mod types {
 
     impl Histogramint64 {
         pub fn builder() -> builder::Histogramint64 {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3508,7 +3508,7 @@ pub mod types {
 
     impl IdentityProvider {
         pub fn builder() -> builder::IdentityProvider {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3556,7 +3556,7 @@ pub mod types {
 
     impl IdentityProviderResultsPage {
         pub fn builder() -> builder::IdentityProviderResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3913,7 +3913,7 @@ pub mod types {
 
     impl Image {
         pub fn builder() -> builder::Image {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -3974,7 +3974,7 @@ pub mod types {
 
     impl ImageCreate {
         pub fn builder() -> builder::ImageCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4022,7 +4022,7 @@ pub mod types {
 
     impl ImageResultsPage {
         pub fn builder() -> builder::ImageResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4219,7 +4219,7 @@ pub mod types {
 
     impl Instance {
         pub fn builder() -> builder::Instance {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4408,7 +4408,7 @@ pub mod types {
 
     impl InstanceCreate {
         pub fn builder() -> builder::InstanceCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4543,7 +4543,7 @@ pub mod types {
 
     impl InstanceMigrate {
         pub fn builder() -> builder::InstanceMigrate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4688,7 +4688,7 @@ pub mod types {
 
     impl InstanceResultsPage {
         pub fn builder() -> builder::InstanceResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -4743,7 +4743,7 @@ pub mod types {
 
     impl InstanceSerialConsoleData {
         pub fn builder() -> builder::InstanceSerialConsoleData {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5194,7 +5194,7 @@ pub mod types {
 
     impl IpPool {
         pub fn builder() -> builder::IpPool {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5234,7 +5234,7 @@ pub mod types {
 
     impl IpPoolCreate {
         pub fn builder() -> builder::IpPoolCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5277,7 +5277,7 @@ pub mod types {
 
     impl IpPoolRange {
         pub fn builder() -> builder::IpPoolRange {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5325,7 +5325,7 @@ pub mod types {
 
     impl IpPoolRangeResultsPage {
         pub fn builder() -> builder::IpPoolRangeResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5373,7 +5373,7 @@ pub mod types {
 
     impl IpPoolResultsPage {
         pub fn builder() -> builder::IpPoolResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5423,15 +5423,15 @@ pub mod types {
     impl ::std::default::Default for IpPoolUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl IpPoolUpdate {
         pub fn builder() -> builder::IpPoolUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5628,7 +5628,7 @@ pub mod types {
 
     impl Ipv4Range {
         pub fn builder() -> builder::Ipv4Range {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -5775,7 +5775,7 @@ pub mod types {
 
     impl Ipv6Range {
         pub fn builder() -> builder::Ipv6Range {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6022,7 +6022,7 @@ pub mod types {
 
     impl Measurement {
         pub fn builder() -> builder::Measurement {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6070,7 +6070,7 @@ pub mod types {
 
     impl MeasurementResultsPage {
         pub fn builder() -> builder::MeasurementResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6583,7 +6583,7 @@ pub mod types {
 
     impl NetworkInterface {
         pub fn builder() -> builder::NetworkInterface {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6656,7 +6656,7 @@ pub mod types {
 
     impl NetworkInterfaceCreate {
         pub fn builder() -> builder::NetworkInterfaceCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6704,7 +6704,7 @@ pub mod types {
 
     impl NetworkInterfaceResultsPage {
         pub fn builder() -> builder::NetworkInterfaceResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6786,16 +6786,16 @@ pub mod types {
     impl ::std::default::Default for NetworkInterfaceUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
-                primary: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
+                primary: ::std::default::Default::default(),
             }
         }
     }
 
     impl NetworkInterfaceUpdate {
         pub fn builder() -> builder::NetworkInterfaceUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6931,7 +6931,7 @@ pub mod types {
 
     impl Organization {
         pub fn builder() -> builder::Organization {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -6970,7 +6970,7 @@ pub mod types {
 
     impl OrganizationCreate {
         pub fn builder() -> builder::OrganizationCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7018,7 +7018,7 @@ pub mod types {
 
     impl OrganizationResultsPage {
         pub fn builder() -> builder::OrganizationResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7147,7 +7147,7 @@ pub mod types {
 
     impl OrganizationRolePolicy {
         pub fn builder() -> builder::OrganizationRolePolicy {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7199,7 +7199,7 @@ pub mod types {
 
     impl OrganizationRoleRoleAssignment {
         pub fn builder() -> builder::OrganizationRoleRoleAssignment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7251,15 +7251,15 @@ pub mod types {
     impl ::std::default::Default for OrganizationUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl OrganizationUpdate {
         pub fn builder() -> builder::OrganizationUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7429,7 +7429,7 @@ pub mod types {
 
     impl PhysicalDisk {
         pub fn builder() -> builder::PhysicalDisk {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7477,7 +7477,7 @@ pub mod types {
 
     impl PhysicalDiskResultsPage {
         pub fn builder() -> builder::PhysicalDiskResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7633,7 +7633,7 @@ pub mod types {
 
     impl Project {
         pub fn builder() -> builder::Project {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7672,7 +7672,7 @@ pub mod types {
 
     impl ProjectCreate {
         pub fn builder() -> builder::ProjectCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7720,7 +7720,7 @@ pub mod types {
 
     impl ProjectResultsPage {
         pub fn builder() -> builder::ProjectResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7849,7 +7849,7 @@ pub mod types {
 
     impl ProjectRolePolicy {
         pub fn builder() -> builder::ProjectRolePolicy {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7901,7 +7901,7 @@ pub mod types {
 
     impl ProjectRoleRoleAssignment {
         pub fn builder() -> builder::ProjectRoleRoleAssignment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -7953,15 +7953,15 @@ pub mod types {
     impl ::std::default::Default for ProjectUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl ProjectUpdate {
         pub fn builder() -> builder::ProjectUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8013,7 +8013,7 @@ pub mod types {
 
     impl Rack {
         pub fn builder() -> builder::Rack {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8061,7 +8061,7 @@ pub mod types {
 
     impl RackResultsPage {
         pub fn builder() -> builder::RackResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8098,7 +8098,7 @@ pub mod types {
 
     impl Role {
         pub fn builder() -> builder::Role {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8240,7 +8240,7 @@ pub mod types {
 
     impl RoleResultsPage {
         pub fn builder() -> builder::RoleResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8613,7 +8613,7 @@ pub mod types {
 
     impl RouterRoute {
         pub fn builder() -> builder::RouterRoute {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8660,7 +8660,7 @@ pub mod types {
 
     impl RouterRouteCreateParams {
         pub fn builder() -> builder::RouterRouteCreateParams {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8843,7 +8843,7 @@ pub mod types {
 
     impl RouterRouteResultsPage {
         pub fn builder() -> builder::RouterRouteResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8904,7 +8904,7 @@ pub mod types {
 
     impl RouterRouteUpdateParams {
         pub fn builder() -> builder::RouterRouteUpdateParams {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -8941,7 +8941,7 @@ pub mod types {
 
     impl Saga {
         pub fn builder() -> builder::Saga {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9101,7 +9101,7 @@ pub mod types {
 
     impl SagaResultsPage {
         pub fn builder() -> builder::SagaResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9301,7 +9301,7 @@ pub mod types {
 
     impl SamlIdentityProvider {
         pub fn builder() -> builder::SamlIdentityProvider {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9420,7 +9420,7 @@ pub mod types {
 
     impl SamlIdentityProviderCreate {
         pub fn builder() -> builder::SamlIdentityProviderCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9681,7 +9681,7 @@ pub mod types {
 
     impl Silo {
         pub fn builder() -> builder::Silo {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9752,7 +9752,7 @@ pub mod types {
 
     impl SiloCreate {
         pub fn builder() -> builder::SiloCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -9904,7 +9904,7 @@ pub mod types {
 
     impl SiloResultsPage {
         pub fn builder() -> builder::SiloResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10033,7 +10033,7 @@ pub mod types {
 
     impl SiloRolePolicy {
         pub fn builder() -> builder::SiloRolePolicy {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10085,7 +10085,7 @@ pub mod types {
 
     impl SiloRoleRoleAssignment {
         pub fn builder() -> builder::SiloRoleRoleAssignment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10147,7 +10147,7 @@ pub mod types {
 
     impl Sled {
         pub fn builder() -> builder::Sled {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10195,7 +10195,7 @@ pub mod types {
 
     impl SledResultsPage {
         pub fn builder() -> builder::SledResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10288,7 +10288,7 @@ pub mod types {
 
     impl Snapshot {
         pub fn builder() -> builder::Snapshot {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10338,7 +10338,7 @@ pub mod types {
 
     impl SnapshotCreate {
         pub fn builder() -> builder::SnapshotCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10386,7 +10386,7 @@ pub mod types {
 
     impl SnapshotResultsPage {
         pub fn builder() -> builder::SnapshotResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10506,7 +10506,7 @@ pub mod types {
 
     impl SpoofLoginBody {
         pub fn builder() -> builder::SpoofLoginBody {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10593,7 +10593,7 @@ pub mod types {
 
     impl SshKey {
         pub fn builder() -> builder::SshKey {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10640,7 +10640,7 @@ pub mod types {
 
     impl SshKeyCreate {
         pub fn builder() -> builder::SshKeyCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10688,7 +10688,7 @@ pub mod types {
 
     impl SshKeyResultsPage {
         pub fn builder() -> builder::SshKeyResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10831,7 +10831,7 @@ pub mod types {
 
     impl SystemUpdate {
         pub fn builder() -> builder::SystemUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10879,7 +10879,7 @@ pub mod types {
 
     impl SystemUpdateResultsPage {
         pub fn builder() -> builder::SystemUpdateResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10910,7 +10910,7 @@ pub mod types {
 
     impl SystemUpdateStart {
         pub fn builder() -> builder::SystemUpdateStart {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -10946,7 +10946,7 @@ pub mod types {
 
     impl SystemVersion {
         pub fn builder() -> builder::SystemVersion {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11104,7 +11104,7 @@ pub mod types {
 
     impl TimeseriesSchema {
         pub fn builder() -> builder::TimeseriesSchema {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11152,7 +11152,7 @@ pub mod types {
 
     impl TimeseriesSchemaResultsPage {
         pub fn builder() -> builder::TimeseriesSchemaResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11216,7 +11216,7 @@ pub mod types {
 
     impl UpdateDeployment {
         pub fn builder() -> builder::UpdateDeployment {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11264,7 +11264,7 @@ pub mod types {
 
     impl UpdateDeploymentResultsPage {
         pub fn builder() -> builder::UpdateDeploymentResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11448,7 +11448,7 @@ pub mod types {
 
     impl UpdateableComponent {
         pub fn builder() -> builder::UpdateableComponent {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11496,7 +11496,7 @@ pub mod types {
 
     impl UpdateableComponentResultsPage {
         pub fn builder() -> builder::UpdateableComponentResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11673,7 +11673,7 @@ pub mod types {
 
     impl User {
         pub fn builder() -> builder::User {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11744,7 +11744,7 @@ pub mod types {
 
     impl UserBuiltin {
         pub fn builder() -> builder::UserBuiltin {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11792,7 +11792,7 @@ pub mod types {
 
     impl UserBuiltinResultsPage {
         pub fn builder() -> builder::UserBuiltinResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -11842,7 +11842,7 @@ pub mod types {
 
     impl UserCreate {
         pub fn builder() -> builder::UserCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12058,7 +12058,7 @@ pub mod types {
 
     impl UserResultsPage {
         pub fn builder() -> builder::UserResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12095,7 +12095,7 @@ pub mod types {
 
     impl UsernamePasswordCredentials {
         pub fn builder() -> builder::UsernamePasswordCredentials {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12131,7 +12131,7 @@ pub mod types {
 
     impl VersionRange {
         pub fn builder() -> builder::VersionRange {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12242,7 +12242,7 @@ pub mod types {
 
     impl Vpc {
         pub fn builder() -> builder::Vpc {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12311,7 +12311,7 @@ pub mod types {
 
     impl VpcCreate {
         pub fn builder() -> builder::VpcCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12456,7 +12456,7 @@ pub mod types {
 
     impl VpcFirewallRule {
         pub fn builder() -> builder::VpcFirewallRule {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -12687,16 +12687,16 @@ pub mod types {
     impl ::std::default::Default for VpcFirewallRuleFilter {
         fn default() -> Self {
             Self {
-                hosts: Default::default(),
-                ports: Default::default(),
-                protocols: Default::default(),
+                hosts: ::std::default::Default::default(),
+                ports: ::std::default::Default::default(),
+                protocols: ::std::default::Default::default(),
             }
         }
     }
 
     impl VpcFirewallRuleFilter {
         pub fn builder() -> builder::VpcFirewallRuleFilter {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13266,7 +13266,7 @@ pub mod types {
 
     impl VpcFirewallRuleUpdate {
         pub fn builder() -> builder::VpcFirewallRuleUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13305,7 +13305,7 @@ pub mod types {
 
     impl VpcFirewallRuleUpdateParams {
         pub fn builder() -> builder::VpcFirewallRuleUpdateParams {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13340,7 +13340,7 @@ pub mod types {
 
     impl VpcFirewallRules {
         pub fn builder() -> builder::VpcFirewallRules {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13388,7 +13388,7 @@ pub mod types {
 
     impl VpcResultsPage {
         pub fn builder() -> builder::VpcResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13474,7 +13474,7 @@ pub mod types {
 
     impl VpcRouter {
         pub fn builder() -> builder::VpcRouter {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13513,7 +13513,7 @@ pub mod types {
 
     impl VpcRouterCreate {
         pub fn builder() -> builder::VpcRouterCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13640,7 +13640,7 @@ pub mod types {
 
     impl VpcRouterResultsPage {
         pub fn builder() -> builder::VpcRouterResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13692,15 +13692,15 @@ pub mod types {
     impl ::std::default::Default for VpcRouterUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl VpcRouterUpdate {
         pub fn builder() -> builder::VpcRouterUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13805,7 +13805,7 @@ pub mod types {
 
     impl VpcSubnet {
         pub fn builder() -> builder::VpcSubnet {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13887,7 +13887,7 @@ pub mod types {
 
     impl VpcSubnetCreate {
         pub fn builder() -> builder::VpcSubnetCreate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13935,7 +13935,7 @@ pub mod types {
 
     impl VpcSubnetResultsPage {
         pub fn builder() -> builder::VpcSubnetResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -13987,15 +13987,15 @@ pub mod types {
     impl ::std::default::Default for VpcSubnetUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl VpcSubnetUpdate {
         pub fn builder() -> builder::VpcSubnetUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -14062,16 +14062,16 @@ pub mod types {
     impl ::std::default::Default for VpcUpdate {
         fn default() -> Self {
             Self {
-                description: Default::default(),
-                dns_name: Default::default(),
-                name: Default::default(),
+                description: ::std::default::Default::default(),
+                dns_name: ::std::default::Default::default(),
+                name: ::std::default::Default::default(),
             }
         }
     }
 
     impl VpcUpdate {
         pub fn builder() -> builder::VpcUpdate {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -14504,7 +14504,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -14677,7 +14677,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -15103,11 +15103,11 @@ pub mod types {
                     description: Err("no value supplied for description".to_string()),
                     device_path: Err("no value supplied for device_path".to_string()),
                     id: Err("no value supplied for id".to_string()),
-                    image_id: Ok(Default::default()),
+                    image_id: Ok(::std::default::Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     project_id: Err("no value supplied for project_id".to_string()),
                     size: Err("no value supplied for size".to_string()),
-                    snapshot_id: Ok(Default::default()),
+                    snapshot_id: Ok(::std::default::Default::default()),
                     state: Err("no value supplied for state".to_string()),
                     time_created: Err("no value supplied for time_created".to_string()),
                     time_modified: Err("no value supplied for time_modified".to_string()),
@@ -15463,7 +15463,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -15584,7 +15584,7 @@ pub mod types {
         impl ::std::default::Default for Error {
             fn default() -> Self {
                 Self {
-                    error_code: Ok(Default::default()),
+                    error_code: Ok(::std::default::Default::default()),
                     message: Err("no value supplied for message".to_string()),
                     request_id: Err("no value supplied for request_id".to_string()),
                 }
@@ -15719,7 +15719,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -15992,14 +15992,14 @@ pub mod types {
                 Self {
                     block_size: Err("no value supplied for block_size".to_string()),
                     description: Err("no value supplied for description".to_string()),
-                    digest: Ok(Default::default()),
+                    digest: Ok(::std::default::Default::default()),
                     distribution: Err("no value supplied for distribution".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     name: Err("no value supplied for name".to_string()),
                     size: Err("no value supplied for size".to_string()),
                     time_created: Err("no value supplied for time_created".to_string()),
                     time_modified: Err("no value supplied for time_modified".to_string()),
-                    url: Ok(Default::default()),
+                    url: Ok(::std::default::Default::default()),
                     version: Err("no value supplied for version".to_string()),
                 }
             }
@@ -16272,7 +16272,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -16407,7 +16407,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -16746,7 +16746,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -16828,15 +16828,15 @@ pub mod types {
                 Self {
                     block_size: Err("no value supplied for block_size".to_string()),
                     description: Err("no value supplied for description".to_string()),
-                    digest: Ok(Default::default()),
+                    digest: Ok(::std::default::Default::default()),
                     id: Err("no value supplied for id".to_string()),
                     name: Err("no value supplied for name".to_string()),
                     project_id: Err("no value supplied for project_id".to_string()),
                     size: Err("no value supplied for size".to_string()),
                     time_created: Err("no value supplied for time_created".to_string()),
                     time_modified: Err("no value supplied for time_modified".to_string()),
-                    url: Ok(Default::default()),
-                    version: Ok(Default::default()),
+                    url: Ok(::std::default::Default::default()),
+                    version: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -17093,7 +17093,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -17365,15 +17365,15 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     description: Err("no value supplied for description".to_string()),
-                    disks: Ok(Default::default()),
-                    external_ips: Ok(Default::default()),
+                    disks: Ok(::std::default::Default::default()),
+                    external_ips: Ok(::std::default::Default::default()),
                     hostname: Err("no value supplied for hostname".to_string()),
                     memory: Err("no value supplied for memory".to_string()),
                     name: Err("no value supplied for name".to_string()),
                     ncpus: Err("no value supplied for ncpus".to_string()),
                     network_interfaces: Ok(super::defaults::instance_create_network_interfaces()),
                     start: Ok(super::defaults::default_bool::<true>()),
-                    user_data: Ok(Default::default()),
+                    user_data: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -17576,7 +17576,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -17940,7 +17940,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18002,7 +18002,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18063,8 +18063,8 @@ pub mod types {
         impl ::std::default::Default for IpPoolUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18307,7 +18307,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18563,7 +18563,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     description: Err("no value supplied for description".to_string()),
-                    ip: Ok(Default::default()),
+                    ip: Ok(::std::default::Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     subnet_name: Err("no value supplied for subnet_name".to_string()),
                     vpc_name: Err("no value supplied for vpc_name".to_string()),
@@ -18667,7 +18667,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18729,9 +18729,9 @@ pub mod types {
         impl ::std::default::Default for NetworkInterfaceUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
-                    primary: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
+                    primary: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -18972,7 +18972,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -19158,8 +19158,8 @@ pub mod types {
         impl ::std::default::Default for OrganizationUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -19234,7 +19234,7 @@ pub mod types {
                     id: Err("no value supplied for id".to_string()),
                     model: Err("no value supplied for model".to_string()),
                     serial: Err("no value supplied for serial".to_string()),
-                    sled_id: Ok(Default::default()),
+                    sled_id: Ok(::std::default::Default::default()),
                     time_created: Err("no value supplied for time_created".to_string()),
                     time_modified: Err("no value supplied for time_modified".to_string()),
                     vendor: Err("no value supplied for vendor".to_string()),
@@ -19372,7 +19372,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -19614,7 +19614,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -19796,8 +19796,8 @@ pub mod types {
         impl ::std::default::Default for ProjectUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -19936,7 +19936,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -20055,7 +20055,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -20368,7 +20368,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -20431,9 +20431,9 @@ pub mod types {
         impl ::std::default::Default for RouterRouteUpdateParams {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
                     destination: Err("no value supplied for destination".to_string()),
-                    name: Ok(Default::default()),
+                    name: Ok(::std::default::Default::default()),
                     target: Err("no value supplied for target".to_string()),
                 }
             }
@@ -20577,7 +20577,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -20659,7 +20659,7 @@ pub mod types {
                     id: Err("no value supplied for id".to_string()),
                     idp_entity_id: Err("no value supplied for idp_entity_id".to_string()),
                     name: Err("no value supplied for name".to_string()),
-                    public_cert: Ok(Default::default()),
+                    public_cert: Ok(::std::default::Default::default()),
                     slo_url: Err("no value supplied for slo_url".to_string()),
                     sp_client_id: Err("no value supplied for sp_client_id".to_string()),
                     technical_contact_email: Err(
@@ -20850,13 +20850,13 @@ pub mod types {
                 Self {
                     acs_url: Err("no value supplied for acs_url".to_string()),
                     description: Err("no value supplied for description".to_string()),
-                    group_attribute_name: Ok(Default::default()),
+                    group_attribute_name: Ok(::std::default::Default::default()),
                     idp_entity_id: Err("no value supplied for idp_entity_id".to_string()),
                     idp_metadata_source: Err(
                         "no value supplied for idp_metadata_source".to_string()
                     ),
                     name: Err("no value supplied for name".to_string()),
-                    signing_keypair: Ok(Default::default()),
+                    signing_keypair: Ok(::std::default::Default::default()),
                     slo_url: Err("no value supplied for slo_url".to_string()),
                     sp_client_id: Err("no value supplied for sp_client_id".to_string()),
                     technical_contact_email: Err(
@@ -21154,7 +21154,7 @@ pub mod types {
         impl ::std::default::Default for SiloCreate {
             fn default() -> Self {
                 Self {
-                    admin_group_name: Ok(Default::default()),
+                    admin_group_name: Ok(::std::default::Default::default()),
                     description: Err("no value supplied for description".to_string()),
                     discoverable: Err("no value supplied for discoverable".to_string()),
                     identity_mode: Err("no value supplied for identity_mode".to_string()),
@@ -21256,7 +21256,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -21544,7 +21544,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -21842,7 +21842,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -22157,7 +22157,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -22313,7 +22313,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -22573,7 +22573,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -22745,7 +22745,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -22960,7 +22960,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -23205,7 +23205,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -23326,7 +23326,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -23668,7 +23668,7 @@ pub mod types {
                 Self {
                     description: Err("no value supplied for description".to_string()),
                     dns_name: Err("no value supplied for dns_name".to_string()),
-                    ipv6_prefix: Ok(Default::default()),
+                    ipv6_prefix: Ok(::std::default::Default::default()),
                     name: Err("no value supplied for name".to_string()),
                 }
             }
@@ -23970,9 +23970,9 @@ pub mod types {
         impl ::std::default::Default for VpcFirewallRuleFilter {
             fn default() -> Self {
                 Self {
-                    hosts: Ok(Default::default()),
-                    ports: Ok(Default::default()),
-                    protocols: Ok(Default::default()),
+                    hosts: Ok(::std::default::Default::default()),
+                    ports: Ok(::std::default::Default::default()),
+                    protocols: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -24295,7 +24295,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -24551,7 +24551,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -24612,8 +24612,8 @@ pub mod types {
         impl ::std::default::Default for VpcRouterUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -24825,7 +24825,7 @@ pub mod types {
                 Self {
                     description: Err("no value supplied for description".to_string()),
                     ipv4_block: Err("no value supplied for ipv4_block".to_string()),
-                    ipv6_block: Ok(Default::default()),
+                    ipv6_block: Ok(::std::default::Default::default()),
                     name: Err("no value supplied for name".to_string()),
                 }
             }
@@ -24912,7 +24912,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -24973,8 +24973,8 @@ pub mod types {
         impl ::std::default::Default for VpcSubnetUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }
@@ -25037,9 +25037,9 @@ pub mod types {
         impl ::std::default::Default for VpcUpdate {
             fn default() -> Self {
                 Self {
-                    description: Ok(Default::default()),
-                    dns_name: Ok(Default::default()),
-                    name: Ok(Default::default()),
+                    description: Ok(::std::default::Default::default()),
+                    dns_name: Ok(::std::default::Default::default()),
+                    name: Ok(::std::default::Default::default()),
                 }
             }
         }

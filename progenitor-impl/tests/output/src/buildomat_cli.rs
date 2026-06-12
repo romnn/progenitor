@@ -331,7 +331,14 @@ impl<T: CliConfig> Cli<T> {
         ::clap::Command::new("").arg(
             ::clap::Arg::new("id")
                 .long("id")
-                .value_parser(::clap::value_parser!(types::GetThingOrThingsId))
+                .value_parser(::clap::builder::TypedValueParser::try_map(
+                    ::clap::builder::StringValueParser::new(),
+                    |s: ::std::string::String| {
+                        ::serde_json::from_value::<types::GetThingOrThingsId>(
+                            ::serde_json::Value::String(s),
+                        )
+                    },
+                ))
                 .required(false),
         )
     }

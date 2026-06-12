@@ -124,14 +124,20 @@ fn lower_operation(
     let context = format!("{method} {path}");
 
     // Merge path-item and operation parameters; operation parameters
-    // override path-item parameters of the same name, and the result is
-    // name-ordered — the same contract the 3.0 frontend honors.
-    let mut merged: BTreeMap<String, Parameter31> = BTreeMap::new();
+    // override path-item parameters with the same identity, and the result
+    // is name-ordered — the same contract the 3.0 frontend honors. A
+    // parameter's identity is (name, location): Elasticsearch declares
+    // `scroll_id` as BOTH a path and a query parameter of one operation,
+    // and keying by name alone collapses them into one.
+    let mut merged: BTreeMap<(String, String), Parameter31> = BTreeMap::new();
     for parameter_value in path_parameters.iter().chain(&operation.parameters) {
         let resolved = resolve_component(parameter_value, &components.parameters, "parameter")?;
         let parameter: Parameter31 =
             from_value(resolved.clone(), &format!("parameter in {context}"))?;
-        merged.insert(parameter.name.clone(), parameter);
+        merged.insert(
+            (parameter.name.clone(), parameter.location.clone()),
+            parameter,
+        );
     }
 
     let parameters = merged

@@ -278,7 +278,7 @@ pub struct DiskAttachment {
 }
 impl DiskAttachment {
     pub fn builder() -> builder::DiskAttachment {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`DiskAttachmentState`"]
@@ -387,13 +387,13 @@ pub struct EmptyObject {
 impl ::std::default::Default for EmptyObject {
     fn default() -> Self {
         Self {
-            prop: Default::default(),
+            prop: ::std::default::Default::default(),
         }
     }
 }
 impl EmptyObject {
     pub fn builder() -> builder::EmptyObject {
-        Default::default()
+        ::std::default::Default::default()
     }
 }
 #[doc = "`EmptyObjectProp`"]
@@ -1734,7 +1734,7 @@ pub mod builder {
     impl ::std::default::Default for EmptyObject {
         fn default() -> Self {
             Self {
-                prop: Ok(Default::default()),
+                prop: Ok(::std::default::Default::default()),
             }
         }
     }

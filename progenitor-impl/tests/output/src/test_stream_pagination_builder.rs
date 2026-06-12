@@ -71,7 +71,7 @@ pub mod types {
 
     impl Error {
         pub fn builder() -> builder::Error {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -119,7 +119,7 @@ pub mod types {
 
     impl Uint32ResultsPage {
         pub fn builder() -> builder::Uint32ResultsPage {
-            Default::default()
+            ::std::default::Default::default()
         }
     }
 
@@ -138,7 +138,7 @@ pub mod types {
         impl ::std::default::Default for Error {
             fn default() -> Self {
                 Self {
-                    error_code: Ok(Default::default()),
+                    error_code: Ok(::std::default::Default::default()),
                     message: Err("no value supplied for message".to_string()),
                     request_id: Err("no value supplied for request_id".to_string()),
                 }
@@ -214,7 +214,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     items: Err("no value supplied for items".to_string()),
-                    next_page: Ok(Default::default()),
+                    next_page: Ok(::std::default::Default::default()),
                 }
             }
         }

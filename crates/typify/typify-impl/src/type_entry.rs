@@ -659,7 +659,85 @@ impl TypeEntry {
             enum_details.finalize(type_space);
         }
 
+        self.reconcile_value_constraints(type_space);
         self.check_defaults(type_space)
+    }
+
+    /// Value-constrained newtypes (`enum`/`not.enum` over a non-string
+    /// inner) may carry members that were unverifiable at conversion time —
+    /// the inner was still an unresolved `$ref` (Discord's discriminants) —
+    /// or that don't conform at all. Now that references resolve,
+    /// re-validate every member: coerce quoted numbers whose numeric twin
+    /// conforms, and drop the rest — emitting an unrepresentable member
+    /// would produce invalid Rust, since `output_value` has no tokens for
+    /// it. Surviving constraints compare via `[…].contains(&value)`, so the
+    /// resolved inner's type graph is marked `PartialEq` (generated
+    /// composites only derive Clone/Debug by default).
+    fn reconcile_value_constraints(&mut self, type_space: &mut TypeSpace) {
+        let TypeEntryDetails::Newtype(TypeEntryNewtype {
+            type_id,
+            constraints,
+            ..
+        }) = &mut self.details
+        else {
+            return;
+        };
+        let deny = matches!(constraints, TypeEntryNewtypeConstraints::DenyValue(_));
+        let values = match constraints {
+            TypeEntryNewtypeConstraints::EnumValue(values)
+            | TypeEntryNewtypeConstraints::DenyValue(values) => values,
+            _ => return,
+        };
+
+        let mut inner_id = type_id.clone();
+        for _ in 0..32 {
+            match type_space.id_to_entry.get(&inner_id).map(|e| &e.details) {
+                Some(TypeEntryDetails::Reference(next)) => inner_id = next.clone(),
+                _ => break,
+            }
+        }
+        let Some(inner) = type_space.id_to_entry.get(&inner_id).cloned() else {
+            return;
+        };
+
+        let mut seen: Vec<serde_json::Value> = Vec::new();
+        values.retain_mut(|value| {
+            let keep = if inner.validate_value(type_space, &value.0).is_ok() {
+                true
+            } else if let serde_json::Value::String(s) = &value.0 {
+                match s.parse::<serde_json::Number>() {
+                    Ok(n) => {
+                        let candidate = serde_json::Value::Number(n);
+                        let ok = inner.validate_value(type_space, &candidate).is_ok();
+                        if ok {
+                            *value = WrappedValue::new(candidate);
+                        }
+                        ok
+                    }
+                    Err(_) => false,
+                }
+            } else {
+                false
+            };
+            // Coercion can create duplicates ("0.5" alongside 0.5).
+            if keep && !seen.contains(&value.0) {
+                seen.push(value.0.clone());
+                true
+            } else {
+                false
+            }
+        });
+
+        if values.is_empty() {
+            if deny {
+                // Denying nothing is no constraint at all.
+                *constraints = TypeEntryNewtypeConstraints::None;
+            }
+            // An empty *enum* constraint stays: it admits no value, and
+            // the emitted guard rejects everything.
+            return;
+        }
+        mark_partial_eq(type_space, &inner_id);
     }
 
     pub(crate) fn name(&self) -> Option<&String> {
@@ -1254,8 +1332,11 @@ impl TypeEntry {
 
             prop_serde.push(serde);
             prop_default.push(match default_fn {
+                // Fully qualified: Stripe names a schema `default`, and the
+                // resulting `struct Default` shadows the trait inside the
+                // generated module, breaking a bare `Default::default()`.
                 DefaultFunction::Default => PropDefault::Default(quote! {
-                    Default::default()
+                    ::std::default::Default::default()
                 }),
                 DefaultFunction::Custom(fn_name) => {
                     let default_fn = syn::parse_str::<Path>(&fn_name).unwrap();
@@ -1345,7 +1426,7 @@ impl TypeEntry {
                 quote! {
                     impl #type_name {
                         pub fn builder() -> builder::#type_name {
-                            Default::default()
+                            ::std::default::Default::default()
                         }
                     }
                 },
@@ -1561,9 +1642,33 @@ impl TypeEntry {
                 // TODO: if a user were to derive schemars::JsonSchema, it
                 // wouldn't be accurate.
 
-                let value_output = enum_values
-                    .iter()
-                    .map(|value| inner_type.output_value(type_space, &value.0, &quote! {}));
+                // Finalization re-validated the members against the
+                // resolved inner type and dropped unrepresentable ones, so
+                // output_value is Some for everything here — but guard the
+                // degenerate empty enum (no member survived: the type
+                // admits no value at all) with an unconditional rejection,
+                // since `[].contains` can't infer its element type.
+                let guard = if enum_values.is_empty()
+                    && matches!(constraints, TypeEntryNewtypeConstraints::EnumValue(_))
+                {
+                    quote! {
+                        let _ = value;
+                        Err("no value satisfies the enumeration".into())
+                    }
+                } else {
+                    let value_output = enum_values
+                        .iter()
+                        .map(|value| inner_type.output_value(type_space, &value.0, &quote! {}));
+                    quote! {
+                        if #not [
+                            #(#value_output,)*
+                        ].contains(&value) {
+                            Err("invalid value".into())
+                        } else {
+                            Ok(Self(value))
+                        }
+                    }
+                };
                 // TODO if the sub_type is a string we could probably impl
                 // TryFrom<&str> as well and FromStr.
                 // TODO maybe we want to handle JsonSchema here
@@ -1576,13 +1681,7 @@ impl TypeEntry {
                             value: #inner_type_name
                         ) -> ::std::result::Result<Self, self::error::ConversionError>
                         {
-                            if #not [
-                                #(#value_output,)*
-                            ].contains(&value) {
-                                Err("invalid value".into())
-                            } else {
-                                Ok(Self(value))
-                            }
+                            #guard
                         }
                     }
 
@@ -2071,6 +2170,74 @@ fn make_doc(name: &str, description: Option<&String>, schema: &Schema) -> TokenS
         )*
         /// ```
         /// </details>
+    }
+}
+
+/// Walk a type graph rooted at `type_id`, requesting a `PartialEq` derive
+/// on every generated composite (struct/enum/newtype) reachable from it.
+/// Built-ins, natives, and std containers already compare; the derive set
+/// is a `BTreeSet`, so types that already carry `PartialEq` (unit enums'
+/// bespoke set, user patches) dedupe rather than conflict.
+fn mark_partial_eq(type_space: &mut TypeSpace, type_id: &TypeId) {
+    let mut pending = vec![type_id.clone()];
+    let mut visited = std::collections::BTreeSet::new();
+    while let Some(id) = pending.pop() {
+        if !visited.insert(id.clone()) {
+            continue;
+        }
+        let Some(entry) = type_space.id_to_entry.get_mut(&id) else {
+            continue;
+        };
+        match &entry.details {
+            TypeEntryDetails::Enum(enum_details) => {
+                let children: Vec<TypeId> = enum_details
+                    .variants
+                    .iter()
+                    .flat_map(|variant| match &variant.details {
+                        VariantDetails::Simple => Vec::new(),
+                        VariantDetails::Item(id) => vec![id.clone()],
+                        VariantDetails::Tuple(ids) => ids.clone(),
+                        VariantDetails::Struct(props) => {
+                            props.iter().map(|p| p.type_id.clone()).collect()
+                        }
+                    })
+                    .collect();
+                entry.extra_derives.insert("PartialEq".to_string());
+                pending.extend(children);
+            }
+            TypeEntryDetails::Struct(struct_details) => {
+                let children: Vec<TypeId> = struct_details
+                    .properties
+                    .iter()
+                    .map(|p| p.type_id.clone())
+                    .collect();
+                entry.extra_derives.insert("PartialEq".to_string());
+                pending.extend(children);
+            }
+            TypeEntryDetails::Newtype(newtype_details) => {
+                let child = newtype_details.type_id.clone();
+                entry.extra_derives.insert("PartialEq".to_string());
+                pending.push(child);
+            }
+            TypeEntryDetails::Option(id)
+            | TypeEntryDetails::Box(id)
+            | TypeEntryDetails::Vec(id)
+            | TypeEntryDetails::Set(id)
+            | TypeEntryDetails::Array(id, _)
+            | TypeEntryDetails::Reference(id) => pending.push(id.clone()),
+            TypeEntryDetails::Map(key_id, value_id) => {
+                pending.push(key_id.clone());
+                pending.push(value_id.clone());
+            }
+            TypeEntryDetails::Tuple(ids) => pending.extend(ids.iter().cloned()),
+            TypeEntryDetails::Native(_)
+            | TypeEntryDetails::Unit
+            | TypeEntryDetails::Boolean
+            | TypeEntryDetails::Integer(_)
+            | TypeEntryDetails::Float(_)
+            | TypeEntryDetails::String
+            | TypeEntryDetails::JsonValue => {}
+        }
     }
 }
 

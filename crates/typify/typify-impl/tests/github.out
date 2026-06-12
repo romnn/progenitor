@@ -171,11 +171,11 @@ pub struct AlertInstanceLocation {
 impl ::std::default::Default for AlertInstanceLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -204,7 +204,7 @@ pub struct AlertInstanceMessage {
 impl ::std::default::Default for AlertInstanceMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -1285,40 +1285,40 @@ pub struct AppPermissions {
 impl ::std::default::Default for AppPermissions {
     fn default() -> Self {
         Self {
-            actions: Default::default(),
-            administration: Default::default(),
-            checks: Default::default(),
-            content_references: Default::default(),
-            contents: Default::default(),
-            deployments: Default::default(),
-            discussions: Default::default(),
-            emails: Default::default(),
-            environments: Default::default(),
-            issues: Default::default(),
-            members: Default::default(),
-            metadata: Default::default(),
-            organization_administration: Default::default(),
-            organization_hooks: Default::default(),
-            organization_packages: Default::default(),
-            organization_plan: Default::default(),
-            organization_projects: Default::default(),
-            organization_secrets: Default::default(),
-            organization_self_hosted_runners: Default::default(),
-            organization_user_blocking: Default::default(),
-            packages: Default::default(),
-            pages: Default::default(),
-            pull_requests: Default::default(),
-            repository_hooks: Default::default(),
-            repository_projects: Default::default(),
-            secret_scanning_alerts: Default::default(),
-            secrets: Default::default(),
-            security_events: Default::default(),
-            security_scanning_alert: Default::default(),
-            single_file: Default::default(),
-            statuses: Default::default(),
-            team_discussions: Default::default(),
-            vulnerability_alerts: Default::default(),
-            workflows: Default::default(),
+            actions: ::std::default::Default::default(),
+            administration: ::std::default::Default::default(),
+            checks: ::std::default::Default::default(),
+            content_references: ::std::default::Default::default(),
+            contents: ::std::default::Default::default(),
+            deployments: ::std::default::Default::default(),
+            discussions: ::std::default::Default::default(),
+            emails: ::std::default::Default::default(),
+            environments: ::std::default::Default::default(),
+            issues: ::std::default::Default::default(),
+            members: ::std::default::Default::default(),
+            metadata: ::std::default::Default::default(),
+            organization_administration: ::std::default::Default::default(),
+            organization_hooks: ::std::default::Default::default(),
+            organization_packages: ::std::default::Default::default(),
+            organization_plan: ::std::default::Default::default(),
+            organization_projects: ::std::default::Default::default(),
+            organization_secrets: ::std::default::Default::default(),
+            organization_self_hosted_runners: ::std::default::Default::default(),
+            organization_user_blocking: ::std::default::Default::default(),
+            packages: ::std::default::Default::default(),
+            pages: ::std::default::Default::default(),
+            pull_requests: ::std::default::Default::default(),
+            repository_hooks: ::std::default::Default::default(),
+            repository_projects: ::std::default::Default::default(),
+            secret_scanning_alerts: ::std::default::Default::default(),
+            secrets: ::std::default::Default::default(),
+            security_events: ::std::default::Default::default(),
+            security_scanning_alert: ::std::default::Default::default(),
+            single_file: ::std::default::Default::default(),
+            statuses: ::std::default::Default::default(),
+            team_discussions: ::std::default::Default::default(),
+            vulnerability_alerts: ::std::default::Default::default(),
+            workflows: ::std::default::Default::default(),
         }
     }
 }
@@ -4698,8 +4698,8 @@ pub struct BranchProtectionRuleEditedChanges {
 impl ::std::default::Default for BranchProtectionRuleEditedChanges {
     fn default() -> Self {
         Self {
-            authorized_actor_names: Default::default(),
-            authorized_actors_only: Default::default(),
+            authorized_actor_names: ::std::default::Default::default(),
+            authorized_actors_only: ::std::default::Default::default(),
         }
     }
 }
@@ -4866,8 +4866,8 @@ pub struct BranchProtectionRuleEventChanges {
 impl ::std::default::Default for BranchProtectionRuleEventChanges {
     fn default() -> Self {
         Self {
-            authorized_actor_names: Default::default(),
-            authorized_actors_only: Default::default(),
+            authorized_actor_names: ::std::default::Default::default(),
+            authorized_actors_only: ::std::default::Default::default(),
         }
     }
 }
@@ -6681,7 +6681,7 @@ pub struct CheckRunCompletedRequestedAction {
 impl ::std::default::Default for CheckRunCompletedRequestedAction {
     fn default() -> Self {
         Self {
-            identifier: Default::default(),
+            identifier: ::std::default::Default::default(),
         }
     }
 }
@@ -7895,7 +7895,7 @@ pub struct CheckRunCreatedRequestedAction {
 impl ::std::default::Default for CheckRunCreatedRequestedAction {
     fn default() -> Self {
         Self {
-            identifier: Default::default(),
+            identifier: ::std::default::Default::default(),
         }
     }
 }
@@ -8886,7 +8886,7 @@ pub struct CheckRunEventRequestedAction {
 impl ::std::default::Default for CheckRunEventRequestedAction {
     fn default() -> Self {
         Self {
-            identifier: Default::default(),
+            identifier: ::std::default::Default::default(),
         }
     }
 }
@@ -10251,7 +10251,7 @@ pub struct CheckRunRequestedActionRequestedAction {
 impl ::std::default::Default for CheckRunRequestedActionRequestedAction {
     fn default() -> Self {
         Self {
-            identifier: Default::default(),
+            identifier: ::std::default::Default::default(),
         }
     }
 }
@@ -11421,7 +11421,7 @@ pub struct CheckRunRerequestedRequestedAction {
 impl ::std::default::Default for CheckRunRerequestedRequestedAction {
     fn default() -> Self {
         Self {
-            identifier: Default::default(),
+            identifier: ::std::default::Default::default(),
         }
     }
 }
@@ -14946,11 +14946,11 @@ pub struct CodeScanningAlertClosedByUserAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertClosedByUserAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -14979,7 +14979,7 @@ pub struct CodeScanningAlertClosedByUserAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertClosedByUserAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -15897,11 +15897,11 @@ pub struct CodeScanningAlertCreatedAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertCreatedAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -15930,7 +15930,7 @@ pub struct CodeScanningAlertCreatedAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertCreatedAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -16754,11 +16754,11 @@ pub struct CodeScanningAlertEventAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertEventAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -16787,7 +16787,7 @@ pub struct CodeScanningAlertEventAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertEventAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -17808,11 +17808,11 @@ pub struct CodeScanningAlertFixedAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertFixedAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -17841,7 +17841,7 @@ pub struct CodeScanningAlertFixedAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertFixedAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -18754,11 +18754,11 @@ pub struct CodeScanningAlertReopenedAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertReopenedAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -18787,7 +18787,7 @@ pub struct CodeScanningAlertReopenedAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertReopenedAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -19672,11 +19672,11 @@ pub struct CodeScanningAlertReopenedByUserAlertInstancesItemLocation {
 impl ::std::default::Default for CodeScanningAlertReopenedByUserAlertInstancesItemLocation {
     fn default() -> Self {
         Self {
-            end_column: Default::default(),
-            end_line: Default::default(),
-            path: Default::default(),
-            start_column: Default::default(),
-            start_line: Default::default(),
+            end_column: ::std::default::Default::default(),
+            end_line: ::std::default::Default::default(),
+            path: ::std::default::Default::default(),
+            start_column: ::std::default::Default::default(),
+            start_line: ::std::default::Default::default(),
         }
     }
 }
@@ -19705,7 +19705,7 @@ pub struct CodeScanningAlertReopenedByUserAlertInstancesItemMessage {
 impl ::std::default::Default for CodeScanningAlertReopenedByUserAlertInstancesItemMessage {
     fn default() -> Self {
         Self {
-            text: Default::default(),
+            text: ::std::default::Default::default(),
         }
     }
 }
@@ -26163,8 +26163,8 @@ pub struct DiscussionEditedChanges {
 impl ::std::default::Default for DiscussionEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            title: Default::default(),
+            body: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -32402,41 +32402,41 @@ pub struct InstallationEventInstallationPermissions {
 impl ::std::default::Default for InstallationEventInstallationPermissions {
     fn default() -> Self {
         Self {
-            actions: Default::default(),
-            administration: Default::default(),
-            checks: Default::default(),
-            content_references: Default::default(),
-            contents: Default::default(),
-            deployments: Default::default(),
-            discussions: Default::default(),
-            emails: Default::default(),
-            environments: Default::default(),
-            issues: Default::default(),
-            members: Default::default(),
-            metadata: Default::default(),
-            organization_administration: Default::default(),
-            organization_events: Default::default(),
-            organization_hooks: Default::default(),
-            organization_packages: Default::default(),
-            organization_plan: Default::default(),
-            organization_projects: Default::default(),
-            organization_secrets: Default::default(),
-            organization_self_hosted_runners: Default::default(),
-            organization_user_blocking: Default::default(),
-            packages: Default::default(),
-            pages: Default::default(),
-            pull_requests: Default::default(),
-            repository_hooks: Default::default(),
-            repository_projects: Default::default(),
-            secret_scanning_alerts: Default::default(),
-            secrets: Default::default(),
-            security_events: Default::default(),
-            security_scanning_alert: Default::default(),
-            single_file: Default::default(),
-            statuses: Default::default(),
-            team_discussions: Default::default(),
-            vulnerability_alerts: Default::default(),
-            workflows: Default::default(),
+            actions: ::std::default::Default::default(),
+            administration: ::std::default::Default::default(),
+            checks: ::std::default::Default::default(),
+            content_references: ::std::default::Default::default(),
+            contents: ::std::default::Default::default(),
+            deployments: ::std::default::Default::default(),
+            discussions: ::std::default::Default::default(),
+            emails: ::std::default::Default::default(),
+            environments: ::std::default::Default::default(),
+            issues: ::std::default::Default::default(),
+            members: ::std::default::Default::default(),
+            metadata: ::std::default::Default::default(),
+            organization_administration: ::std::default::Default::default(),
+            organization_events: ::std::default::Default::default(),
+            organization_hooks: ::std::default::Default::default(),
+            organization_packages: ::std::default::Default::default(),
+            organization_plan: ::std::default::Default::default(),
+            organization_projects: ::std::default::Default::default(),
+            organization_secrets: ::std::default::Default::default(),
+            organization_self_hosted_runners: ::std::default::Default::default(),
+            organization_user_blocking: ::std::default::Default::default(),
+            packages: ::std::default::Default::default(),
+            pages: ::std::default::Default::default(),
+            pull_requests: ::std::default::Default::default(),
+            repository_hooks: ::std::default::Default::default(),
+            repository_projects: ::std::default::Default::default(),
+            secret_scanning_alerts: ::std::default::Default::default(),
+            secrets: ::std::default::Default::default(),
+            security_events: ::std::default::Default::default(),
+            security_scanning_alert: ::std::default::Default::default(),
+            single_file: ::std::default::Default::default(),
+            statuses: ::std::default::Default::default(),
+            team_discussions: ::std::default::Default::default(),
+            vulnerability_alerts: ::std::default::Default::default(),
+            workflows: ::std::default::Default::default(),
         }
     }
 }
@@ -36478,41 +36478,41 @@ pub struct InstallationPermissions {
 impl ::std::default::Default for InstallationPermissions {
     fn default() -> Self {
         Self {
-            actions: Default::default(),
-            administration: Default::default(),
-            checks: Default::default(),
-            content_references: Default::default(),
-            contents: Default::default(),
-            deployments: Default::default(),
-            discussions: Default::default(),
-            emails: Default::default(),
-            environments: Default::default(),
-            issues: Default::default(),
-            members: Default::default(),
-            metadata: Default::default(),
-            organization_administration: Default::default(),
-            organization_events: Default::default(),
-            organization_hooks: Default::default(),
-            organization_packages: Default::default(),
-            organization_plan: Default::default(),
-            organization_projects: Default::default(),
-            organization_secrets: Default::default(),
-            organization_self_hosted_runners: Default::default(),
-            organization_user_blocking: Default::default(),
-            packages: Default::default(),
-            pages: Default::default(),
-            pull_requests: Default::default(),
-            repository_hooks: Default::default(),
-            repository_projects: Default::default(),
-            secret_scanning_alerts: Default::default(),
-            secrets: Default::default(),
-            security_events: Default::default(),
-            security_scanning_alert: Default::default(),
-            single_file: Default::default(),
-            statuses: Default::default(),
-            team_discussions: Default::default(),
-            vulnerability_alerts: Default::default(),
-            workflows: Default::default(),
+            actions: ::std::default::Default::default(),
+            administration: ::std::default::Default::default(),
+            checks: ::std::default::Default::default(),
+            content_references: ::std::default::Default::default(),
+            contents: ::std::default::Default::default(),
+            deployments: ::std::default::Default::default(),
+            discussions: ::std::default::Default::default(),
+            emails: ::std::default::Default::default(),
+            environments: ::std::default::Default::default(),
+            issues: ::std::default::Default::default(),
+            members: ::std::default::Default::default(),
+            metadata: ::std::default::Default::default(),
+            organization_administration: ::std::default::Default::default(),
+            organization_events: ::std::default::Default::default(),
+            organization_hooks: ::std::default::Default::default(),
+            organization_packages: ::std::default::Default::default(),
+            organization_plan: ::std::default::Default::default(),
+            organization_projects: ::std::default::Default::default(),
+            organization_secrets: ::std::default::Default::default(),
+            organization_self_hosted_runners: ::std::default::Default::default(),
+            organization_user_blocking: ::std::default::Default::default(),
+            packages: ::std::default::Default::default(),
+            pages: ::std::default::Default::default(),
+            pull_requests: ::std::default::Default::default(),
+            repository_hooks: ::std::default::Default::default(),
+            repository_projects: ::std::default::Default::default(),
+            secret_scanning_alerts: ::std::default::Default::default(),
+            secrets: ::std::default::Default::default(),
+            security_events: ::std::default::Default::default(),
+            security_scanning_alert: ::std::default::Default::default(),
+            single_file: ::std::default::Default::default(),
+            statuses: ::std::default::Default::default(),
+            team_discussions: ::std::default::Default::default(),
+            vulnerability_alerts: ::std::default::Default::default(),
+            workflows: ::std::default::Default::default(),
         }
     }
 }
@@ -39368,11 +39368,11 @@ pub struct InstallationRepositoriesAddedRepositoriesRemovedItem {
 impl ::std::default::Default for InstallationRepositoriesAddedRepositoriesRemovedItem {
     fn default() -> Self {
         Self {
-            full_name: Default::default(),
-            id: Default::default(),
-            name: Default::default(),
-            node_id: Default::default(),
-            private: Default::default(),
+            full_name: ::std::default::Default::default(),
+            id: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
+            node_id: ::std::default::Default::default(),
+            private: ::std::default::Default::default(),
         }
     }
 }
@@ -39601,11 +39601,11 @@ pub struct InstallationRepositoriesEventRepositoriesRemovedItem {
 impl ::std::default::Default for InstallationRepositoriesEventRepositoriesRemovedItem {
     fn default() -> Self {
         Self {
-            full_name: Default::default(),
-            id: Default::default(),
-            name: Default::default(),
-            node_id: Default::default(),
-            private: Default::default(),
+            full_name: ::std::default::Default::default(),
+            id: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
+            node_id: ::std::default::Default::default(),
+            private: ::std::default::Default::default(),
         }
     }
 }
@@ -41093,41 +41093,41 @@ pub struct InstallationSuspendInstallationPermissions {
 impl ::std::default::Default for InstallationSuspendInstallationPermissions {
     fn default() -> Self {
         Self {
-            actions: Default::default(),
-            administration: Default::default(),
-            checks: Default::default(),
-            content_references: Default::default(),
-            contents: Default::default(),
-            deployments: Default::default(),
-            discussions: Default::default(),
-            emails: Default::default(),
-            environments: Default::default(),
-            issues: Default::default(),
-            members: Default::default(),
-            metadata: Default::default(),
-            organization_administration: Default::default(),
-            organization_events: Default::default(),
-            organization_hooks: Default::default(),
-            organization_packages: Default::default(),
-            organization_plan: Default::default(),
-            organization_projects: Default::default(),
-            organization_secrets: Default::default(),
-            organization_self_hosted_runners: Default::default(),
-            organization_user_blocking: Default::default(),
-            packages: Default::default(),
-            pages: Default::default(),
-            pull_requests: Default::default(),
-            repository_hooks: Default::default(),
-            repository_projects: Default::default(),
-            secret_scanning_alerts: Default::default(),
-            secrets: Default::default(),
-            security_events: Default::default(),
-            security_scanning_alert: Default::default(),
-            single_file: Default::default(),
-            statuses: Default::default(),
-            team_discussions: Default::default(),
-            vulnerability_alerts: Default::default(),
-            workflows: Default::default(),
+            actions: ::std::default::Default::default(),
+            administration: ::std::default::Default::default(),
+            checks: ::std::default::Default::default(),
+            content_references: ::std::default::Default::default(),
+            contents: ::std::default::Default::default(),
+            deployments: ::std::default::Default::default(),
+            discussions: ::std::default::Default::default(),
+            emails: ::std::default::Default::default(),
+            environments: ::std::default::Default::default(),
+            issues: ::std::default::Default::default(),
+            members: ::std::default::Default::default(),
+            metadata: ::std::default::Default::default(),
+            organization_administration: ::std::default::Default::default(),
+            organization_events: ::std::default::Default::default(),
+            organization_hooks: ::std::default::Default::default(),
+            organization_packages: ::std::default::Default::default(),
+            organization_plan: ::std::default::Default::default(),
+            organization_projects: ::std::default::Default::default(),
+            organization_secrets: ::std::default::Default::default(),
+            organization_self_hosted_runners: ::std::default::Default::default(),
+            organization_user_blocking: ::std::default::Default::default(),
+            packages: ::std::default::Default::default(),
+            pages: ::std::default::Default::default(),
+            pull_requests: ::std::default::Default::default(),
+            repository_hooks: ::std::default::Default::default(),
+            repository_projects: ::std::default::Default::default(),
+            secret_scanning_alerts: ::std::default::Default::default(),
+            secrets: ::std::default::Default::default(),
+            security_events: ::std::default::Default::default(),
+            security_scanning_alert: ::std::default::Default::default(),
+            single_file: ::std::default::Default::default(),
+            statuses: ::std::default::Default::default(),
+            team_discussions: ::std::default::Default::default(),
+            vulnerability_alerts: ::std::default::Default::default(),
+            workflows: ::std::default::Default::default(),
         }
     }
 }
@@ -45348,41 +45348,41 @@ pub struct InstallationUnsuspendInstallationPermissions {
 impl ::std::default::Default for InstallationUnsuspendInstallationPermissions {
     fn default() -> Self {
         Self {
-            actions: Default::default(),
-            administration: Default::default(),
-            checks: Default::default(),
-            content_references: Default::default(),
-            contents: Default::default(),
-            deployments: Default::default(),
-            discussions: Default::default(),
-            emails: Default::default(),
-            environments: Default::default(),
-            issues: Default::default(),
-            members: Default::default(),
-            metadata: Default::default(),
-            organization_administration: Default::default(),
-            organization_events: Default::default(),
-            organization_hooks: Default::default(),
-            organization_packages: Default::default(),
-            organization_plan: Default::default(),
-            organization_projects: Default::default(),
-            organization_secrets: Default::default(),
-            organization_self_hosted_runners: Default::default(),
-            organization_user_blocking: Default::default(),
-            packages: Default::default(),
-            pages: Default::default(),
-            pull_requests: Default::default(),
-            repository_hooks: Default::default(),
-            repository_projects: Default::default(),
-            secret_scanning_alerts: Default::default(),
-            secrets: Default::default(),
-            security_events: Default::default(),
-            security_scanning_alert: Default::default(),
-            single_file: Default::default(),
-            statuses: Default::default(),
-            team_discussions: Default::default(),
-            vulnerability_alerts: Default::default(),
-            workflows: Default::default(),
+            actions: ::std::default::Default::default(),
+            administration: ::std::default::Default::default(),
+            checks: ::std::default::Default::default(),
+            content_references: ::std::default::Default::default(),
+            contents: ::std::default::Default::default(),
+            deployments: ::std::default::Default::default(),
+            discussions: ::std::default::Default::default(),
+            emails: ::std::default::Default::default(),
+            environments: ::std::default::Default::default(),
+            issues: ::std::default::Default::default(),
+            members: ::std::default::Default::default(),
+            metadata: ::std::default::Default::default(),
+            organization_administration: ::std::default::Default::default(),
+            organization_events: ::std::default::Default::default(),
+            organization_hooks: ::std::default::Default::default(),
+            organization_packages: ::std::default::Default::default(),
+            organization_plan: ::std::default::Default::default(),
+            organization_projects: ::std::default::Default::default(),
+            organization_secrets: ::std::default::Default::default(),
+            organization_self_hosted_runners: ::std::default::Default::default(),
+            organization_user_blocking: ::std::default::Default::default(),
+            packages: ::std::default::Default::default(),
+            pages: ::std::default::Default::default(),
+            pull_requests: ::std::default::Default::default(),
+            repository_hooks: ::std::default::Default::default(),
+            repository_projects: ::std::default::Default::default(),
+            secret_scanning_alerts: ::std::default::Default::default(),
+            secrets: ::std::default::Default::default(),
+            security_events: ::std::default::Default::default(),
+            security_scanning_alert: ::std::default::Default::default(),
+            single_file: ::std::default::Default::default(),
+            statuses: ::std::default::Default::default(),
+            team_discussions: ::std::default::Default::default(),
+            vulnerability_alerts: ::std::default::Default::default(),
+            workflows: ::std::default::Default::default(),
         }
     }
 }
@@ -50391,7 +50391,7 @@ pub struct IssueCommentEditedChanges {
 impl ::std::default::Default for IssueCommentEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -50962,7 +50962,7 @@ pub struct IssueCommentEventChanges {
 impl ::std::default::Default for IssueCommentEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -51480,10 +51480,10 @@ pub struct IssuePullRequest {
 impl ::std::default::Default for IssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -52045,10 +52045,10 @@ pub struct IssuesClosedIssuePullRequest {
 impl ::std::default::Default for IssuesClosedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -52574,10 +52574,10 @@ pub struct IssuesDemilestonedIssuePullRequest {
 impl ::std::default::Default for IssuesDemilestonedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -52866,8 +52866,8 @@ pub struct IssuesEditedChanges {
 impl ::std::default::Default for IssuesEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            title: Default::default(),
+            body: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -53233,8 +53233,8 @@ pub struct IssuesEventChanges {
 impl ::std::default::Default for IssuesEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            title: Default::default(),
+            body: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -53694,10 +53694,10 @@ pub struct IssuesEventIssuePullRequest {
 impl ::std::default::Default for IssuesEventIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -54258,10 +54258,10 @@ pub struct IssuesLockedIssuePullRequest {
 impl ::std::default::Default for IssuesLockedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -54878,10 +54878,10 @@ pub struct IssuesMilestonedIssuePullRequest {
 impl ::std::default::Default for IssuesMilestonedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -55346,10 +55346,10 @@ pub struct IssuesOpenedIssuePullRequest {
 impl ::std::default::Default for IssuesOpenedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -55874,10 +55874,10 @@ pub struct IssuesReopenedIssuePullRequest {
 impl ::std::default::Default for IssuesReopenedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -56688,10 +56688,10 @@ pub struct IssuesUnlockedIssuePullRequest {
 impl ::std::default::Default for IssuesUnlockedIssuePullRequest {
     fn default() -> Self {
         Self {
-            diff_url: Default::default(),
-            html_url: Default::default(),
-            patch_url: Default::default(),
-            url: Default::default(),
+            diff_url: ::std::default::Default::default(),
+            html_url: ::std::default::Default::default(),
+            patch_url: ::std::default::Default::default(),
+            url: ::std::default::Default::default(),
         }
     }
 }
@@ -57438,9 +57438,9 @@ pub struct LabelEditedChanges {
 impl ::std::default::Default for LabelEditedChanges {
     fn default() -> Self {
         Self {
-            color: Default::default(),
-            description: Default::default(),
-            name: Default::default(),
+            color: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -57650,9 +57650,9 @@ pub struct LabelEventChanges {
 impl ::std::default::Default for LabelEventChanges {
     fn default() -> Self {
         Self {
-            color: Default::default(),
-            description: Default::default(),
-            name: Default::default(),
+            color: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -61063,7 +61063,7 @@ pub struct MemberAddedChanges {
 impl ::std::default::Default for MemberAddedChanges {
     fn default() -> Self {
         Self {
-            permission: Default::default(),
+            permission: ::std::default::Default::default(),
         }
     }
 }
@@ -61466,7 +61466,7 @@ pub struct MemberEventChanges {
 impl ::std::default::Default for MemberEventChanges {
     fn default() -> Self {
         Self {
-            permission: Default::default(),
+            permission: ::std::default::Default::default(),
         }
     }
 }
@@ -64024,9 +64024,9 @@ pub struct MilestoneEditedChanges {
 impl ::std::default::Default for MilestoneEditedChanges {
     fn default() -> Self {
         Self {
-            description: Default::default(),
-            due_on: Default::default(),
-            title: Default::default(),
+            description: ::std::default::Default::default(),
+            due_on: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -64260,9 +64260,9 @@ pub struct MilestoneEventChanges {
 impl ::std::default::Default for MilestoneEventChanges {
     fn default() -> Self {
         Self {
-            description: Default::default(),
-            due_on: Default::default(),
-            title: Default::default(),
+            description: ::std::default::Default::default(),
+            due_on: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -71786,7 +71786,7 @@ pub struct ProjectColumnEditedChanges {
 impl ::std::default::Default for ProjectColumnEditedChanges {
     fn default() -> Self {
         Self {
-            name: Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -71920,7 +71920,7 @@ pub struct ProjectColumnEventChanges {
 impl ::std::default::Default for ProjectColumnEventChanges {
     fn default() -> Self {
         Self {
-            name: Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -72518,8 +72518,8 @@ pub struct ProjectEditedChanges {
 impl ::std::default::Default for ProjectEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            name: Default::default(),
+            body: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -72712,8 +72712,8 @@ pub struct ProjectEventChanges {
 impl ::std::default::Default for ProjectEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            name: Default::default(),
+            body: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -75714,8 +75714,8 @@ pub struct PullRequestEditedChanges {
 impl ::std::default::Default for PullRequestEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            title: Default::default(),
+            body: ::std::default::Default::default(),
+            title: ::std::default::Default::default(),
         }
     }
 }
@@ -81113,7 +81113,7 @@ pub struct PullRequestReviewCommentEditedChanges {
 impl ::std::default::Default for PullRequestReviewCommentEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -81944,7 +81944,7 @@ pub struct PullRequestReviewCommentEventChanges {
 impl ::std::default::Default for PullRequestReviewCommentEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -83511,7 +83511,7 @@ pub struct PullRequestReviewEditedChanges {
 impl ::std::default::Default for PullRequestReviewEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -83767,7 +83767,7 @@ pub struct PullRequestReviewEventChanges {
 impl ::std::default::Default for PullRequestReviewEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
+            body: ::std::default::Default::default(),
         }
     }
 }
@@ -86337,8 +86337,8 @@ pub struct ReleaseEditedChanges {
 impl ::std::default::Default for ReleaseEditedChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            name: Default::default(),
+            body: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -86558,8 +86558,8 @@ pub struct ReleaseEventChanges {
 impl ::std::default::Default for ReleaseEventChanges {
     fn default() -> Self {
         Self {
-            body: Default::default(),
-            name: Default::default(),
+            body: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
         }
     }
 }
@@ -89135,9 +89135,9 @@ pub struct RepositoryEditedChanges {
 impl ::std::default::Default for RepositoryEditedChanges {
     fn default() -> Self {
         Self {
-            default_branch: Default::default(),
-            description: Default::default(),
-            homepage: Default::default(),
+            default_branch: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            homepage: ::std::default::Default::default(),
         }
     }
 }
@@ -89422,9 +89422,9 @@ pub struct RepositoryEventChanges {
 impl ::std::default::Default for RepositoryEventChanges {
     fn default() -> Self {
         Self {
-            default_branch: Default::default(),
-            description: Default::default(),
-            homepage: Default::default(),
+            default_branch: ::std::default::Default::default(),
+            description: ::std::default::Default::default(),
+            homepage: ::std::default::Default::default(),
         }
     }
 }
@@ -89561,7 +89561,7 @@ pub struct RepositoryEventChangesOwnerFrom {
 impl ::std::default::Default for RepositoryEventChangesOwnerFrom {
     fn default() -> Self {
         Self {
-            user: Default::default(),
+            user: ::std::default::Default::default(),
         }
     }
 }
@@ -91810,7 +91810,7 @@ pub struct RepositoryTransferredChangesOwnerFrom {
 impl ::std::default::Default for RepositoryTransferredChangesOwnerFrom {
     fn default() -> Self {
         Self {
-            user: Default::default(),
+            user: ::std::default::Default::default(),
         }
     }
 }
@@ -98490,7 +98490,7 @@ pub struct SponsorshipEditedChanges {
 impl ::std::default::Default for SponsorshipEditedChanges {
     fn default() -> Self {
         Self {
-            privacy_level: Default::default(),
+            privacy_level: ::std::default::Default::default(),
         }
     }
 }
@@ -98682,7 +98682,7 @@ pub struct SponsorshipEventChanges {
 impl ::std::default::Default for SponsorshipEventChanges {
     fn default() -> Self {
         Self {
-            privacy_level: Default::default(),
+            privacy_level: ::std::default::Default::default(),
         }
     }
 }
@@ -101976,10 +101976,10 @@ pub struct TeamEditedChanges {
 impl ::std::default::Default for TeamEditedChanges {
     fn default() -> Self {
         Self {
-            description: Default::default(),
-            name: Default::default(),
-            privacy: Default::default(),
-            repository: Default::default(),
+            description: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
+            privacy: ::std::default::Default::default(),
+            repository: ::std::default::Default::default(),
         }
     }
 }
@@ -102189,9 +102189,9 @@ pub struct TeamEditedChangesRepositoryPermissionsFrom {
 impl ::std::default::Default for TeamEditedChangesRepositoryPermissionsFrom {
     fn default() -> Self {
         Self {
-            admin: Default::default(),
-            pull: Default::default(),
-            push: Default::default(),
+            admin: ::std::default::Default::default(),
+            pull: ::std::default::Default::default(),
+            push: ::std::default::Default::default(),
         }
     }
 }
@@ -102385,10 +102385,10 @@ pub struct TeamEventChanges {
 impl ::std::default::Default for TeamEventChanges {
     fn default() -> Self {
         Self {
-            description: Default::default(),
-            name: Default::default(),
-            privacy: Default::default(),
-            repository: Default::default(),
+            description: ::std::default::Default::default(),
+            name: ::std::default::Default::default(),
+            privacy: ::std::default::Default::default(),
+            repository: ::std::default::Default::default(),
         }
     }
 }
@@ -102598,9 +102598,9 @@ pub struct TeamEventChangesRepositoryPermissionsFrom {
 impl ::std::default::Default for TeamEventChangesRepositoryPermissionsFrom {
     fn default() -> Self {
         Self {
-            admin: Default::default(),
-            pull: Default::default(),
-            push: Default::default(),
+            admin: ::std::default::Default::default(),
+            pull: ::std::default::Default::default(),
+            push: ::std::default::Default::default(),
         }
     }
 }
