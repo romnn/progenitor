@@ -389,11 +389,27 @@ impl Generator {
         self.schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
         self.schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
 
-        let raw_methods = document
+        let mut raw_methods = document
             .operations
             .iter()
             .map(|operation| self.process_operation(operation, &document.schemas))
             .collect::<Result<Vec<_>>>()?;
+
+        // Specs sometimes assign the same operationId to multiple paths.
+        // Deduplicate by appending _2, _3, … to later occurrences so the
+        // generated Rust methods don't collide.
+        {
+            let mut seen: ::std::collections::HashMap<String, usize> =
+                ::std::collections::HashMap::new();
+            for method in &mut raw_methods {
+                let count = seen.entry(method.operation_id.clone()).or_insert(0);
+                *count += 1;
+                if *count > 1 {
+                    method.operation_id =
+                        format!("{}_{}", method.operation_id, count);
+                }
+            }
+        }
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
             (InterfaceStyle::Positional, TagStyle::Merged) => self

@@ -360,8 +360,14 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct PaginatedU32s<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> PaginatedU32s<'a> {

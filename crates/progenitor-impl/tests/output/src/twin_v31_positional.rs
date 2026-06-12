@@ -489,7 +489,7 @@ impl Client {
     pub async fn get_thing<'a>(
         &'a self,
         id: &'a ::uuid::Uuid,
-        verbose: Option<bool>,
+        verbose: ::std::option::Option<bool>,
     ) -> Result<ResponseValue<types::Thing>, Error<types::Error>> {
         let url = format!("{}/things/{}", self.baseurl, encode_path(&id.to_string()),);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -625,7 +625,10 @@ impl Client {
     }
 
     ///Sends a `PUT` request to `/note`
-    pub async fn set_note<'a>(&'a self, body: String) -> Result<ResponseValue<()>, Error<()>> {
+    pub async fn set_note<'a>(
+        &'a self,
+        body: ::std::string::String,
+    ) -> Result<ResponseValue<()>, Error<()>> {
         let url = format!("{}/note", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
         header_map.append(

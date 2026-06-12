@@ -136,8 +136,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct KeyGet<'a> {
         client: &'a super::Client,
-        key: Result<Option<bool>, String>,
-        unique_key: Result<Option<::std::string::String>, String>,
+        key: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+        unique_key: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> KeyGet<'a> {

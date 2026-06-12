@@ -389,7 +389,7 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Serialize, Clone, Debug)]
+    #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     #[serde(transparent)]
     pub struct BlockSize(i64);
     impl ::std::ops::Deref for BlockSize {
@@ -451,7 +451,17 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
     #[serde(transparent)]
     pub struct ByteCount(pub u64);
     impl ::std::ops::Deref for ByteCount {
@@ -4130,7 +4140,17 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
     #[serde(transparent)]
     pub struct InstanceCpuCount(pub u16);
     impl ::std::ops::Deref for InstanceCpuCount {
@@ -28705,7 +28725,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> DiskViewById<'a> {
@@ -28776,7 +28796,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ImageViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> ImageViewById<'a> {
@@ -28847,7 +28867,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> InstanceViewById<'a> {
@@ -28919,7 +28939,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> InstanceNetworkInterfaceViewById<'a> {
@@ -28992,7 +29012,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> OrganizationViewById<'a> {
@@ -29063,7 +29083,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> ProjectViewById<'a> {
@@ -29134,7 +29154,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SnapshotViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SnapshotViewById<'a> {
@@ -29205,7 +29225,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> VpcRouterRouteViewById<'a> {
@@ -29276,7 +29296,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> VpcRouterViewById<'a> {
@@ -29347,7 +29367,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> VpcSubnetViewById<'a> {
@@ -29418,7 +29438,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> VpcViewById<'a> {
@@ -29489,7 +29509,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DeviceAuthRequest<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::DeviceAuthRequest, String>,
+        body: ::std::result::Result<types::builder::DeviceAuthRequest, ::std::string::String>,
     }
 
     impl<'a> DeviceAuthRequest<'a> {
@@ -29561,7 +29581,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DeviceAuthConfirm<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::DeviceAuthVerify, String>,
+        body: ::std::result::Result<types::builder::DeviceAuthVerify, ::std::string::String>,
     }
 
     impl<'a> DeviceAuthConfirm<'a> {
@@ -29643,7 +29663,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DeviceAccessToken<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::DeviceAccessTokenRequest, String>,
+        body:
+            ::std::result::Result<types::builder::DeviceAccessTokenRequest, ::std::string::String>,
     }
 
     impl<'a> DeviceAccessToken<'a> {
@@ -29719,9 +29740,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GroupList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> GroupList<'a> {
@@ -29872,7 +29900,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LoginSpoof<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::SpoofLoginBody, String>,
+        body: ::std::result::Result<types::builder::SpoofLoginBody, ::std::string::String>,
     }
 
     impl<'a> LoginSpoof<'a> {
@@ -29952,8 +29980,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LoginLocal<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        body: Result<types::builder::UsernamePasswordCredentials, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<
+            types::builder::UsernamePasswordCredentials,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> LoginLocal<'a> {
@@ -30056,8 +30087,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LoginSamlBegin<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        provider_name: Result<types::Name, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        provider_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> LoginSamlBegin<'a> {
@@ -30137,9 +30168,9 @@ pub mod builder {
     #[derive(Debug)]
     pub struct LoginSaml<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        provider_name: Result<types::Name, String>,
-        body: Result<reqwest::Body, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        provider_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<reqwest::Body, ::std::string::String>,
     }
 
     impl<'a> LoginSaml<'a> {
@@ -30293,9 +30324,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> OrganizationList<'a> {
@@ -30446,7 +30486,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::OrganizationCreate, String>,
+        body: ::std::result::Result<types::builder::OrganizationCreate, ::std::string::String>,
     }
 
     impl<'a> OrganizationCreate<'a> {
@@ -30528,7 +30568,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> OrganizationView<'a> {
@@ -30602,8 +30642,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        body: Result<types::builder::OrganizationUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::OrganizationUpdate, ::std::string::String>,
     }
 
     impl<'a> OrganizationUpdate<'a> {
@@ -30705,7 +30745,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> OrganizationDelete<'a> {
@@ -30779,7 +30819,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationPolicyView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> OrganizationPolicyView<'a> {
@@ -30855,8 +30895,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationPolicyUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        body: Result<types::builder::OrganizationRolePolicy, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::OrganizationRolePolicy, ::std::string::String>,
     }
 
     impl<'a> OrganizationPolicyUpdate<'a> {
@@ -30962,10 +31002,19 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> ProjectList<'a> {
@@ -31135,8 +31184,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        body: Result<types::builder::ProjectCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectCreate, ::std::string::String>,
     }
 
     impl<'a> ProjectCreate<'a> {
@@ -31237,8 +31286,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> ProjectView<'a> {
@@ -31327,9 +31376,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::ProjectUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectUpdate, ::std::string::String>,
     }
 
     impl<'a> ProjectUpdate<'a> {
@@ -31444,8 +31493,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> ProjectDelete<'a> {
@@ -31534,11 +31583,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> DiskList<'a> {
@@ -31722,9 +31780,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::DiskCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskCreate, ::std::string::String>,
     }
 
     impl<'a> DiskCreate<'a> {
@@ -31839,9 +31897,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        disk_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        disk_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> DiskView<'a> {
@@ -31945,9 +32003,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        disk_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        disk_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> DiskDelete<'a> {
@@ -32051,14 +32109,26 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskMetricsList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        disk_name: Result<types::Name, String>,
-        metric_name: Result<types::DiskMetricName, String>,
-        end_time: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        start_time: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        disk_name: ::std::result::Result<types::Name, ::std::string::String>,
+        metric_name: ::std::result::Result<types::DiskMetricName, ::std::string::String>,
+        end_time: ::std::result::Result<
+            ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+            ::std::string::String,
+        >,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        start_time: ::std::result::Result<
+            ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> DiskMetricsList<'a> {
@@ -32293,11 +32363,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ImageList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> ImageList<'a> {
@@ -32481,9 +32560,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ImageCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::ImageCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ImageCreate, ::std::string::String>,
     }
 
     impl<'a> ImageCreate<'a> {
@@ -32598,9 +32677,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ImageView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        image_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        image_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> ImageView<'a> {
@@ -32704,9 +32783,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ImageDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        image_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        image_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> ImageDelete<'a> {
@@ -32810,11 +32889,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceList<'a> {
@@ -33000,9 +33088,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::InstanceCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::InstanceCreate, ::std::string::String>,
     }
 
     impl<'a> InstanceCreate<'a> {
@@ -33118,9 +33206,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceView<'a> {
@@ -33224,9 +33312,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceDelete<'a> {
@@ -33330,12 +33418,21 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceDiskList<'a> {
@@ -33535,10 +33632,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskAttach<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        body: Result<types::builder::DiskIdentifier, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskIdentifier, ::std::string::String>,
     }
 
     impl<'a> InstanceDiskAttach<'a> {
@@ -33668,10 +33765,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskDetach<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        body: Result<types::builder::DiskIdentifier, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskIdentifier, ::std::string::String>,
     }
 
     impl<'a> InstanceDiskDetach<'a> {
@@ -33801,9 +33898,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceExternalIpList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceExternalIpList<'a> {
@@ -33909,10 +34006,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceMigrate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        body: Result<types::builder::InstanceMigrate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::InstanceMigrate, ::std::string::String>,
     }
 
     impl<'a> InstanceMigrate<'a> {
@@ -34042,12 +34139,21 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceNetworkInterfaceList<'a> {
@@ -34248,10 +34354,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        body: Result<types::builder::NetworkInterfaceCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::NetworkInterfaceCreate, ::std::string::String>,
     }
 
     impl<'a> InstanceNetworkInterfaceCreate<'a> {
@@ -34387,10 +34493,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        interface_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        interface_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceNetworkInterfaceView<'a> {
@@ -34510,11 +34616,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        interface_name: Result<types::Name, String>,
-        body: Result<types::builder::NetworkInterfaceUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        interface_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::NetworkInterfaceUpdate, ::std::string::String>,
     }
 
     impl<'a> InstanceNetworkInterfaceUpdate<'a> {
@@ -34664,10 +34770,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceNetworkInterfaceDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        interface_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        interface_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceNetworkInterfaceDelete<'a> {
@@ -34785,9 +34891,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceReboot<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceReboot<'a> {
@@ -34891,12 +34997,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceSerialConsole<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
-        from_start: Result<Option<u64>, String>,
-        max_bytes: Result<Option<u64>, String>,
-        most_recent: Result<Option<u64>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
+        from_start: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
+        max_bytes: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
+        most_recent: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
     }
 
     impl<'a> InstanceSerialConsole<'a> {
@@ -35053,9 +35159,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceSerialConsoleStream<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceSerialConsoleStream<'a> {
@@ -35159,9 +35265,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceSerialConsoleStreamV2<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceSerialConsoleStreamV2<'a> {
@@ -35271,9 +35377,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStart<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceStart<'a> {
@@ -35377,9 +35483,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStop<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        instance_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        instance_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> InstanceStop<'a> {
@@ -35483,8 +35589,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectPolicyView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> ProjectPolicyView<'a> {
@@ -35575,9 +35681,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectPolicyUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::ProjectRolePolicy, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectRolePolicy, ::std::string::String>,
     }
 
     impl<'a> ProjectPolicyUpdate<'a> {
@@ -35696,11 +35802,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SnapshotList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SnapshotList<'a> {
@@ -35886,9 +36001,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SnapshotCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::SnapshotCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::SnapshotCreate, ::std::string::String>,
     }
 
     impl<'a> SnapshotCreate<'a> {
@@ -36004,9 +36119,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SnapshotView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        snapshot_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        snapshot_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SnapshotView<'a> {
@@ -36110,9 +36225,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SnapshotDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        snapshot_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        snapshot_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SnapshotDelete<'a> {
@@ -36216,11 +36331,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcList<'a> {
@@ -36404,9 +36528,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcCreate, ::std::string::String>,
     }
 
     impl<'a> VpcCreate<'a> {
@@ -36521,9 +36645,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcView<'a> {
@@ -36627,10 +36751,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcUpdate, ::std::string::String>,
     }
 
     impl<'a> VpcUpdate<'a> {
@@ -36760,9 +36884,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcDelete<'a> {
@@ -36866,9 +36990,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcFirewallRulesView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcFirewallRulesView<'a> {
@@ -36974,10 +37098,13 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcFirewallRulesUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcFirewallRuleUpdateParams, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<
+            types::builder::VpcFirewallRuleUpdateParams,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcFirewallRulesUpdate<'a> {
@@ -37116,12 +37243,21 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcRouterList<'a> {
@@ -37321,10 +37457,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcRouterCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcRouterCreate, ::std::string::String>,
     }
 
     impl<'a> VpcRouterCreate<'a> {
@@ -37454,10 +37590,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcRouterView<'a> {
@@ -37575,11 +37711,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcRouterUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcRouterUpdate, ::std::string::String>,
     }
 
     impl<'a> VpcRouterUpdate<'a> {
@@ -37723,10 +37859,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcRouterDelete<'a> {
@@ -37844,13 +37980,22 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcRouterRouteList<'a> {
@@ -38064,11 +38209,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        body: Result<types::builder::RouterRouteCreateParams, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::RouterRouteCreateParams, ::std::string::String>,
     }
 
     impl<'a> VpcRouterRouteCreate<'a> {
@@ -38218,11 +38363,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        route_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        route_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcRouterRouteView<'a> {
@@ -38354,12 +38499,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        route_name: Result<types::Name, String>,
-        body: Result<types::builder::RouterRouteUpdateParams, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        route_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::RouterRouteUpdateParams, ::std::string::String>,
     }
 
     impl<'a> VpcRouterRouteUpdate<'a> {
@@ -38523,11 +38668,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcRouterRouteDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        router_name: Result<types::Name, String>,
-        route_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        router_name: ::std::result::Result<types::Name, ::std::string::String>,
+        route_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcRouterRouteDelete<'a> {
@@ -38659,12 +38804,21 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetList<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcSubnetList<'a> {
@@ -38864,10 +39018,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetCreate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcSubnetCreate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcSubnetCreate, ::std::string::String>,
     }
 
     impl<'a> VpcSubnetCreate<'a> {
@@ -38997,10 +39151,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetView<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        subnet_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        subnet_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcSubnetView<'a> {
@@ -39118,11 +39272,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetUpdate<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        subnet_name: Result<types::Name, String>,
-        body: Result<types::builder::VpcSubnetUpdate, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        subnet_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::VpcSubnetUpdate, ::std::string::String>,
     }
 
     impl<'a> VpcSubnetUpdate<'a> {
@@ -39266,10 +39420,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetDelete<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        subnet_name: Result<types::Name, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        subnet_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> VpcSubnetDelete<'a> {
@@ -39387,13 +39541,22 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct VpcSubnetListNetworkInterfaces<'a> {
         client: &'a super::Client,
-        organization_name: Result<types::Name, String>,
-        project_name: Result<types::Name, String>,
-        vpc_name: Result<types::Name, String>,
-        subnet_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        organization_name: ::std::result::Result<types::Name, ::std::string::String>,
+        project_name: ::std::result::Result<types::Name, ::std::string::String>,
+        vpc_name: ::std::result::Result<types::Name, ::std::string::String>,
+        subnet_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> VpcSubnetListNetworkInterfaces<'a> {
@@ -39662,7 +39825,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct PolicyUpdate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::SiloRolePolicy, String>,
+        body: ::std::result::Result<types::builder::SiloRolePolicy, ::std::string::String>,
     }
 
     impl<'a> PolicyUpdate<'a> {
@@ -39744,8 +39907,14 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct RoleList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> RoleList<'a> {
@@ -39880,7 +40049,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct RoleView<'a> {
         client: &'a super::Client,
-        role_name: Result<::std::string::String, String>,
+        role_name: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> RoleView<'a> {
@@ -40003,9 +40172,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SessionMeGroups<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SessionMeGroups<'a> {
@@ -40156,9 +40332,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SessionSshkeyList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SessionSshkeyList<'a> {
@@ -40309,7 +40494,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SessionSshkeyCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::SshKeyCreate, String>,
+        body: ::std::result::Result<types::builder::SshKeyCreate, ::std::string::String>,
     }
 
     impl<'a> SessionSshkeyCreate<'a> {
@@ -40389,7 +40574,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SessionSshkeyView<'a> {
         client: &'a super::Client,
-        ssh_key_name: Result<types::Name, String>,
+        ssh_key_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SessionSshkeyView<'a> {
@@ -40463,7 +40648,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SessionSshkeyDelete<'a> {
         client: &'a super::Client,
-        ssh_key_name: Result<types::Name, String>,
+        ssh_key_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SessionSshkeyDelete<'a> {
@@ -40537,7 +40722,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemImageViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SystemImageViewById<'a> {
@@ -40608,7 +40793,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> IpPoolViewById<'a> {
@@ -40679,7 +40864,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloViewById<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SiloViewById<'a> {
@@ -40750,9 +40935,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CertificateList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> CertificateList<'a> {
@@ -40903,7 +41097,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CertificateCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::CertificateCreate, String>,
+        body: ::std::result::Result<types::builder::CertificateCreate, ::std::string::String>,
     }
 
     impl<'a> CertificateCreate<'a> {
@@ -40985,7 +41179,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CertificateView<'a> {
         client: &'a super::Client,
-        certificate: Result<types::NameOrId, String>,
+        certificate: ::std::result::Result<types::NameOrId, ::std::string::String>,
     }
 
     impl<'a> CertificateView<'a> {
@@ -41059,7 +41253,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CertificateDelete<'a> {
         client: &'a super::Client,
-        certificate: Result<types::NameOrId, String>,
+        certificate: ::std::result::Result<types::NameOrId, ::std::string::String>,
     }
 
     impl<'a> CertificateDelete<'a> {
@@ -41133,9 +41327,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct PhysicalDiskList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> PhysicalDiskList<'a> {
@@ -41286,9 +41487,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct RackList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> RackList<'a> {
@@ -41439,7 +41647,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct RackView<'a> {
         client: &'a super::Client,
-        rack_id: Result<::uuid::Uuid, String>,
+        rack_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> RackView<'a> {
@@ -41510,9 +41718,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SledList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SledList<'a> {
@@ -41663,7 +41878,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SledView<'a> {
         client: &'a super::Client,
-        sled_id: Result<::uuid::Uuid, String>,
+        sled_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SledView<'a> {
@@ -41734,10 +41949,17 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SledPhysicalDiskList<'a> {
         client: &'a super::Client,
-        sled_id: Result<::uuid::Uuid, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        sled_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SledPhysicalDiskList<'a> {
@@ -41905,9 +42127,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemImageList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SystemImageList<'a> {
@@ -42058,7 +42289,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemImageCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::GlobalImageCreate, String>,
+        body: ::std::result::Result<types::builder::GlobalImageCreate, ::std::string::String>,
     }
 
     impl<'a> SystemImageCreate<'a> {
@@ -42140,7 +42371,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemImageView<'a> {
         client: &'a super::Client,
-        image_name: Result<types::Name, String>,
+        image_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SystemImageView<'a> {
@@ -42211,7 +42442,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemImageDelete<'a> {
         client: &'a super::Client,
-        image_name: Result<types::Name, String>,
+        image_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SystemImageDelete<'a> {
@@ -42282,9 +42513,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> IpPoolList<'a> {
@@ -42435,7 +42675,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::IpPoolCreate, String>,
+        body: ::std::result::Result<types::builder::IpPoolCreate, ::std::string::String>,
     }
 
     impl<'a> IpPoolCreate<'a> {
@@ -42515,7 +42755,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolView<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> IpPoolView<'a> {
@@ -42586,8 +42826,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolUpdate<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
-        body: Result<types::builder::IpPoolUpdate, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::IpPoolUpdate, ::std::string::String>,
     }
 
     impl<'a> IpPoolUpdate<'a> {
@@ -42687,7 +42927,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolDelete<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> IpPoolDelete<'a> {
@@ -42758,9 +42998,15 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolRangeList<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> IpPoolRangeList<'a> {
@@ -42912,8 +43158,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolRangeAdd<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
-        body: Result<types::IpRange, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::IpRange, ::std::string::String>,
     }
 
     impl<'a> IpPoolRangeAdd<'a> {
@@ -43001,8 +43247,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolRangeRemove<'a> {
         client: &'a super::Client,
-        pool_name: Result<types::Name, String>,
-        body: Result<types::IpRange, String>,
+        pool_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::IpRange, ::std::string::String>,
     }
 
     impl<'a> IpPoolRangeRemove<'a> {
@@ -43143,8 +43389,14 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolServiceRangeList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> IpPoolServiceRangeList<'a> {
@@ -43279,7 +43531,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolServiceRangeAdd<'a> {
         client: &'a super::Client,
-        body: Result<types::IpRange, String>,
+        body: ::std::result::Result<types::IpRange, ::std::string::String>,
     }
 
     impl<'a> IpPoolServiceRangeAdd<'a> {
@@ -43347,7 +43599,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct IpPoolServiceRangeRemove<'a> {
         client: &'a super::Client,
-        body: Result<types::IpRange, String>,
+        body: ::std::result::Result<types::IpRange, ::std::string::String>,
     }
 
     impl<'a> IpPoolServiceRangeRemove<'a> {
@@ -43415,12 +43667,24 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemMetric<'a> {
         client: &'a super::Client,
-        metric_name: Result<types::SystemMetricName, String>,
-        end_time: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
-        id: Result<::uuid::Uuid, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        start_time: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
+        metric_name: ::std::result::Result<types::SystemMetricName, ::std::string::String>,
+        end_time: ::std::result::Result<
+            ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+            ::std::string::String,
+        >,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        start_time: ::std::result::Result<
+            ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SystemMetric<'a> {
@@ -43630,7 +43894,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemPolicyUpdate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::FleetRolePolicy, String>,
+        body: ::std::result::Result<types::builder::FleetRolePolicy, ::std::string::String>,
     }
 
     impl<'a> SystemPolicyUpdate<'a> {
@@ -43712,9 +43976,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SagaList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SagaList<'a> {
@@ -43865,7 +44136,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SagaView<'a> {
         client: &'a super::Client,
-        saga_id: Result<::uuid::Uuid, String>,
+        saga_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SagaView<'a> {
@@ -43936,9 +44207,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SiloList<'a> {
@@ -44089,7 +44369,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::SiloCreate, String>,
+        body: ::std::result::Result<types::builder::SiloCreate, ::std::string::String>,
     }
 
     impl<'a> SiloCreate<'a> {
@@ -44169,7 +44449,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloView<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SiloView<'a> {
@@ -44240,7 +44520,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloDelete<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SiloDelete<'a> {
@@ -44311,10 +44591,19 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloIdentityProviderList<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SiloIdentityProviderList<'a> {
@@ -44485,8 +44774,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LocalIdpUserCreate<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        body: Result<types::builder::UserCreate, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::UserCreate, ::std::string::String>,
     }
 
     impl<'a> LocalIdpUserCreate<'a> {
@@ -44587,8 +44876,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LocalIdpUserDelete<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        user_id: Result<::uuid::Uuid, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        user_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> LocalIdpUserDelete<'a> {
@@ -44677,9 +44966,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct LocalIdpUserSetPassword<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        user_id: Result<::uuid::Uuid, String>,
-        body: Result<types::UserPassword, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        user_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        body: ::std::result::Result<types::UserPassword, ::std::string::String>,
     }
 
     impl<'a> LocalIdpUserSetPassword<'a> {
@@ -44783,8 +45072,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SamlIdentityProviderCreate<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        body: Result<types::builder::SamlIdentityProviderCreate, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<
+            types::builder::SamlIdentityProviderCreate,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SamlIdentityProviderCreate<'a> {
@@ -44894,8 +45186,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SamlIdentityProviderView<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        provider_name: Result<types::Name, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        provider_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SamlIdentityProviderView<'a> {
@@ -44986,7 +45278,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloPolicyView<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SiloPolicyView<'a> {
@@ -45059,8 +45351,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloPolicyUpdate<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        body: Result<types::builder::SiloRolePolicy, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        body: ::std::result::Result<types::builder::SiloRolePolicy, ::std::string::String>,
     }
 
     impl<'a> SiloPolicyUpdate<'a> {
@@ -45162,10 +45454,17 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloUsersList<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SiloUsersList<'a> {
@@ -45333,8 +45632,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SiloUserView<'a> {
         client: &'a super::Client,
-        silo_name: Result<types::Name, String>,
-        user_id: Result<::uuid::Uuid, String>,
+        silo_name: ::std::result::Result<types::Name, ::std::string::String>,
+        user_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> SiloUserView<'a> {
@@ -45423,9 +45722,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUserList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> SystemUserList<'a> {
@@ -45576,7 +45884,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUserView<'a> {
         client: &'a super::Client,
-        user_name: Result<types::Name, String>,
+        user_name: ::std::result::Result<types::Name, ::std::string::String>,
     }
 
     impl<'a> SystemUserView<'a> {
@@ -45647,8 +45955,14 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TimeseriesSchemaGet<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> TimeseriesSchemaGet<'a> {
@@ -45784,9 +46098,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct UserList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> UserList<'a> {
@@ -45937,11 +46258,22 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskListV1<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> DiskListV1<'a> {
@@ -46127,9 +46459,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskCreateV1<'a> {
         client: &'a super::Client,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<types::NameOrId, String>,
-        body: Result<types::builder::DiskCreate, String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskCreate, ::std::string::String>,
     }
 
     impl<'a> DiskCreateV1<'a> {
@@ -46244,9 +46577,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskViewV1<'a> {
         client: &'a super::Client,
-        disk: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        disk: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> DiskViewV1<'a> {
@@ -46353,9 +46688,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DiskDeleteV1<'a> {
         client: &'a super::Client,
-        disk: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        disk: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> DiskDeleteV1<'a> {
@@ -46462,11 +46799,22 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceListV1<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceListV1<'a> {
@@ -46652,9 +47000,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceCreateV1<'a> {
         client: &'a super::Client,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<types::NameOrId, String>,
-        body: Result<types::builder::InstanceCreate, String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        body: ::std::result::Result<types::builder::InstanceCreate, ::std::string::String>,
     }
 
     impl<'a> InstanceCreateV1<'a> {
@@ -46769,9 +47118,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceViewV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceViewV1<'a> {
@@ -46878,9 +47229,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDeleteV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceDeleteV1<'a> {
@@ -46987,12 +47340,23 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskListV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceDiskListV1<'a> {
@@ -47195,10 +47559,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskAttachV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        body: Result<types::builder::DiskPath, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskPath, ::std::string::String>,
     }
 
     impl<'a> InstanceDiskAttachV1<'a> {
@@ -47331,10 +47697,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceDiskDetachV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        body: Result<types::builder::DiskPath, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        body: ::std::result::Result<types::builder::DiskPath, ::std::string::String>,
     }
 
     impl<'a> InstanceDiskDetachV1<'a> {
@@ -47467,10 +47835,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceMigrateV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
-        body: Result<types::builder::InstanceMigrate, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        body: ::std::result::Result<types::builder::InstanceMigrate, ::std::string::String>,
     }
 
     impl<'a> InstanceMigrateV1<'a> {
@@ -47603,9 +47973,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceRebootV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceRebootV1<'a> {
@@ -47712,12 +48084,14 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceSerialConsoleV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        from_start: Result<Option<u64>, String>,
-        max_bytes: Result<Option<u64>, String>,
-        most_recent: Result<Option<u64>, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        from_start: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
+        max_bytes: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
+        most_recent: ::std::result::Result<::std::option::Option<u64>, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceSerialConsoleV1<'a> {
@@ -47877,9 +48251,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceSerialConsoleStreamV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceSerialConsoleStreamV1<'a> {
@@ -47993,9 +48369,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStartV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceStartV1<'a> {
@@ -48102,9 +48480,11 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStopV1<'a> {
         client: &'a super::Client,
-        instance: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        project: Result<Option<types::NameOrId>, String>,
+        instance: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        project:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> InstanceStopV1<'a> {
@@ -48211,9 +48591,18 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationListV1<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> OrganizationListV1<'a> {
@@ -48364,7 +48753,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationCreateV1<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::OrganizationCreate, String>,
+        body: ::std::result::Result<types::builder::OrganizationCreate, ::std::string::String>,
     }
 
     impl<'a> OrganizationCreateV1<'a> {
@@ -48446,7 +48835,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationViewV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
     }
 
     impl<'a> OrganizationViewV1<'a> {
@@ -48520,8 +48909,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationUpdateV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
-        body: Result<types::builder::OrganizationUpdate, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        body: ::std::result::Result<types::builder::OrganizationUpdate, ::std::string::String>,
     }
 
     impl<'a> OrganizationUpdateV1<'a> {
@@ -48623,7 +49012,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationDeleteV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
     }
 
     impl<'a> OrganizationDeleteV1<'a> {
@@ -48697,7 +49086,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationPolicyViewV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
     }
 
     impl<'a> OrganizationPolicyViewV1<'a> {
@@ -48773,8 +49162,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct OrganizationPolicyUpdateV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
-        body: Result<types::builder::OrganizationRolePolicy, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        body: ::std::result::Result<types::builder::OrganizationRolePolicy, ::std::string::String>,
     }
 
     impl<'a> OrganizationPolicyUpdateV1<'a> {
@@ -48880,10 +49269,20 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectListV1<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::NameOrIdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by: ::std::result::Result<
+            ::std::option::Option<types::NameOrIdSortMode>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> ProjectListV1<'a> {
@@ -49053,8 +49452,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectCreateV1<'a> {
         client: &'a super::Client,
-        organization: Result<types::NameOrId, String>,
-        body: Result<types::builder::ProjectCreate, String>,
+        organization: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectCreate, ::std::string::String>,
     }
 
     impl<'a> ProjectCreateV1<'a> {
@@ -49154,8 +49553,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectViewV1<'a> {
         client: &'a super::Client,
-        project: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> ProjectViewV1<'a> {
@@ -49247,9 +49647,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectUpdateV1<'a> {
         client: &'a super::Client,
-        project: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        body: Result<types::builder::ProjectUpdate, String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectUpdate, ::std::string::String>,
     }
 
     impl<'a> ProjectUpdateV1<'a> {
@@ -49367,8 +49768,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectDeleteV1<'a> {
         client: &'a super::Client,
-        project: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> ProjectDeleteV1<'a> {
@@ -49460,8 +49862,9 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectPolicyViewV1<'a> {
         client: &'a super::Client,
-        project: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
     }
 
     impl<'a> ProjectPolicyViewV1<'a> {
@@ -49555,9 +49958,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ProjectPolicyUpdateV1<'a> {
         client: &'a super::Client,
-        project: Result<types::NameOrId, String>,
-        organization: Result<Option<types::NameOrId>, String>,
-        body: Result<types::builder::ProjectRolePolicy, String>,
+        project: ::std::result::Result<types::NameOrId, ::std::string::String>,
+        organization:
+            ::std::result::Result<::std::option::Option<types::NameOrId>, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ProjectRolePolicy, ::std::string::String>,
     }
 
     impl<'a> ProjectPolicyUpdateV1<'a> {
@@ -49679,9 +50083,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemComponentVersionList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SystemComponentVersionList<'a> {
@@ -49834,9 +50245,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct UpdateDeploymentsList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> UpdateDeploymentsList<'a> {
@@ -49988,7 +50406,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct UpdateDeploymentView<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> UpdateDeploymentView<'a> {
@@ -50113,7 +50531,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUpdateStart<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::SystemUpdateStart, String>,
+        body: ::std::result::Result<types::builder::SystemUpdateStart, ::std::string::String>,
     }
 
     impl<'a> SystemUpdateStart<'a> {
@@ -50249,9 +50667,16 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUpdateList<'a> {
         client: &'a super::Client,
-        limit: Result<Option<::std::num::NonZeroU32>, String>,
-        page_token: Result<Option<::std::string::String>, String>,
-        sort_by: Result<Option<types::IdSortMode>, String>,
+        limit: ::std::result::Result<
+            ::std::option::Option<::std::num::NonZeroU32>,
+            ::std::string::String,
+        >,
+        page_token: ::std::result::Result<
+            ::std::option::Option<::std::string::String>,
+            ::std::string::String,
+        >,
+        sort_by:
+            ::std::result::Result<::std::option::Option<types::IdSortMode>, ::std::string::String>,
     }
 
     impl<'a> SystemUpdateList<'a> {
@@ -50402,7 +50827,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUpdateView<'a> {
         client: &'a super::Client,
-        version: Result<types::SemverVersion, String>,
+        version: ::std::result::Result<types::SemverVersion, ::std::string::String>,
     }
 
     impl<'a> SystemUpdateView<'a> {
@@ -50473,7 +50898,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct SystemUpdateComponentsList<'a> {
         client: &'a super::Client,
-        version: Result<types::SemverVersion, String>,
+        version: ::std::result::Result<types::SemverVersion, ::std::string::String>,
     }
 
     impl<'a> SystemUpdateComponentsList<'a> {

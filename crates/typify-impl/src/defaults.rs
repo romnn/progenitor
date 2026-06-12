@@ -713,7 +713,9 @@ fn all_props<'a>(
                 {
                     (properties, false)
                 } else {
-                    unreachable!()
+                    // Flattened optional non-struct (e.g. Option<Map> or
+                    // Option<JsonValue>): no enumerable properties; skip.
+                    return vec![];
                 }
             }
 

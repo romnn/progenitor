@@ -8,7 +8,7 @@ use quote::quote;
 use schemars::schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject};
 
 use crate::{
-    output::{OutputSpace, OutputSpaceMod},
+    output::OutputSpace,
     type_entry::{
         StructProperty, StructPropertyRename, StructPropertyState, TypeEntry, TypeEntryStruct,
         WrappedValue,
@@ -440,7 +440,8 @@ pub(crate) fn generate_serde_attr(
             serde_options.push(quote! { default = #fn_name });
 
             if let Some(default_fn) = default_fn {
-                output.add_item(OutputSpaceMod::Defaults, type_name, default_fn);
+                let key = fn_name.strip_prefix("defaults::").unwrap_or(&fn_name);
+                output.add_default_fn(key, default_fn);
             }
             DefaultFunction::Custom(fn_name)
         }

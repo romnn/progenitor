@@ -476,7 +476,8 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
                 }
                 match (minimum, exclusive_minimum) {
                     (None, Some(true)) => {
-                        todo!("exclusive_minimum set without minimum");
+                        // exclusive_minimum=true without a minimum is
+                        // technically invalid; ignore the constraint.
                     }
                     (None, _) => (),
                     (Some(minimum), Some(true)) => {
@@ -488,7 +489,8 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
                 }
                 match (maximum, exclusive_maximum) {
                     (None, Some(true)) => {
-                        todo!("exclusive_maximum set without maximum");
+                        // exclusive_maximum=true without a maximum is
+                        // technically invalid; ignore the constraint.
                     }
                     (None, _) => (),
                     (Some(maximum), Some(true)) => {
@@ -569,6 +571,11 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
                     (Some("integer"), _) => {
                         so.instance_type =
                             instance_type(schemars::schema::InstanceType::Integer, nullable);
+                    }
+                    (Some("null"), _) => {
+                        // type: null is not valid OpenAPI 3.0 but some
+                        // generators (e.g. NestJS) emit it. Drop the
+                        // constraint — effectively a value-less schema.
                     }
 
                     (Some(typ), _) => todo!("invalid type: {}", typ),

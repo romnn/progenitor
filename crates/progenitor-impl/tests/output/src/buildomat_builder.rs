@@ -2759,7 +2759,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TaskGet<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> TaskGet<'a> {
@@ -2870,7 +2870,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TaskSubmit<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::TaskSubmit, String>,
+        body: ::std::result::Result<types::builder::TaskSubmit, ::std::string::String>,
     }
 
     impl<'a> TaskSubmit<'a> {
@@ -2944,8 +2944,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TaskEventsGet<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        minseq: Result<Option<u32>, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        minseq: ::std::result::Result<::std::option::Option<u32>, ::std::string::String>,
     }
 
     impl<'a> TaskEventsGet<'a> {
@@ -3030,7 +3030,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TaskOutputsGet<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> TaskOutputsGet<'a> {
@@ -3097,8 +3097,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct TaskOutputDownload<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        output: Result<::std::string::String, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        output: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> TaskOutputDownload<'a> {
@@ -3172,7 +3172,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct UserCreate<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::UserCreate, String>,
+        body: ::std::result::Result<types::builder::UserCreate, ::std::string::String>,
     }
 
     impl<'a> UserCreate<'a> {
@@ -3292,7 +3292,7 @@ pub mod builder {
     #[derive(Debug)]
     pub struct WhoamiPutName<'a> {
         client: &'a super::Client,
-        body: Result<reqwest::Body, String>,
+        body: ::std::result::Result<reqwest::Body, ::std::string::String>,
     }
 
     impl<'a> WhoamiPutName<'a> {
@@ -3355,7 +3355,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct WorkerBootstrap<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::WorkerBootstrap, String>,
+        body: ::std::result::Result<types::builder::WorkerBootstrap, ::std::string::String>,
     }
 
     impl<'a> WorkerBootstrap<'a> {
@@ -3475,8 +3475,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct WorkerTaskAppend<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        body: Result<types::builder::WorkerAppendTask, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::WorkerAppendTask, ::std::string::String>,
     }
 
     impl<'a> WorkerTaskAppend<'a> {
@@ -3564,8 +3564,8 @@ pub mod builder {
     #[derive(Debug)]
     pub struct WorkerTaskUploadChunk<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        body: Result<reqwest::Body, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<reqwest::Body, ::std::string::String>,
     }
 
     impl<'a> WorkerTaskUploadChunk<'a> {
@@ -3647,8 +3647,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct WorkerTaskComplete<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        body: Result<types::builder::WorkerCompleteTask, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::WorkerCompleteTask, ::std::string::String>,
     }
 
     impl<'a> WorkerTaskComplete<'a> {
@@ -3736,8 +3736,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct WorkerTaskAddOutput<'a> {
         client: &'a super::Client,
-        task: Result<::std::string::String, String>,
-        body: Result<types::builder::WorkerAddOutput, String>,
+        task: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::WorkerAddOutput, ::std::string::String>,
     }
 
     impl<'a> WorkerTaskAddOutput<'a> {
@@ -3907,7 +3907,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GetThingOrThings<'a> {
         client: &'a super::Client,
-        id: Result<Option<types::GetThingOrThingsId>, String>,
+        id: ::std::result::Result<
+            ::std::option::Option<types::GetThingOrThingsId>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> GetThingOrThings<'a> {
@@ -3970,7 +3973,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct HeaderArg<'a> {
         client: &'a super::Client,
-        accept_language: Result<Option<types::HeaderArgAcceptLanguage>, String>,
+        accept_language: ::std::result::Result<
+            ::std::option::Option<types::HeaderArgAcceptLanguage>,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> HeaderArg<'a> {

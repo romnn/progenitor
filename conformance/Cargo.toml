@@ -14,12 +14,7 @@
 resolver = "2"
 members = [
     "support",
-    "clickhouse-cloud",
-    "cloudflare",
-    "codat-accounting",
-    "mongodb-atlas",
-    "pagerduty",
-    "petstore-31",
+    # original 12 conformance crates
     "anthropic",
     "discord",
     "figma",
@@ -32,16 +27,89 @@ members = [
     "resend",
     "svix",
     "twilio-api-v2010",
+    # 6 wild-test crates from WS05
+    "clickhouse-cloud",
+    "cloudflare",
+    "codat-accounting",
+    "mongodb-atlas",
+    "pagerduty",
+    "petstore-31",
+    # 3.1.x specs
+    "airflow",
+    "bfl",
+    "chroma",
+    "cratesio",
+    "frankfurter",
+    "gladia",
+    "increase",
+    "jina",
+    "lago",
+    "lambda-cloud",
+    "lithic",
+    "logfire",
+    "netbird",
+    "openrouter",
+    "orb",
+    "posthog",
+    "runway",
+    "scaleway-instance",
+    "telnyx",
+    "unstructured",
+    "urlbox",
+    "weather-gov",
+    "workos",
+    "xai",
+    # 3.0.x specs
+    "airbyte",
+    "aiven",
+    "circleci",
+    "clerk",
+    "deepl",
+    "dub",
+    "exoscale",
+    "hubspot-contacts",
+    "intercom",
+    "jellyfin",
+    "klaviyo",
+    "launchdarkly",
+    "neon",
+    "nomad",
+    "novu",
+    "okta",
+    "oxide",
+    "pinecone",
+    "polygon",
+    "sentry",
+    "spotify",
+    "stytch",
+    "superset",
+    "twitter",
+    "zoom",
+    # staged — pending generator fixes (see notes in each spec.toml)
+    # "binance",      # parse: null in paths field (openapiv3 limitation)
+    # "deepinfra",   # parse: unhandled Schema variant for parameter
+    # "finch",       # parse: unhandled Schema variant for EmploymentWithoutId
+    # "influxdb",    # parse: missing version in info (invalid spec)
+    # "langsmith",   # generator: invalid Rust token in codegen (unreachable code path)
+    # "miro",        # parse: unresolved reference $ref in components/responses
+    # "opensearch",  # generator: property_names assertion in merge.rs
+    # "pokeapi",     # parse: unhandled Schema variant for EvolutionChainDetail
+    # "vapi",        # generator: stack overflow (self-referential schema cycle)
+    # "webflow",     # parse: unhandled Schema variant in well-known endpoint
+    # "zendesk",     # parse: unknown deepObject parameter style
 ]
 
 [workspace.dependencies]
 conformance-support = { path = "support" }
 progenitor = { path = "../crates/progenitor", default-features = false }
 progenitor-client = { path = "../crates/progenitor-client" }
+base64 = "0.22"
 bytes = "1"
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
+futures = "0.3"
 futures-core = "0.3"
 percent-encoding = "2.3"
+rand = "0.10"
 regress = "0.11"
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "stream"] }
 serde = { version = "1", features = ["derive"] }

@@ -1370,8 +1370,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct Enrol<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
-        body: Result<types::builder::EnrolBody, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::EnrolBody, ::std::string::String>,
     }
 
     impl<'a> Enrol<'a> {
@@ -1458,7 +1458,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct GlobalJobs<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> GlobalJobs<'a> {
@@ -1523,7 +1523,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct Ping<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
     }
 
     impl<'a> Ping<'a> {
@@ -1588,8 +1588,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ReportFinish<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
-        body: Result<types::builder::ReportFinishBody, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ReportFinishBody, ::std::string::String>,
     }
 
     impl<'a> ReportFinish<'a> {
@@ -1682,8 +1682,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ReportOutput<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
-        body: Result<types::builder::ReportOutputBody, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ReportOutputBody, ::std::string::String>,
     }
 
     impl<'a> ReportOutput<'a> {
@@ -1776,8 +1776,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct ReportStart<'a> {
         client: &'a super::Client,
-        authorization: Result<::std::string::String, String>,
-        body: Result<types::builder::ReportStartBody, String>,
+        authorization: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::ReportStartBody, ::std::string::String>,
     }
 
     impl<'a> ReportStart<'a> {

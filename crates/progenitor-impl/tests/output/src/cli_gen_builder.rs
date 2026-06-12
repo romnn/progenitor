@@ -227,8 +227,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct Uno<'a> {
         client: &'a super::Client,
-        gateway: Result<::std::string::String, String>,
-        body: Result<types::builder::UnoBody, String>,
+        gateway: ::std::result::Result<::std::string::String, ::std::string::String>,
+        body: ::std::result::Result<types::builder::UnoBody, ::std::string::String>,
     }
 
     impl<'a> Uno<'a> {

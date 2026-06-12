@@ -120660,15 +120660,6 @@ pub mod defaults {
             super::DensityTransformAsArrayItem::String("density".to_string()),
         ])
     }
-    pub(super) fn density_transform_maxsteps() -> super::DensityTransformMaxsteps {
-        super::DensityTransformMaxsteps::Number(200_f64)
-    }
-    pub(super) fn density_transform_method() -> super::DensityTransformMethod {
-        super::DensityTransformMethod::String("pdf".to_string())
-    }
-    pub(super) fn density_transform_minsteps() -> super::DensityTransformMinsteps {
-        super::DensityTransformMinsteps::Number(25_f64)
-    }
     pub(super) fn density_transform_distribution_lognormal_stdev(
     ) -> super::DensityTransformDistributionStdev {
         super::DensityTransformDistributionStdev::Number(1_f64)
@@ -120680,6 +120671,15 @@ pub mod defaults {
     pub(super) fn density_transform_distribution_uniform_max(
     ) -> super::DensityTransformDistributionMax {
         super::DensityTransformDistributionMax::Number(1_f64)
+    }
+    pub(super) fn density_transform_maxsteps() -> super::DensityTransformMaxsteps {
+        super::DensityTransformMaxsteps::Number(200_f64)
+    }
+    pub(super) fn density_transform_method() -> super::DensityTransformMethod {
+        super::DensityTransformMethod::String("pdf".to_string())
+    }
+    pub(super) fn density_transform_minsteps() -> super::DensityTransformMinsteps {
+        super::DensityTransformMinsteps::Number(25_f64)
     }
     pub(super) fn dotbin_transform_as() -> super::DotbinTransformAs {
         super::DotbinTransformAs::String("bin".to_string())
@@ -120703,12 +120703,6 @@ pub mod defaults {
             super::ForceTransformAsArrayItem::String("vx".to_string()),
             super::ForceTransformAsArrayItem::String("vy".to_string()),
         ])
-    }
-    pub(super) fn force_transform_iterations() -> super::ForceTransformIterations {
-        super::ForceTransformIterations::Number(300_f64)
-    }
-    pub(super) fn force_transform_velocity_decay() -> super::ForceTransformVelocityDecay {
-        super::ForceTransformVelocityDecay::Number(0.4_f64)
     }
     pub(super) fn force_transform_forces_item_collide_iterations(
     ) -> super::ForceTransformForcesItemIterations {
@@ -120745,6 +120739,12 @@ pub mod defaults {
     pub(super) fn force_transform_forces_item_y_strength() -> super::ForceTransformForcesItemStrength
     {
         super::ForceTransformForcesItemStrength::Number(0.1_f64)
+    }
+    pub(super) fn force_transform_iterations() -> super::ForceTransformIterations {
+        super::ForceTransformIterations::Number(300_f64)
+    }
+    pub(super) fn force_transform_velocity_decay() -> super::ForceTransformVelocityDecay {
+        super::ForceTransformVelocityDecay::Number(0.4_f64)
     }
     pub(super) fn geopath_transform_as() -> super::GeopathTransformAs {
         super::GeopathTransformAs::String("path".to_string())
@@ -121103,6 +121103,9 @@ pub mod defaults {
     pub(super) fn transform_isocontour_zero() -> super::TransformZero {
         super::TransformZero::Boolean(true)
     }
+    pub(super) fn transform_kde2d_as() -> super::TransformAs {
+        super::TransformAs::String("grid".to_string())
+    }
     pub(super) fn transform_kde_maxsteps() -> super::TransformMaxsteps {
         super::TransformMaxsteps::Number(200_f64)
     }
@@ -121111,9 +121114,6 @@ pub mod defaults {
     }
     pub(super) fn transform_kde_resolve() -> super::TransformResolve {
         super::TransformResolve::Variant0(super::TransformResolveVariant0::Independent)
-    }
-    pub(super) fn transform_kde2d_as() -> super::TransformAs {
-        super::TransformAs::String("grid".to_string())
     }
     pub(super) fn transform_label_anchor() -> super::TransformAnchor {
         super::TransformAnchor::Array(vec![

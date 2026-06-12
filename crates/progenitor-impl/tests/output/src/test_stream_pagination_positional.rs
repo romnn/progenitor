@@ -183,8 +183,8 @@ impl Client {
     ///   subsequent page
     pub async fn paginated_u32s<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<types::Uint32ResultsPage>, Error<types::Error>> {
         let url = format!("{}/", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -232,7 +232,7 @@ impl Client {
     /// - `limit`: Maximum number of items returned by a single call
     pub fn paginated_u32s_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
     ) -> impl futures::Stream<Item = Result<u32, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;

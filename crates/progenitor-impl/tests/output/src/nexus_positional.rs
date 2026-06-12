@@ -371,7 +371,7 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Serialize, Clone, Debug)]
+    #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     #[serde(transparent)]
     pub struct BlockSize(i64);
     impl ::std::ops::Deref for BlockSize {
@@ -433,7 +433,17 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
     #[serde(transparent)]
     pub struct ByteCount(pub u64);
     impl ::std::ops::Deref for ByteCount {
@@ -3896,7 +3906,17 @@ pub mod types {
     ///}
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
     #[serde(transparent)]
     pub struct InstanceCpuCount(pub u16);
     impl ::std::ops::Deref for InstanceCpuCount {
@@ -13574,9 +13594,9 @@ impl Client {
     /// - `sort_by`
     pub async fn group_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::GroupResultsPage>, Error<types::Error>> {
         let url = format!("{}/groups", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -13629,8 +13649,8 @@ impl Client {
     /// - `sort_by`
     pub fn group_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Group, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -13886,9 +13906,9 @@ impl Client {
     /// - `sort_by`
     pub async fn organization_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::OrganizationResultsPage>, Error<types::Error>> {
         let url = format!("{}/organizations", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -13943,8 +13963,8 @@ impl Client {
     /// - `sort_by`
     pub fn organization_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Organization, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -14294,9 +14314,9 @@ impl Client {
     pub async fn project_list<'a>(
         &'a self,
         organization_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::ProjectResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects",
@@ -14358,8 +14378,8 @@ impl Client {
     pub fn project_list_stream<'a>(
         &'a self,
         organization_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Project, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -14627,9 +14647,9 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::DiskResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/disks",
@@ -14694,8 +14714,8 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Disk, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -14913,10 +14933,10 @@ impl Client {
         project_name: &'a types::Name,
         disk_name: &'a types::Name,
         metric_name: types::DiskMetricName,
-        end_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        start_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        end_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        start_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
     ) -> Result<ResponseValue<types::MeasurementResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/disks/{}/metrics/{}",
@@ -14990,9 +15010,9 @@ impl Client {
         project_name: &'a types::Name,
         disk_name: &'a types::Name,
         metric_name: types::DiskMetricName,
-        end_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
-        limit: Option<::std::num::NonZeroU32>,
-        start_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        end_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        start_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
     ) -> impl futures::Stream<Item = Result<types::Measurement, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -15058,9 +15078,9 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::ImageResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/images",
@@ -15126,8 +15146,8 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Image, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -15345,9 +15365,9 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::InstanceResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/instances",
@@ -15410,8 +15430,8 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Instance, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -15631,9 +15651,9 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         instance_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::DiskResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/instances/{}/disks",
@@ -15701,8 +15721,8 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         instance_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Disk, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -15983,9 +16003,9 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         instance_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::NetworkInterfaceResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/instances/{}/network-interfaces",
@@ -16051,8 +16071,8 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         instance_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::NetworkInterface, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -16400,9 +16420,9 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         instance_name: &'a types::Name,
-        from_start: Option<u64>,
-        max_bytes: Option<u64>,
-        most_recent: Option<u64>,
+        from_start: ::std::option::Option<u64>,
+        max_bytes: ::std::option::Option<u64>,
+        most_recent: ::std::option::Option<u64>,
     ) -> Result<ResponseValue<types::InstanceSerialConsoleData>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/instances/{}/serial-console",
@@ -16803,9 +16823,9 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::SnapshotResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/snapshots",
@@ -16868,8 +16888,8 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Snapshot, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -17082,9 +17102,9 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::VpcResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/vpcs",
@@ -17147,8 +17167,8 @@ impl Client {
         &'a self,
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Vpc, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -17521,9 +17541,9 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::VpcRouterResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/vpcs/{}/routers",
@@ -17589,8 +17609,8 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::VpcRouter, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -17874,9 +17894,9 @@ impl Client {
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
         router_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::RouterRouteResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/vpcs/{}/routers/{}/routes",
@@ -17948,8 +17968,8 @@ impl Client {
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
         router_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::RouterRoute, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -18239,9 +18259,9 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::VpcSubnetResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/vpcs/{}/subnets",
@@ -18307,8 +18327,8 @@ impl Client {
         organization_name: &'a types::Name,
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::VpcSubnet, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -18590,9 +18610,9 @@ impl Client {
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
         subnet_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::NetworkInterfaceResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/organizations/{}/projects/{}/vpcs/{}/subnets/{}/network-interfaces",
@@ -18662,8 +18682,8 @@ impl Client {
         project_name: &'a types::Name,
         vpc_name: &'a types::Name,
         subnet_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::NetworkInterface, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -18802,8 +18822,8 @@ impl Client {
     ///   subsequent page
     pub async fn role_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<types::RoleResultsPage>, Error<types::Error>> {
         let url = format!("{}/roles", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -18854,7 +18874,7 @@ impl Client {
     /// - `limit`: Maximum number of items returned by a single call
     pub fn role_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
     ) -> impl futures::Stream<Item = Result<types::Role, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -18983,9 +19003,9 @@ impl Client {
     /// - `sort_by`
     pub async fn session_me_groups<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::GroupResultsPage>, Error<types::Error>> {
         let url = format!("{}/session/me/groups", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19038,8 +19058,8 @@ impl Client {
     /// - `sort_by`
     pub fn session_me_groups_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Group, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -19080,9 +19100,9 @@ impl Client {
     /// - `sort_by`
     pub async fn session_sshkey_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::SshKeyResultsPage>, Error<types::Error>> {
         let url = format!("{}/session/me/sshkeys", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19137,8 +19157,8 @@ impl Client {
     /// - `sort_by`
     pub fn session_sshkey_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::SshKey, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -19462,9 +19482,9 @@ impl Client {
     /// - `sort_by`
     pub async fn certificate_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::CertificateResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/certificates", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19521,8 +19541,8 @@ impl Client {
     /// - `sort_by`
     pub fn certificate_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Certificate, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -19704,9 +19724,9 @@ impl Client {
     /// - `sort_by`
     pub async fn physical_disk_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::PhysicalDiskResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/hardware/disks", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19759,8 +19779,8 @@ impl Client {
     /// - `sort_by`
     pub fn physical_disk_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::PhysicalDisk, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -19800,9 +19820,9 @@ impl Client {
     /// - `sort_by`
     pub async fn rack_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::RackResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/hardware/racks", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19855,8 +19875,8 @@ impl Client {
     /// - `sort_by`
     pub fn rack_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Rack, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -19944,9 +19964,9 @@ impl Client {
     /// - `sort_by`
     pub async fn sled_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::SledResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/hardware/sleds", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -19999,8 +20019,8 @@ impl Client {
     /// - `sort_by`
     pub fn sled_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Sled, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -20090,9 +20110,9 @@ impl Client {
     pub async fn sled_physical_disk_list<'a>(
         &'a self,
         sled_id: &'a ::uuid::Uuid,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::PhysicalDiskResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/system/hardware/sleds/{}/disks",
@@ -20152,8 +20172,8 @@ impl Client {
     pub fn sled_physical_disk_list_stream<'a>(
         &'a self,
         sled_id: &'a ::uuid::Uuid,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::PhysicalDisk, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -20197,9 +20217,9 @@ impl Client {
     /// - `sort_by`
     pub async fn system_image_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::GlobalImageResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/images", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -20256,8 +20276,8 @@ impl Client {
     /// - `sort_by`
     pub fn system_image_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::GlobalImage, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -20441,9 +20461,9 @@ impl Client {
     /// - `sort_by`
     pub async fn ip_pool_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::IpPoolResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/ip-pools", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -20496,8 +20516,8 @@ impl Client {
     /// - `sort_by`
     pub fn ip_pool_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::IpPool, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -20722,8 +20742,8 @@ impl Client {
     pub async fn ip_pool_range_list<'a>(
         &'a self,
         pool_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<types::IpPoolRangeResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/system/ip-pools/{}/ranges",
@@ -20782,7 +20802,7 @@ impl Client {
     pub fn ip_pool_range_list_stream<'a>(
         &'a self,
         pool_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
     ) -> impl futures::Stream<Item = Result<types::IpPoolRange, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -20960,8 +20980,8 @@ impl Client {
     ///   subsequent page
     pub async fn ip_pool_service_range_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<types::IpPoolRangeResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/ip-pools-service/ranges", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -21014,7 +21034,7 @@ impl Client {
     /// - `limit`: Maximum number of items returned by a single call
     pub fn ip_pool_service_range_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
     ) -> impl futures::Stream<Item = Result<types::IpPoolRange, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -21144,11 +21164,11 @@ impl Client {
     pub async fn system_metric<'a>(
         &'a self,
         metric_name: types::SystemMetricName,
-        end_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        end_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
         id: &'a ::uuid::Uuid,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        start_time: Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        start_time: ::std::option::Option<&'a ::chrono::DateTime<::chrono::offset::Utc>>,
     ) -> Result<ResponseValue<types::MeasurementResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/system/metrics/{}",
@@ -21295,9 +21315,9 @@ impl Client {
     /// - `sort_by`
     pub async fn saga_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::SagaResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/sagas", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -21350,8 +21370,8 @@ impl Client {
     /// - `sort_by`
     pub fn saga_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Saga, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -21438,9 +21458,9 @@ impl Client {
     /// - `sort_by`
     pub async fn silo_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::SiloResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/silos", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -21495,8 +21515,8 @@ impl Client {
     /// - `sort_by`
     pub fn silo_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Silo, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -21682,9 +21702,9 @@ impl Client {
     pub async fn silo_identity_provider_list<'a>(
         &'a self,
         silo_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::IdentityProviderResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/system/silos/{}/identity-providers",
@@ -21744,8 +21764,8 @@ impl Client {
     pub fn silo_identity_provider_list_stream<'a>(
         &'a self,
         silo_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::IdentityProvider, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -22164,9 +22184,9 @@ impl Client {
     pub async fn silo_users_list<'a>(
         &'a self,
         silo_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::UserResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/system/silos/{}/users/all",
@@ -22225,8 +22245,8 @@ impl Client {
     pub fn silo_users_list_stream<'a>(
         &'a self,
         silo_name: &'a types::Name,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::User, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -22317,9 +22337,9 @@ impl Client {
     /// - `sort_by`
     pub async fn system_user_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> Result<ResponseValue<types::UserBuiltinResultsPage>, Error<types::Error>> {
         let url = format!("{}/system/user", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -22372,8 +22392,8 @@ impl Client {
     /// - `sort_by`
     pub fn system_user_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameSortMode>,
     ) -> impl futures::Stream<Item = Result<types::UserBuiltin, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -22461,8 +22481,8 @@ impl Client {
     ///   subsequent page
     pub async fn timeseries_schema_get<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<types::TimeseriesSchemaResultsPage>, Error<types::Error>> {
         let url = format!("{}/timeseries/schema", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -22513,7 +22533,7 @@ impl Client {
     /// - `limit`: Maximum number of items returned by a single call
     pub fn timeseries_schema_get_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
     ) -> impl futures::Stream<Item = Result<types::TimeseriesSchema, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -22553,9 +22573,9 @@ impl Client {
     /// - `sort_by`
     pub async fn user_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::UserResultsPage>, Error<types::Error>> {
         let url = format!("{}/users", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -22608,8 +22628,8 @@ impl Client {
     /// - `sort_by`
     pub fn user_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::User, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -22650,11 +22670,11 @@ impl Client {
     /// - `sort_by`
     pub async fn disk_list_v1<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        page_token: Option<&'a str>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        page_token: ::std::option::Option<&'a str>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::DiskResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/disks", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -22714,10 +22734,10 @@ impl Client {
     /// - `sort_by`
     pub fn disk_list_v1_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Disk, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -22750,7 +22770,7 @@ impl Client {
     ///Sends a `POST` request to `/v1/disks`
     pub async fn disk_create_v1<'a>(
         &'a self,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
         project: &'a types::NameOrId,
         body: &'a types::DiskCreate,
     ) -> Result<ResponseValue<types::Disk>, Error<types::Error>> {
@@ -22801,8 +22821,8 @@ impl Client {
     pub async fn disk_view_v1<'a>(
         &'a self,
         disk: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Disk>, Error<types::Error>> {
         let url = format!(
             "{}/v1/disks/{}",
@@ -22854,8 +22874,8 @@ impl Client {
     pub async fn disk_delete_v1<'a>(
         &'a self,
         disk: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<()>, Error<types::Error>> {
         let url = format!(
             "{}/v1/disks/{}",
@@ -22914,11 +22934,11 @@ impl Client {
     /// - `sort_by`
     pub async fn instance_list_v1<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        page_token: Option<&'a str>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        page_token: ::std::option::Option<&'a str>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::InstanceResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/instances", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -22978,10 +22998,10 @@ impl Client {
     /// - `sort_by`
     pub fn instance_list_v1_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Instance, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -23015,7 +23035,7 @@ impl Client {
     ///Sends a `POST` request to `/v1/instances`
     pub async fn instance_create_v1<'a>(
         &'a self,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
         project: &'a types::NameOrId,
         body: &'a types::InstanceCreate,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
@@ -23066,8 +23086,8 @@ impl Client {
     pub async fn instance_view_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}",
@@ -23119,8 +23139,8 @@ impl Client {
     pub async fn instance_delete_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<()>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}",
@@ -23181,11 +23201,11 @@ impl Client {
     pub async fn instance_disk_list_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        page_token: Option<&'a str>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        page_token: ::std::option::Option<&'a str>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::DiskResultsPage>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/disks",
@@ -23251,10 +23271,10 @@ impl Client {
     pub fn instance_disk_list_v1_stream<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Disk, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -23295,8 +23315,8 @@ impl Client {
     pub async fn instance_disk_attach_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
         body: &'a types::DiskPath,
     ) -> Result<ResponseValue<types::Disk>, Error<types::Error>> {
         let url = format!(
@@ -23350,8 +23370,8 @@ impl Client {
     pub async fn instance_disk_detach_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
         body: &'a types::DiskPath,
     ) -> Result<ResponseValue<types::Disk>, Error<types::Error>> {
         let url = format!(
@@ -23405,8 +23425,8 @@ impl Client {
     pub async fn instance_migrate_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
         body: &'a types::InstanceMigrate,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
         let url = format!(
@@ -23460,8 +23480,8 @@ impl Client {
     pub async fn instance_reboot_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/reboot",
@@ -23529,11 +23549,11 @@ impl Client {
     pub async fn instance_serial_console_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        from_start: Option<u64>,
-        max_bytes: Option<u64>,
-        most_recent: Option<u64>,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        from_start: ::std::option::Option<u64>,
+        max_bytes: ::std::option::Option<u64>,
+        most_recent: ::std::option::Option<u64>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::InstanceSerialConsoleData>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/serial-console",
@@ -23595,8 +23615,8 @@ impl Client {
     pub async fn instance_serial_console_stream_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<reqwest::Upgraded>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/serial-console/stream",
@@ -23654,8 +23674,8 @@ impl Client {
     pub async fn instance_start_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/start",
@@ -23707,8 +23727,8 @@ impl Client {
     pub async fn instance_stop_v1<'a>(
         &'a self,
         instance: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
-        project: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        project: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Instance>, Error<types::Error>> {
         let url = format!(
             "{}/v1/instances/{}/stop",
@@ -23765,9 +23785,9 @@ impl Client {
     /// - `sort_by`
     pub async fn organization_list_v1<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::OrganizationResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/organizations", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -23820,8 +23840,8 @@ impl Client {
     /// - `sort_by`
     pub fn organization_list_v1_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Organization, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -24139,10 +24159,10 @@ impl Client {
     /// - `sort_by`
     pub async fn project_list_v1<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> Result<ResponseValue<types::ProjectResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/projects", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -24200,9 +24220,9 @@ impl Client {
     /// - `sort_by`
     pub fn project_list_v1_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        organization: Option<&'a types::NameOrId>,
-        sort_by: Option<types::NameOrIdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
+        sort_by: ::std::option::Option<types::NameOrIdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::Project, Error<types::Error>>> + Unpin + 'a {
         use futures::StreamExt;
         use futures::TryFutureExt;
@@ -24284,7 +24304,7 @@ impl Client {
     pub async fn project_view_v1<'a>(
         &'a self,
         project: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::Project>, Error<types::Error>> {
         let url = format!(
             "{}/v1/projects/{}",
@@ -24335,7 +24355,7 @@ impl Client {
     pub async fn project_update_v1<'a>(
         &'a self,
         project: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
         body: &'a types::ProjectUpdate,
     ) -> Result<ResponseValue<types::Project>, Error<types::Error>> {
         let url = format!(
@@ -24388,7 +24408,7 @@ impl Client {
     pub async fn project_delete_v1<'a>(
         &'a self,
         project: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<()>, Error<types::Error>> {
         let url = format!(
             "{}/v1/projects/{}",
@@ -24439,7 +24459,7 @@ impl Client {
     pub async fn project_policy_view_v1<'a>(
         &'a self,
         project: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
     ) -> Result<ResponseValue<types::ProjectRolePolicy>, Error<types::Error>> {
         let url = format!(
             "{}/v1/projects/{}/policy",
@@ -24490,7 +24510,7 @@ impl Client {
     pub async fn project_policy_update_v1<'a>(
         &'a self,
         project: &'a types::NameOrId,
-        organization: Option<&'a types::NameOrId>,
+        organization: ::std::option::Option<&'a types::NameOrId>,
         body: &'a types::ProjectRolePolicy,
     ) -> Result<ResponseValue<types::ProjectRolePolicy>, Error<types::Error>> {
         let url = format!(
@@ -24548,9 +24568,9 @@ impl Client {
     /// - `sort_by`
     pub async fn system_component_version_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::UpdateableComponentResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/system/update/components", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -24603,8 +24623,8 @@ impl Client {
     /// - `sort_by`
     pub fn system_component_version_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::UpdateableComponent, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -24644,9 +24664,9 @@ impl Client {
     /// - `sort_by`
     pub async fn update_deployments_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::UpdateDeploymentResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/system/update/deployments", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -24699,8 +24719,8 @@ impl Client {
     /// - `sort_by`
     pub fn update_deployments_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::UpdateDeployment, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;
@@ -24913,9 +24933,9 @@ impl Client {
     /// - `sort_by`
     pub async fn system_update_list<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        page_token: Option<&'a str>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        page_token: ::std::option::Option<&'a str>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> Result<ResponseValue<types::SystemUpdateResultsPage>, Error<types::Error>> {
         let url = format!("{}/v1/system/update/updates", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -24968,8 +24988,8 @@ impl Client {
     /// - `sort_by`
     pub fn system_update_list_stream<'a>(
         &'a self,
-        limit: Option<::std::num::NonZeroU32>,
-        sort_by: Option<types::IdSortMode>,
+        limit: ::std::option::Option<::std::num::NonZeroU32>,
+        sort_by: ::std::option::Option<types::IdSortMode>,
     ) -> impl futures::Stream<Item = Result<types::SystemUpdate, Error<types::Error>>> + Unpin + 'a
     {
         use futures::StreamExt;

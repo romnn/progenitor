@@ -911,7 +911,7 @@ impl Generator {
                             .get_type(type_id)
                             .unwrap()
                             .parameter_ident_with_lifetime("a");
-                        quote! { Option<#t> }
+                        quote! { ::std::option::Option<#t> }
                     }
                     (OperationParameterType::RawBody, false) => match &param.kind {
                         OperationParameterKind::Body(BodyContentType::OctetStream)
@@ -919,7 +919,7 @@ impl Generator {
                             quote! { B }
                         }
                         OperationParameterKind::Body(BodyContentType::Text(_)) => {
-                            quote! { String }
+                            quote! { ::std::string::String }
                         }
                         _ => unreachable!(),
                     },
@@ -2007,19 +2007,19 @@ impl Generator {
                     if let (OperationParameterKind::Body(_), Some(builder_name)) =
                         (&param.kind, ty.builder())
                     {
-                        Ok(quote! { Result<#builder_name, String> })
+                        Ok(quote! { ::std::result::Result<#builder_name, ::std::string::String> })
                     } else if param.kind.is_required() {
                         let t = ty.ident();
-                        Ok(quote! { Result<#t, String> })
+                        Ok(quote! { ::std::result::Result<#t, ::std::string::String> })
                     } else {
                         let t = ty.ident();
-                        Ok(quote! { Result<Option<#t>, String> })
+                        Ok(quote! { ::std::result::Result<::std::option::Option<#t>, ::std::string::String> })
                     }
                 }
 
                 OperationParameterType::RawBody => {
                     cloneable = false;
-                    Ok(quote! { Result<reqwest::Body, String> })
+                    Ok(quote! { ::std::result::Result<reqwest::Body, ::std::string::String> })
                 }
             })
             .collect::<Result<Vec<_>>>()?;

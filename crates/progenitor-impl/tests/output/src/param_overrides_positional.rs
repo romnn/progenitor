@@ -112,8 +112,8 @@ impl Client {
     ///   spec
     pub async fn key_get<'a>(
         &'a self,
-        key: Option<bool>,
-        unique_key: Option<&'a str>,
+        key: ::std::option::Option<bool>,
+        unique_key: ::std::option::Option<&'a str>,
     ) -> Result<ResponseValue<()>, Error<()>> {
         let url = format!("{}/key", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);

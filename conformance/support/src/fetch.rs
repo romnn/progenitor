@@ -98,7 +98,15 @@ pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
 }
 
 fn download(url: &str) -> Result<String> {
+    // api.weather.gov and some other public APIs reject requests without a
+    // User-Agent header. Be honest about what we are.
+    let ua = concat!(
+        "progenitor-conformance/",
+        env!("CARGO_PKG_VERSION"),
+        " (+https://github.com/romnn/progenitor)",
+    );
     let mut response = ureq::get(url)
+        .header("User-Agent", ua)
         .config()
         .timeout_global(Some(std::time::Duration::from_secs(120)))
         .build()

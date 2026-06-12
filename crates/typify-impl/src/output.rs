@@ -31,6 +31,18 @@ impl OutputSpace {
             .extend(stream);
     }
 
+    /// Add a named default function, deduplicating by function name.
+    ///
+    /// Two different schema types can produce a default function with the same
+    /// sanitized name (e.g. an inline enum variant and a top-level struct both
+    /// named "FooBar"). The second one is silently dropped because the serde
+    /// attribute on both fields will reference the same `defaults::fn_name`.
+    pub fn add_default_fn(&mut self, fn_name: impl ToString, stream: TokenStream) {
+        self.items
+            .entry((OutputSpaceMod::Defaults, fn_name.to_string()))
+            .or_insert(stream);
+    }
+
     pub fn into_stream(self) -> TokenStream {
         let mods = self
             .items

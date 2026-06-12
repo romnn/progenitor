@@ -1537,9 +1537,18 @@ impl TypeEntry {
 
         let is_str = matches!(inner_type.details, TypeEntryDetails::String);
 
-        // If this is just a wrapper around a string, we can derive some more
-        // useful traits.
-        if is_str {
+        // Propagate Eq/Hash/Ord derives for inner types that support them.
+        // Float and JsonValue are the two that do NOT; all other simple types
+        // (String, Boolean, Integer, Native — which covers NaiveDate, DateTime,
+        // Uuid, IpAddr, etc.) implement the full set.
+        let is_eq_hashable = matches!(
+            inner_type.details,
+            TypeEntryDetails::String
+                | TypeEntryDetails::Boolean
+                | TypeEntryDetails::Integer(_)
+                | TypeEntryDetails::Native(_)
+        );
+        if is_eq_hashable {
             derive_set.extend(["PartialOrd", "Ord", "PartialEq", "Eq", "Hash"]);
         }
 
@@ -1950,8 +1959,9 @@ impl TypeEntry {
                     .expect("unresolved type id for set");
                 let item = inner_ty.type_ident(type_space, type_mod);
                 // TODO we'll want this to be a Set of some kind, but we need
-                // to get the derives right first.
-                quote! { Vec<#item> }
+                // to get the derives right first. Use fully-qualified path so
+                // a spec schema named "Vec" doesn't shadow std::vec::Vec.
+                quote! { ::std::vec::Vec<#item> }
             }
 
             TypeEntryDetails::Tuple(items) => {
@@ -2073,7 +2083,7 @@ impl TypeEntry {
                 // schema encoded it; it's an odd construction.
                 match &inner_ty.details {
                     TypeEntryDetails::Option(_) => inner_ident,
-                    _ => quote! { Option<#inner_ident> },
+                    _ => quote! { ::std::option::Option<#inner_ident> },
                 }
             }
 

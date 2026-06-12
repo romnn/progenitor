@@ -1054,7 +1054,7 @@ impl Client {
     pub async fn task_events_get<'a>(
         &'a self,
         task: &'a str,
-        minseq: Option<u32>,
+        minseq: ::std::option::Option<u32>,
     ) -> Result<ResponseValue<::std::vec::Vec<types::TaskEvent>>, Error<()>> {
         let url = format!(
             "{}/v1/tasks/{}/events",
@@ -1229,7 +1229,7 @@ impl Client {
     ///Sends a `PUT` request to `/v1/whoami/name`
     pub async fn whoami_put_name<'a>(
         &'a self,
-        body: String,
+        body: ::std::string::String,
     ) -> Result<ResponseValue<()>, Error<()>> {
         let url = format!("{}/v1/whoami/name", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -1540,7 +1540,7 @@ impl Client {
     ///Sends a `GET` request to `/v1/things`
     pub async fn get_thing_or_things<'a>(
         &'a self,
-        id: Option<&'a types::GetThingOrThingsId>,
+        id: ::std::option::Option<&'a types::GetThingOrThingsId>,
     ) -> Result<ResponseValue<::std::string::String>, Error<()>> {
         let url = format!("{}/v1/things", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -1575,7 +1575,7 @@ impl Client {
     ///Sends a `GET` request to `/v1/header-arg`
     pub async fn header_arg<'a>(
         &'a self,
-        accept_language: Option<types::HeaderArgAcceptLanguage>,
+        accept_language: ::std::option::Option<types::HeaderArgAcceptLanguage>,
     ) -> Result<ResponseValue<()>, Error<()>> {
         let url = format!("{}/v1/header-arg", self.baseurl,);
         let mut header_map = ::reqwest::header::HeaderMap::with_capacity(2usize);

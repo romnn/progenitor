@@ -970,12 +970,20 @@ impl TypeSpace {
 
                     Some(validation) => {
                         if let Some(pattern) = &validation.pattern {
-                            let _ =
-                                regress::Regex::new(pattern).map_err(|e| Error::InvalidSchema {
-                                    type_name: type_name.clone().into_option(),
-                                    reason: format!("invalid pattern '{}' {}", pattern, e),
-                                })?;
-                            self.uses_regress = true;
+                            match regress::Regex::new(pattern) {
+                                Ok(_) => self.uses_regress = true,
+                                Err(e) => {
+                                    // regress doesn't support all ECMAScript
+                                    // regex features (e.g. inline flags like
+                                    // (?i)). Warn and skip the guard rather
+                                    // than aborting generation of the entire
+                                    // spec.
+                                    info!(
+                                        "skipping unsupported pattern '{}': {}",
+                                        pattern, e
+                                    );
+                                }
+                            }
                         }
 
                         let string = TypeEntryDetails::String.into();
@@ -1862,7 +1870,14 @@ impl TypeSpace {
                 }
             }
 
-            _ => todo!("unhandled not schema {:#?}", subschema),
+            _ => {
+                // Complex `not` constructs (e.g. not: {anyOf:[…]}) are not
+                // yet handled — treat as unconstrained rather than aborting.
+                info!("not yet handled `not` schema, treating as unconstrained: {:#?}", subschema);
+                let (type_entry, _) =
+                    self.convert_schema(type_name, &Schema::Bool(true))?;
+                Ok((type_entry, metadata))
+            }
         }
     }
 

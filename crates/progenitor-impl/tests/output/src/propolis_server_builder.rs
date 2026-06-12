@@ -1265,7 +1265,16 @@ pub mod types {
     /// ```
     /// </details>
     #[derive(
-        :: serde :: Deserialize, :: serde :: Serialize, Clone, Debug, schemars :: JsonSchema,
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        schemars :: JsonSchema,
     )]
     #[serde(transparent)]
     pub struct Slot(pub u8);
@@ -3047,7 +3056,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceEnsure<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::InstanceEnsureRequest, String>,
+        body: ::std::result::Result<types::builder::InstanceEnsureRequest, ::std::string::String>,
     }
 
     impl<'a> InstanceEnsure<'a> {
@@ -3133,8 +3142,8 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceIssueCrucibleSnapshotRequest<'a> {
         client: &'a super::Client,
-        id: Result<::uuid::Uuid, String>,
-        snapshot_id: Result<::uuid::Uuid, String>,
+        id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        snapshot_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
     }
 
     impl<'a> InstanceIssueCrucibleSnapshotRequest<'a> {
@@ -3223,7 +3232,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceMigrateStatus<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::InstanceMigrateStatusRequest, String>,
+        body: ::std::result::Result<
+            types::builder::InstanceMigrateStatusRequest,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceMigrateStatus<'a> {
@@ -3371,7 +3383,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStatePut<'a> {
         client: &'a super::Client,
-        body: Result<types::InstanceStateRequested, String>,
+        body: ::std::result::Result<types::InstanceStateRequested, ::std::string::String>,
     }
 
     impl<'a> InstanceStatePut<'a> {
@@ -3439,7 +3451,10 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct InstanceStateMonitor<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::InstanceStateMonitorRequest, String>,
+        body: ::std::result::Result<
+            types::builder::InstanceStateMonitorRequest,
+            ::std::string::String,
+        >,
     }
 
     impl<'a> InstanceStateMonitor<'a> {

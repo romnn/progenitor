@@ -142,12 +142,12 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct KeyGet<'a> {
         _client: &'a super::Client,
-        query: Result<bool, String>,
-        client: Result<bool, String>,
-        request: Result<bool, String>,
-        response: Result<bool, String>,
-        result: Result<bool, String>,
-        url: Result<bool, String>,
+        query: ::std::result::Result<bool, ::std::string::String>,
+        client: ::std::result::Result<bool, ::std::string::String>,
+        request: ::std::result::Result<bool, ::std::string::String>,
+        response: ::std::result::Result<bool, ::std::string::String>,
+        result: ::std::result::Result<bool, ::std::string::String>,
+        url: ::std::result::Result<bool, ::std::string::String>,
     }
 
     impl<'a> KeyGet<'a> {

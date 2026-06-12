@@ -283,7 +283,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct DefaultParams<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::BodyWithDefaults, String>,
+        body: ::std::result::Result<types::builder::BodyWithDefaults, ::std::string::String>,
     }
 
     impl<'a> DefaultParams<'a> {
