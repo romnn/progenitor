@@ -1,18 +1,18 @@
 [workspace]
 members = [
-	"cargo-progenitor",
-	"crates/typify/typify",
-	"crates/typify/typify-impl",
-	"crates/typify/typify-macro",
+	"crates/cargo-progenitor",
+	"crates/example-build",
+	"crates/example-macro",
+	"crates/example-out-dir",
+	"crates/example-wasm",
+	"crates/progenitor",
+	"crates/progenitor-client",
+	"crates/progenitor-impl",
+	"crates/progenitor-macro",
+	"crates/typify",
+	"crates/typify-impl",
+	"crates/typify-macro",
 	"crates/wild-tests",
-	"example-build",
-	"example-macro",
-	"example-out-dir",
-	"example-wasm",
-	"progenitor",
-	"progenitor-client",
-	"progenitor-impl",
-	"progenitor-macro",
 ]
 resolver = "3"
 exclude = ["conformance"]
@@ -23,10 +23,10 @@ rust-version = "1.88"
 license = "MPL-2.0"
 
 [workspace.dependencies]
-progenitor = { version = "0.14.0", path = "progenitor", default-features = false }
-progenitor-client = { version = "0.14.0", path = "progenitor-client" }
-progenitor-impl = { version = "0.14.0", path = "progenitor-impl" }
-progenitor-macro = { version = "0.14.0", path = "progenitor-macro" }
+progenitor = { version = "0.14.0", path = "crates/progenitor", default-features = false }
+progenitor-client = { version = "0.14.0", path = "crates/progenitor-client" }
+progenitor-impl = { version = "0.14.0", path = "crates/progenitor-impl" }
+progenitor-macro = { version = "0.14.0", path = "crates/progenitor-macro" }
 
 anyhow = "1.0.102"
 assert_cmd = "2.2.2"
@@ -78,17 +78,10 @@ serde_yaml = "0.9"
 syn = { version = "2.0.117", features = ["full", "parsing"] }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["rt", "net"] }
-typify = { version = "0.6.2", path = "crates/typify/typify" }
-typify-impl = { version = "0.6.2", path = "crates/typify/typify-impl" }
-typify-macro = { version = "0.6.2", path = "crates/typify/typify-macro" }
+typify = { version = "0.6.2", path = "crates/typify" }
+typify-impl = { version = "0.6.2", path = "crates/typify-impl" }
+typify-macro = { version = "0.6.2", path = "crates/typify-macro" }
 url = "2.5.8"
 unicode-ident = "1.0.24"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
 
-#[patch.crates-io]
-#typify = { path = "../typify/typify" }
-
-#[patch.crates-io]
-#serde_tokenstream = { path = "../serde_tokenstream" }
-#typify = { path = "../typify/typify" }
-#rustfmt-wrapper = { path = "../rustfmt-wrapper" }

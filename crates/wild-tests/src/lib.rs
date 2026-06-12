@@ -343,5 +343,5 @@ uuid = {{ version = "1", features = ["serde"] }}
 
 fn progenitor_client_code() -> &'static str {
     // The same embedded client source cargo-progenitor ships.
-    include_str!("../../../progenitor-client/src/progenitor_client.rs")
+    include_str!("../../progenitor-client/src/progenitor_client.rs")
 }

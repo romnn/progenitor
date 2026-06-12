@@ -28,8 +28,8 @@ members = [
 ]
 
 [workspace.dependencies]
-progenitor = { path = "../progenitor", default-features = false }
-progenitor-client = { path = "../progenitor-client" }
+progenitor = { path = "../crates/progenitor", default-features = false }
+progenitor-client = { path = "../crates/progenitor-client" }
 wild-tests = { path = "../crates/wild-tests" }
 prettyplease = "0.2.37"
 syn = { version = "2.0.117", features = ["full", "parsing"] }

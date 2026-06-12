@@ -1,0 +1,20 @@
+// Copyright 2022 Oxide Computer Company
+
+use std::{env, fs, path::Path};
+
+fn main() {
+    let src = "../../sample_openapi/keeper.json";
+    println!("cargo:rerun-if-changed={}", src);
+    let content = fs::read_to_string(src).unwrap();
+    let spec = progenitor::parse_openapi_str(&content).unwrap();
+    let mut generator = progenitor::Generator::default();
+
+    let tokens = generator.generate_tokens(&spec).unwrap();
+    let ast = syn::parse2(tokens).unwrap();
+    let content = prettyplease::unparse(&ast);
+
+    let mut out_file = Path::new(&env::var("OUT_DIR").unwrap()).to_path_buf();
+    out_file.push("codegen.rs");
+
+    fs::write(out_file, content).unwrap();
+}

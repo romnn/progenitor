@@ -79,5 +79,5 @@ jobs:
         cargo install --version "$VERSION" wasm-bindgen-cli
     - name: Run tests
       run: |
-        cd example-wasm
+        cd crates/example-wasm
         CHROMEDRIVER=$(which chromedriver) cargo test --target wasm32-unknown-unknown --locked --verbose
