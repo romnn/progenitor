@@ -9,5 +9,15 @@ progenitor-impl/tests/output/
 # Vendored OpenAPI input specs used as fixtures (incl. the 3.7 MB GitHub spec).
 sample_openapi/
 
+# Vendored typify fork (crates/typify): keep its hand-written src/ and test
+# drivers, but drop its generated golden output and vendored JSON fixtures.
+crates/typify/typify/tests/schemas/
+crates/typify/typify-impl/tests/*.json
+crates/typify/typify-impl/tests/*.out
+
+# Wild-spec corpus: downloaded OpenAPI specs used as a test fixture cache.
+# (Already covered by crates/wild-tests/.gitignore; listed here for clarity.)
+crates/wild-tests/cache/
+
 # Generated lockfiles.
 Cargo.lock
