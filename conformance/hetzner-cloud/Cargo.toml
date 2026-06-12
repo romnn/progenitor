@@ -1,0 +1,28 @@
+[package]
+name = "conformance-hetzner-cloud"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# The spec's info.description embeds untagged ``` fences (curl/http
+# examples) that rustdoc would otherwise run as Rust doctests.
+[lib]
+doctest = false
+
+[dependencies]
+progenitor-client = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+futures-core = { workspace = true }
+percent-encoding = { workspace = true }
+regress = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+[build-dependencies]
+progenitor = { workspace = true }
+wild-tests = { workspace = true }
+prettyplease = { workspace = true }
+syn = { workspace = true }

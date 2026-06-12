@@ -1,0 +1,66 @@
+//! Generated Svix (webhooks) API client — conformance crate.
+//!
+//! Demonstrates using progenitor with the Svix API and pins, via the
+//! tests below, properties of the generated code that a consumer
+//! relies on.
+
+include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn client_constructs() {
+        let client = Client::new("https://api.svix.com");
+        assert_eq!(client.baseurl(), "https://api.svix.com");
+    }
+
+    #[test]
+    fn message_in_round_trips() {
+        // MessageIn is the core request type (create-message). camelCase
+        // wire names map to snake_case fields, and the spec's
+        // `payloadRetentionPeriod` default of 90 is materialized on
+        // deserialize (it has a schema default, so it is not skipped on
+        // re-serialization).
+        let message: types::MessageIn = serde_json::from_value(serde_json::json!({
+            "eventType": "user.created",
+            "payload": {"username": "test_user"},
+        }))
+        .expect("documented request shape deserializes");
+        assert_eq!(&*message.event_type, "user.created");
+
+        let value = serde_json::to_value(&message).expect("serializes");
+        assert_eq!(value["eventType"], "user.created");
+        assert_eq!(value["payloadRetentionPeriod"], 90);
+        assert!(
+            value.get("channels").is_none(),
+            "unset optional fields must not serialize"
+        );
+    }
+
+    #[test]
+    fn message_out_deserializes() {
+        // MessageOut is the central resource; pin the required id and
+        // RFC 3339 timestamp handling via chrono.
+        let message: types::MessageOut = serde_json::from_value(serde_json::json!({
+            "eventType": "user.created",
+            "id": "msg_1srOrx2ZWZBpBUvZwXKQmoEYga2",
+            "payload": {"username": "test_user"},
+            "timestamp": "2026-01-01T00:00:00Z",
+        }))
+        .expect("documented resource shape deserializes");
+        assert_eq!(&*message.id, "msg_1srOrx2ZWZBpBUvZwXKQmoEYga2");
+        // 2026-01-01T00:00:00Z as a Unix epoch; the workspace chrono has
+        // formatting features off, so compare numerically.
+        assert_eq!(message.timestamp.timestamp(), 1_767_225_600);
+    }
+
+    #[test]
+    fn message_status_text_variant_parses() {
+        let status: types::MessageStatusText =
+            serde_json::from_value(serde_json::json!("sending")).expect("known variant parses");
+        assert!(matches!(status, types::MessageStatusText::Sending));
+        assert_eq!(status.to_string(), "sending");
+    }
+}

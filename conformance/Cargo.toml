@@ -1,0 +1,47 @@
+# Conformance suite: one crate per real-world API spec. Each crate's
+# build.rs generates the client with progenitor and its tests construct
+# generated types — serving both as integration coverage and as worked
+# examples for "how do I use progenitor with API X".
+#
+# This is a separate workspace so the main one stays fast; build it with
+# `cargo check` / `cargo test` from this directory. Crates type-check in
+# parallel. For the monster clients (openai, github), the nightly
+# parallel frontend helps a lot:
+#
+#     RUSTFLAGS="-Z threads=8" cargo +nightly check
+[workspace]
+resolver = "2"
+members = [
+    "anthropic",
+    # discord: blocked on a typify fix — the spec encodes discriminants as
+    # inline `enum` values merged with an allOf $ref, which typify rejects
+    # while the ref is unresolved (see corpus manifest: expect = generate-fail).
+    # "discord",
+    "figma",
+    "github-31",
+    "hetzner-cloud",
+    "meilisearch",
+    "openai",
+    "perplexity",
+    "qdrant",
+    "resend",
+    "svix",
+    "twilio-api-v2010",
+]
+
+[workspace.dependencies]
+progenitor = { path = "../progenitor", default-features = false }
+progenitor-client = { path = "../progenitor-client" }
+wild-tests = { path = "../crates/wild-tests" }
+prettyplease = "0.2.37"
+syn = { version = "2.0.117", features = ["full", "parsing"] }
+bytes = "1"
+chrono = { version = "0.4", default-features = false, features = ["serde"] }
+futures-core = "0.3"
+percent-encoding = "2.3"
+regress = "0.11"
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_urlencoded = "0.7"
+uuid = { version = "1", features = ["serde"] }

@@ -9,7 +9,9 @@
 //! - `WILD_SLOW=1` — include entries marked `slow` (multi-minute specs).
 //! - `WILD_REFRESH=1` — re-download cached documents.
 //! - `WILD_COMPILE=1` — additionally `cargo check` the generated client
-//!   of every entry expected to pass (tier 2; slow).
+//!   of every non-slow entry expected to pass (tier 2).
+//! - `WILD_COMPILE_SLOW=1` — include the monster documents in tier 2;
+//!   their generated clients take rustc tens of minutes each.
 
 use wild_tests::{
     Expectation, Outcome, check_entry, load_manifest, spec_test_path, write_compile_crate,
@@ -92,7 +94,11 @@ fn compile_generated_clients() {
         eprintln!("set WILD_COMPILE=1 to compile-check generated clients");
         return;
     }
-    let run_slow = std::env::var_os("WILD_SLOW").is_some_and(|v| v == "1");
+    // The `slow` manifest flag marks the monster documents. Their
+    // *generated clients* are also monsters (Stripe alone costs rustc the
+    // better part of an hour, single-threaded frontend), so the compile
+    // tier gates them behind its own knob rather than WILD_SLOW.
+    let run_slow = std::env::var_os("WILD_COMPILE_SLOW").is_some_and(|v| v == "1");
     // CARGO_TARGET_TMPDIR is cargo's scratch dir for integration tests
     // (target/tmp): same disk as every other build artifact, covered by
     // `cargo clean`, and it follows CARGO_TARGET_DIR overrides.
