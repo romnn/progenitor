@@ -13,6 +13,9 @@ categories = ["api-bindings", "compilers"]
 default = ["macro"]
 macro = ["typify-macro"]
 
+[package.metadata.cargo-fc]
+exclude_features = ["default"]
+
 [dependencies]
 typify-macro = { workspace = true, optional = true }
 typify-impl = { workspace = true }
