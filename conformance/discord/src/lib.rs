@@ -191,3 +191,97 @@ mod tests {
 mod example_tests {
     include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }
+
+#[cfg(test)]
+pub mod mock {
+    include!(concat!(env!("OUT_DIR"), "/mock.rs"));
+}
+
+#[cfg(test)]
+mod operation_tests {
+    use super::*;
+    use conformance_support::httpmock::MockServer;
+
+    #[conformance_support::tokio::test]
+    async fn get_my_application_sends_get_to_applications_at_me() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/applications/@me");
+                then.status(200).json_body(serde_json::json!({
+                    "approximate_guild_count": 0,
+                    "approximate_user_authorization_count": 0,
+                    "approximate_user_install_count": 0,
+                    "description": "A test application",
+                    "explicit_content_filter": 0,
+                    "flags": 0,
+                    "flags_new": "0",
+                    "icon": null,
+                    "id": "123456789",
+                    "interactions_endpoint_url": null,
+                    "name": "Test App",
+                    "owner": {
+                        "avatar": null,
+                        "discriminator": "0",
+                        "flags": 0,
+                        "global_name": null,
+                        "id": "111222333",
+                        "primary_guild": null,
+                        "public_flags": 0,
+                        "username": "testbot"
+                    },
+                    "redirect_uris": [],
+                    "role_connections_verification_url": null,
+                    "team": null,
+                    "type": null,
+                    "verify_key": "abc123"
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.get_my_application().await;
+        mock.assert_async().await;
+        assert!(result.is_ok(), "expected 200 success from mock");
+    }
+
+    #[conformance_support::tokio::test]
+    async fn get_my_application_returns_typed_4xx_error() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/applications/@me");
+                then.status(401).json_body(serde_json::json!({
+                    "code": 40001,
+                    "message": "401: Unauthorized"
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.get_my_application().await;
+        mock.assert_async().await;
+        match result {
+            Err(Error::ErrorResponse(resp)) => match resp.into_inner() {
+                GetMyApplicationError::StatusRange4xx(err) => {
+                    assert_eq!(err.code, 40001);
+                }
+                _ => panic!("expected StatusRange4xx variant"),
+            },
+            _ => panic!("expected ErrorResponse variant"),
+        }
+    }
+
+    #[conformance_support::tokio::test]
+    async fn list_application_commands_constructs_correct_path() {
+        let server = MockServer::start_async().await;
+        let app_id: types::SnowflakeType = "987654321".parse().unwrap();
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/applications/987654321/commands");
+                then.status(200).json_body(serde_json::json!([]));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let _ = client.list_application_commands(&app_id, None).await;
+        mock.assert_async().await;
+    }
+}

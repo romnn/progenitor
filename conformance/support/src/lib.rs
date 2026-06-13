@@ -17,7 +17,9 @@
 //! macros (`roundtrip!`, `assert_off_wire!`, `assert_wire_enum!`,
 //! `assert_union_variants!`, `assert_rejects!`) and the `serde_json` re-export.
 
+pub use httpmock;
 pub use serde_json;
+pub use tokio;
 
 mod fetch;
 
@@ -116,6 +118,11 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
     std::fs::write(out_dir.join("example_tests.rs"), &example_tests).unwrap_or_else(|err| {
         panic!("conformance_support::generate: cannot write example_tests.rs: {err}")
     });
+
+    let mock_src = generate_mock_helpers(&mut gen, &spec);
+    std::fs::write(out_dir.join("mock.rs"), &mock_src).unwrap_or_else(|err| {
+        panic!("conformance_support::generate: cannot write mock.rs: {err}")
+    });
 }
 
 /// Emit one `#[test]` per (named schema type, example value) found in the
@@ -175,6 +182,22 @@ fn generate_example_tests(
     }
 
     tests.join("\n")
+}
+
+/// Emit `MockServerExt` + typed `When`/`Then` helpers for every operation.
+///
+/// Returns the contents of `mock.rs`. Returns an empty string if httpmock
+/// generation fails (the file is still written so the include! compiles).
+/// The generated code uses `use crate::*` to reference types from the spec
+/// crate's root, so include mock.rs inside a `#[cfg(test)] pub mod mock { … }`.
+fn generate_mock_helpers(
+    gen: &mut progenitor_impl::Generator,
+    spec: &progenitor_impl::OpenApiDocument,
+) -> String {
+    match gen.httpmock(spec, "crate") {
+        Ok(tokens) => tokens.to_string(),
+        Err(_) => String::new(),
+    }
 }
 
 /// Enumerate all spec crates in the conformance workspace by globbing

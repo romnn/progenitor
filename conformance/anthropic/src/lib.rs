@@ -71,3 +71,87 @@ mod tests {
 mod example_tests {
     include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }
+
+#[cfg(test)]
+pub mod mock {
+    include!(concat!(env!("OUT_DIR"), "/mock.rs"));
+}
+
+#[cfg(test)]
+mod operation_tests {
+    use super::*;
+    use conformance_support::httpmock::MockServer;
+
+    #[conformance_support::tokio::test]
+    async fn models_list_sends_get_to_v1_models() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/v1/models");
+                then.status(200).json_body(serde_json::json!({
+                    "data": [],
+                    "first_id": null,
+                    "has_more": false,
+                    "last_id": null
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.models_list(None, None, None, None, None, None).await;
+        mock.assert_async().await;
+        assert!(result.is_ok(), "expected 200 success from mock");
+    }
+
+    #[conformance_support::tokio::test]
+    async fn models_get_substitutes_model_id_in_path() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/v1/models/claude-opus-4-6");
+                then.status(200).json_body(serde_json::json!({
+                    "capabilities": null,
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "display_name": "Claude Opus 4.6",
+                    "id": "claude-opus-4-6",
+                    "max_input_tokens": null,
+                    "max_tokens": null,
+                    "type": "api_error"
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let _ = client.models_get("claude-opus-4-6", None, None, None).await;
+        mock.assert_async().await;
+    }
+
+    #[conformance_support::tokio::test]
+    async fn models_list_returns_error_on_401() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/v1/models");
+                then.status(401).json_body(serde_json::json!({
+                    "error": {
+                        "type": "authentication_error",
+                        "message": "Invalid API key"
+                    },
+                    "request_id": null,
+                    "type": "api_error"
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.models_list(None, None, None, None, None, None).await;
+        mock.assert_async().await;
+        match result {
+            Err(Error::ErrorResponse(resp)) => {
+                let body = resp.into_inner();
+                assert!(
+                    matches!(body.error, types::Error::AuthenticationError { .. }),
+                    "expected AuthenticationError variant"
+                );
+            }
+            _ => panic!("expected ErrorResponse variant"),
+        }
+    }
+}

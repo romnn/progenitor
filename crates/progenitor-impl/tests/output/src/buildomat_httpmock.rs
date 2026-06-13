@@ -756,7 +756,10 @@ pub mod operations {
             T: Into<Option<&'a types::GetThingOrThingsId>>,
         {
             if let Some(value) = value.into() {
-                Self(self.0.query_param("id", value.to_string()))
+                Self(
+                    self.0
+                        .query_param("id", ::serde_json::to_string(value).unwrap_or_default()),
+                )
             } else {
                 Self(self.0.query_param_missing("id"))
             }

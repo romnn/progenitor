@@ -13,6 +13,7 @@ use crate::{
     },
     util::{Case, sanitize},
 };
+use typify::TypeDetails;
 
 struct MockOp {
     when: TokenStream,
@@ -151,11 +152,25 @@ impl Generator {
                      deep_object_query: _,
                  }| {
                     let arg_type_name = match typ {
-                        OperationParameterType::Type(arg_type_id) => self
-                            .type_space
-                            .get_type(arg_type_id)
-                            .unwrap()
-                            .parameter_ident(),
+                        OperationParameterType::Type(arg_type_id) => {
+                            let arg_type =
+                                self.type_space.get_type(arg_type_id).unwrap();
+                            // Body params use json_body_obj which requires &T: Serialize,
+                            // not Option<&T>. Unwrap any Optional wrapper so the function
+                            // signature and call site are consistent.
+                            if matches!(kind, OperationParameterKind::Body(_)) {
+                                if let TypeDetails::Option(inner_id) = arg_type.details() {
+                                    self.type_space
+                                        .get_type(&inner_id)
+                                        .unwrap()
+                                        .parameter_ident()
+                                } else {
+                                    arg_type.parameter_ident()
+                                }
+                            } else {
+                                arg_type.parameter_ident()
+                            }
+                        }
                         OperationParameterType::RawBody => match kind {
                             OperationParameterKind::Body(BodyContentType::OctetStream) => quote! {
                                 ::serde_json::Value
@@ -167,6 +182,23 @@ impl Generator {
                             },
                             _ => unreachable!(),
                         },
+                    };
+
+                    // For query/header params, use Display if available.
+                    // Vec<T> and other compound types without Display fall back
+                    // to serde_json serialisation so the generated code compiles.
+                    let has_display = match typ {
+                        OperationParameterType::Type(id) => self
+                            .type_space
+                            .get_type(id)
+                            .unwrap()
+                            .has_impl(typify::TypeSpaceImpl::Display),
+                        OperationParameterType::RawBody => true,
+                    };
+                    let value_to_str = if has_display {
+                        quote! { value.to_string() }
+                    } else {
+                        quote! { ::serde_json::to_string(value).unwrap_or_default() }
                     };
 
                     let name_ident = format_ident!("{}", name);
@@ -186,13 +218,13 @@ impl Generator {
                         OperationParameterKind::Query(true) => (
                             true,
                             quote! {
-                                Self(self.0.query_param(#api_name, value.to_string()))
+                                Self(self.0.query_param(#api_name, #value_to_str))
                             },
                         ),
                         OperationParameterKind::Header(true) => (
                             true,
                             quote! {
-                                Self(self.0.header(#api_name, value.to_string()))
+                                Self(self.0.header(#api_name, #value_to_str))
                             },
                         ),
 
@@ -202,7 +234,7 @@ impl Generator {
                                 if let Some(value) = value.into() {
                                     Self(self.0.query_param(
                                         #api_name,
-                                        value.to_string(),
+                                        #value_to_str,
                                     ))
                                 } else {
                                     Self(self.0.query_param_missing(#api_name))
@@ -215,7 +247,7 @@ impl Generator {
                                 if let Some(value) = value.into() {
                                     Self(self.0.header(
                                         #api_name,
-                                        value.to_string()
+                                        #value_to_str
                                     ))
                                 } else {
                                     Self(self.0.header_missing(#api_name))
@@ -313,10 +345,19 @@ impl Generator {
                 let (value_param, value_use) = match typ {
                     crate::method::OperationResponseKind::Type(arg_type_id) => {
                         let arg_type = self.type_space.get_type(arg_type_id).unwrap();
-                        let arg_type_ident = arg_type.parameter_ident();
+                        // If the response type is Option<T>, use the inner T so the
+                        // Then builder accepts a concrete body rather than an Option.
+                        let body_ident = match arg_type.details() {
+                            TypeDetails::Option(inner_id) => self
+                                .type_space
+                                .get_type(&inner_id)
+                                .unwrap()
+                                .parameter_ident(),
+                            _ => arg_type.parameter_ident(),
+                        };
                         (
                             quote! {
-                                value: #arg_type_ident,
+                                value: #body_ident,
                             },
                             quote! {
                                 .header("content-type", "application/json")
@@ -344,11 +385,12 @@ impl Generator {
 
                 match status_code {
                     OperationResponseStatus::Code(status_code) => {
-                        let canonical_reason = http::StatusCode::from_u16(*status_code)
-                            .unwrap()
-                            .canonical_reason()
-                            .unwrap();
-                        let fn_name = format_ident!("{}", &sanitize(canonical_reason, Case::Snake));
+                        let reason_slug = http::StatusCode::from_u16(*status_code)
+                            .ok()
+                            .and_then(|s| s.canonical_reason())
+                            .map(|r| sanitize(r, Case::Snake))
+                            .unwrap_or_else(|| format!("status_{status_code}"));
+                        let fn_name = format_ident!("{}", reason_slug);
 
                         quote! {
                             pub fn #fn_name(self, #value_param) -> Self {
