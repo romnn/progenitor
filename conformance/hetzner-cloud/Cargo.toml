@@ -24,6 +24,12 @@ uuid = { workspace = true }
 
 [build-dependencies]
 conformance-support = { workspace = true }
+httpmock = { workspace = true }
+regex = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 conformance-support = { workspace = true }
+httpmock = { workspace = true }
+regex = { workspace = true }
+tokio = { workspace = true }

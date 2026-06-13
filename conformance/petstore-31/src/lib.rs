@@ -54,3 +54,43 @@ mod tests {
 mod example_tests {
     include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }
+
+#[cfg(test)]
+pub mod mock {
+    include!(concat!(env!("OUT_DIR"), "/mock.rs"));
+}
+
+#[cfg(test)]
+mod operation_tests {
+    use super::*;
+    use conformance_support::httpmock::MockServer;
+
+    #[conformance_support::tokio::test]
+    async fn list_pets_sends_get_to_pets() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/pets");
+                then.status(200).json_body(serde_json::json!([]));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.list_pets(None).await;
+        mock.assert_async().await;
+        assert!(result.is_ok(), "expected 200 success from mock");
+    }
+
+    #[conformance_support::tokio::test]
+    async fn show_pet_by_id_constructs_correct_path() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/pets/42");
+                then.status(200).json_body(serde_json::json!({"id": 42, "name": "Fido"}));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let _ = client.show_pet_by_id("42").await;
+        mock.assert_async().await;
+    }
+}

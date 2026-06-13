@@ -87,3 +87,29 @@ mod tests {
 mod example_tests {
     include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }
+
+#[cfg(test)]
+pub mod mock {
+    include!(concat!(env!("OUT_DIR"), "/mock.rs"));
+}
+
+#[cfg(test)]
+mod operation_tests {
+    use super::*;
+    use conformance_support::httpmock::MockServer;
+
+    #[conformance_support::tokio::test]
+    async fn get_health_sends_get_to_health() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/health");
+                then.status(200).json_body(serde_json::json!({"status": "available"}));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client.get_health().await;
+        mock.assert_async().await;
+        assert!(result.is_ok(), "expected 200 success from mock");
+    }
+}

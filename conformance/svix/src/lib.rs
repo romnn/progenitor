@@ -82,3 +82,35 @@ mod tests {
 mod example_tests {
     include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }
+
+#[cfg(test)]
+pub mod mock {
+    include!(concat!(env!("OUT_DIR"), "/mock.rs"));
+}
+
+#[cfg(test)]
+mod operation_tests {
+    use super::*;
+    use conformance_support::httpmock::MockServer;
+
+    #[conformance_support::tokio::test]
+    async fn v1_application_list_sends_get_to_api_v1_app() {
+        let server = MockServer::start_async().await;
+        let mock = server
+            .mock_async(|when, then| {
+                when.method("GET").path("/api/v1/app");
+                then.status(200).json_body(serde_json::json!({
+                    "data": [],
+                    "done": true,
+                    "iterator": null
+                }));
+            })
+            .await;
+        let client = Client::new(&server.base_url());
+        let result = client
+            .v1_application_list(None, None, None, None, None, None)
+            .await;
+        mock.assert_async().await;
+        assert!(result.is_ok(), "expected 200 success from mock");
+    }
+}

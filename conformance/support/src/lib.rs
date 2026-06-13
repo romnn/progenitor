@@ -80,9 +80,12 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
 
     // Tell cargo when to re-run this build script.
     println!("cargo:rerun-if-changed={}", manifest_path.display());
-    println!(
-        "cargo:rerun-if-env-changed=CONFORMANCE_REFRESH"
-    );
+    println!("cargo:rerun-if-env-changed=CONFORMANCE_REFRESH");
+    // Re-run when progenitor-impl source changes so generated mock.rs/codegen.rs
+    // reflect any generator fixes without needing a manual cache invalidation.
+    let progenitor_impl_src = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/progenitor-impl/src");
+    println!("cargo:rerun-if-changed={}", progenitor_impl_src.display());
 
     let document = fetch::fetch_spec(&manifest).unwrap_or_else(|err| {
         panic!(

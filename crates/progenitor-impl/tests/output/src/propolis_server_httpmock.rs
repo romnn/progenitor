@@ -34,7 +34,7 @@ pub mod operations {
                 self.0
                     .status(200u16)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -44,7 +44,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -54,7 +54,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -74,7 +74,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceEnsureRequest) -> Self {
-            Self(self.0.json_body_obj(value))
+            Self(self.0.json_body_obj(&value))
         }
     }
 
@@ -93,7 +93,7 @@ pub mod operations {
                 self.0
                     .status(201u16)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -103,7 +103,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -113,7 +113,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -166,7 +166,7 @@ pub mod operations {
                 self.0
                     .status(200u16)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -176,7 +176,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -186,7 +186,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -206,7 +206,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceMigrateStatusRequest) -> Self {
-            Self(self.0.json_body_obj(value))
+            Self(self.0.json_body_obj(&value))
         }
     }
 
@@ -225,7 +225,7 @@ pub mod operations {
                 self.0
                     .status(200u16)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -235,7 +235,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -245,7 +245,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -285,7 +285,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -295,7 +295,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -315,7 +315,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: types::InstanceStateRequested) -> Self {
-            Self(self.0.json_body_obj(value))
+            Self(self.0.json_body_obj(&value))
         }
     }
 
@@ -339,7 +339,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -349,7 +349,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }
@@ -369,7 +369,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceStateMonitorRequest) -> Self {
-            Self(self.0.json_body_obj(value))
+            Self(self.0.json_body_obj(&value))
         }
     }
 
@@ -388,7 +388,7 @@ pub mod operations {
                 self.0
                     .status(200u16)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -398,7 +398,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
 
@@ -408,7 +408,7 @@ pub mod operations {
                 self.0
                     .status(status)
                     .header("content-type", "application/json")
-                    .json_body_obj(value),
+                    .json_body_obj(&value),
             )
         }
     }

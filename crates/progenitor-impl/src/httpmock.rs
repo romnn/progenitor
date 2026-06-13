@@ -258,7 +258,7 @@ impl Generator {
                             OperationParameterType::Type(_) => (
                                 true,
                                 quote! {
-                                    Self(self.0.json_body_obj(value))
+                                    Self(self.0.json_body_obj(&value))
                                 },
                             ),
                             OperationParameterType::RawBody => match body_content_type {
@@ -361,7 +361,7 @@ impl Generator {
                             },
                             quote! {
                                 .header("content-type", "application/json")
-                                .json_body_obj(value)
+                                .json_body_obj(&value)
                             },
                         )
                     }
