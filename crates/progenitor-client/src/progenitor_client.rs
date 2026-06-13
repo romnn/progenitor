@@ -580,6 +580,10 @@ pub fn encode_path(pc: &str) -> String {
 
 #[doc(hidden)]
 pub trait RequestBuilderExt<E> {
+    #[allow(
+        clippy::result_large_err,
+        reason = "Error<E> holds reqwest::Response intentionally; boxing would change the public API"
+    )]
     fn form_urlencoded<T: Serialize + ?Sized>(self, body: &T) -> Result<RequestBuilder, Error<E>>;
 }
 

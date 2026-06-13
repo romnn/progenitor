@@ -37,3 +37,27 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true }
+
+[[test]]
+name = "build_buildomat"
+required-features = ["macro"]
+
+[[test]]
+name = "build_keeper"
+required-features = ["macro"]
+
+[[test]]
+name = "build_nexus"
+required-features = ["macro"]
+
+[[test]]
+name = "build_propolis"
+required-features = ["macro"]
+
+[[test]]
+name = "load_yaml"
+required-features = ["macro"]
+
+[[test]]
+name = "test_client"
+required-features = ["macro"]
