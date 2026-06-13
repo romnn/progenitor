@@ -1,0 +1,4 @@
+name = "opensearch"
+url = "https://github.com/opensearch-project/opensearch-api-specification/releases/download/main-latest/opensearch-openapi.yaml"
+version = "3.1"
+notes = "302-redirects to release-assets.githubusercontent.com; 256 oneOf, 183 const"

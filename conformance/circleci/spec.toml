@@ -1,0 +1,4 @@
+name = "circleci"
+url = "https://circleci.com/api/v2/openapi.json"
+version = "3.0"
+notes = "HEAD 404, GET 200"

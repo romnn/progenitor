@@ -1,0 +1,4 @@
+name = "hubspot-contacts"
+url = "https://api.hubspot.com/public/api/spec/v2/specs/release/22150/version/3"
+version = "3.0"
+notes = "unusual 'openapi' : '3.0.1' spacing; release-pinned URL; extensionless, caches as .json"

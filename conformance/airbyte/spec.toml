@@ -1,0 +1,17 @@
+name = "airbyte"
+url = "https://raw.githubusercontent.com/airbytehq/airbyte-platform/main/airbyte-api/server-api/src/main/openapi/config.yaml"
+version = "3.0"
+notes = "config API; discriminator, binary"
+# Vendor examples use a map where a sequence is expected, or are missing
+# required fields (e.g. `connectionId` in JobResponse).
+bad_examples = [
+    "ConnectionsResponse",
+    "ConnectorDefinitionResponse",
+    "DestinationResponse",
+    "DestinationsResponse",
+    "JobResponse",
+    "JobsResponse",
+    "SourceResponse",
+    "SourcesResponse",
+    "WorkspacesResponse",
+]

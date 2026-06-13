@@ -1,0 +1,4 @@
+name = "lambda-cloud"
+url = "https://cloud.lambdalabs.com/api/v1/openapi.json"
+version = "3.1"
+notes = "GPU cloud; const, anyOf, null types"

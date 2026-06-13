@@ -1,0 +1,4 @@
+name = "deepl"
+url = "https://raw.githubusercontent.com/DeepLcom/openapi/main/openapi.yaml"
+version = "3.0"
+notes = "official; multipart, patternProperties"

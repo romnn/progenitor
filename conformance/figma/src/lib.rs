@@ -78,4 +78,20 @@ mod tests {
         let value = serde_json::to_value(&embed).expect("serializes");
         assert_eq!(value["type"], "EMBED", "discriminator survives round trip");
     }
+
+    #[test]
+    fn unknown_node_discriminant_rejected() {
+        let result = serde_json::from_value::<types::Node>(serde_json::json!({
+            "id": "1:2",
+            "name": "ghost",
+            "type": "NOT_A_REAL_NODE_TYPE",
+            "scrollBehavior": "SCROLLS",
+        }));
+        assert!(result.is_err(), "unknown type discriminant must be rejected");
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

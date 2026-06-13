@@ -1,0 +1,4 @@
+name = "urlbox"
+url = "https://urlbox.com/.well-known/open-api.yaml"
+version = "3.1"
+notes = ".well-known/open-api.yaml path; smallest 3.1 spec"

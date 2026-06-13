@@ -1,0 +1,4 @@
+name = "vapi"
+url = "https://api.vapi.ai/api-json"
+version = "3.0"
+notes = "NestJS minified live endpoint, extensionless URL; caches as .json"

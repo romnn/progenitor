@@ -1,0 +1,4 @@
+name = "neon"
+url = "https://neon.com/api_spec/release/v2.json"
+version = "3.0"
+notes = "vendor release alias (neon.tech 301s to neon.com)"

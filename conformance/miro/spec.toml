@@ -1,0 +1,6 @@
+name = "miro"
+url = "https://raw.githubusercontent.com/miroapp/api-clients/main/packages/generator/spec.json"
+version = "3.0"
+notes = "patternProperties, multipart, discriminator"
+# WidgetId and GroupId are string types but the spec examples are integers.
+bad_examples = ["WidgetId", "GroupId"]

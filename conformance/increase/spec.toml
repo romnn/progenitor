@@ -1,0 +1,7 @@
+name = "increase"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/increase/increase-beca94b958f84df1e88f5e26405a66965fbf81a0c0c33b5201f0ec8d06e13ff0.yml"
+version = "3.1"
+notes = "Stainless hash-URL rotates; see increase-python .stats.yml openapi_spec_url to re-resolve; webhooks, 1557 anyOf, null-heavy"
+# create_an_entity_parameters: missing required `country` field in example.
+# sandbox_create_a_card_token_parameters: example has trailing JSON (non-parseable).
+bad_examples = ["create_an_entity_parameters", "sandbox_create_a_card_token_parameters"]

@@ -108,7 +108,8 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
         )
     });
 
-    let generated = progenitor_impl::Generator::default()
+    let mut gen = progenitor_impl::Generator::default();
+    let generated = gen
         .generate_text(&spec)
         .unwrap_or_else(|err| {
             panic!(
@@ -121,6 +122,70 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
     std::fs::write(out_dir.join("codegen.rs"), &generated).unwrap_or_else(|err| {
         panic!("conformance_support::generate: cannot write codegen.rs: {err}")
     });
+
+    let example_tests = generate_example_tests(&gen, &manifest);
+    std::fs::write(out_dir.join("example_tests.rs"), &example_tests).unwrap_or_else(|err| {
+        panic!("conformance_support::generate: cannot write example_tests.rs: {err}")
+    });
+}
+
+/// Emit one `#[test]` per (named schema type, example value) found in the
+/// generated spec. Returns the contents of `example_tests.rs`; may be empty
+/// if the spec has no schema-level examples.
+fn generate_example_tests(
+    gen: &progenitor_impl::Generator,
+    manifest: &fetch::SpecManifest,
+) -> String {
+    use heck::ToSnakeCase as _;
+
+    let bad: std::collections::HashSet<&str> =
+        manifest.bad_examples.iter().map(|s| s.as_str()).collect();
+
+    let mut tests = Vec::new();
+    // Track how many times each snake_case base has been used to avoid
+    // duplicate function names when two distinct schema names collide in
+    // snake_case (e.g. "CountryCode" and "country_code" → "country_code").
+    let mut fn_base_count: std::collections::HashMap<String, u32> =
+        std::collections::HashMap::new();
+
+    for (schema_name, rust_ident, examples) in gen.example_schemas() {
+        if bad.contains(schema_name.as_str()) {
+            continue;
+        }
+
+        let raw_base = schema_name.to_snake_case();
+        // Guard against leading digits (rare but possible in wild specs).
+        let raw_base = if raw_base.starts_with(|c: char| c.is_ascii_digit()) {
+            format!("schema_{raw_base}")
+        } else {
+            raw_base
+        };
+
+        let n = fn_base_count.entry(raw_base.clone()).or_insert(0);
+        *n += 1;
+        // First occurrence keeps the plain base; later ones get a _v2, _v3, …
+        let fn_base = if *n == 1 {
+            raw_base
+        } else {
+            format!("{raw_base}_v{n}")
+        };
+
+        for (i, example) in examples.iter().enumerate() {
+            let fn_name = format!("example_{fn_base}_{i}");
+            let raw_json = serde_json::to_string(example)
+                .expect("schema example must be serializable to JSON");
+            tests.push(format!(
+                "#[test]\nfn {fn_name}() {{\n    \
+                 let raw = r###\"{raw_json}\"###;\n    \
+                 let json: ::serde_json::Value = ::serde_json::from_str(raw)\n        \
+                 .expect(\"built-in spec example must be valid JSON\");\n    \
+                 let _ = conformance_support::roundtrip!(crate::types::{rust_ident}, json);\n\
+                 }}\n"
+            ));
+        }
+    }
+
+    tests.join("\n")
 }
 
 /// Enumerate all spec crates in the conformance workspace by globbing
@@ -242,8 +307,8 @@ macro_rules! assert_union_variants {
                 .expect(concat!("deserialization to ", stringify!($ty), " failed"));
             assert!(
                 matches!(deserialized, $variant),
-                concat!("expected variant ", stringify!($variant), " but got {:?}"),
-                // $ty doesn't necessarily impl Debug, so avoid it
+                "expected variant {} but value did not match",
+                stringify!($variant),
             );
         )+
     }};

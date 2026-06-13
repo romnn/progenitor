@@ -1,0 +1,4 @@
+name = "weather-gov"
+url = "https://api.weather.gov/openapi.json"
+version = "3.1"
+notes = "rare 3.1.2 version string; requires User-Agent header (harness already sends one)"

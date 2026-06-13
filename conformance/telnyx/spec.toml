@@ -1,0 +1,26 @@
+name = "telnyx"
+url = "https://raw.githubusercontent.com/team-telnyx/openapi/master/openapi/spec3.json"
+version = "3.1"
+notes = "slow; webhooks block, 36 discriminators, 79 oneOf, multipart, octet-stream"
+# The flow-builder expression/condition/node schemas use `const`-discriminated
+# oneOf unions.  Their examples reference variant tags that the current
+# discriminator handling rolls into a single "arithmetic"-named discriminator
+# union, leaving all other tags unrecognised.  Root-cause investigation pending.
+# Note: schema names here must match the actual `components/schemas` keys.
+bad_examples = [
+    "attempt",
+    "BooleanLiteralExpression",
+    "BooleanOpExpression",
+    "ComparisonExpression",
+    "ConversationFlow",
+    "ConversationFlowReq",
+    "DefaultCondition",
+    "DynamicVariableExpression",
+    "ExpressionCondition",
+    "FlowNodeReq",
+    "LLMCondition",
+    "NumberLiteralExpression",
+    "SpeakNodeReq",
+    "StringLiteralExpression",
+    "ToolNodeReq",
+]

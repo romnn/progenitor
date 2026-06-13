@@ -1,0 +1,24 @@
+[package]
+name = "conformance-langsmith"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+progenitor-client = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+futures-core = { workspace = true }
+percent-encoding = { workspace = true }
+regress = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_urlencoded = { workspace = true }
+uuid = { workspace = true }
+
+[build-dependencies]
+conformance-support = { workspace = true }
+
+[dev-dependencies]
+conformance-support = { workspace = true }

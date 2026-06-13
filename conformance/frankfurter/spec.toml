@@ -1,0 +1,7 @@
+name = "frankfurter"
+url = "https://api.frankfurter.dev/v1/openapi.json"
+version = "3.1"
+notes = "rare 3.1.2 version string; tiny smoke-test size"
+# The Rates example contains the now-retired CYP (Cypriot pound) currency
+# code which no longer appears in the schema's enum.
+bad_examples = ["rates"]

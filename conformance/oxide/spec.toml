@@ -1,0 +1,4 @@
+name = "oxide"
+url = "https://raw.githubusercontent.com/oxidecomputer/oxide.rs/main/oxide.json"
+version = "3.0"
+notes = "progenitor flagship consumer spec (Oxide Rack) — regression-protection value; 89 oneOf"

@@ -1,0 +1,4 @@
+name = "aiven"
+url = "https://api.aiven.io/doc/openapi.json"
+version = "3.0"
+notes = "openapi key NOT in first 128 KB (parser-order stress)"

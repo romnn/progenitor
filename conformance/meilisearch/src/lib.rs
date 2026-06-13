@@ -68,4 +68,18 @@ mod tests {
                 if p.attribute_patterns.patterns == ["release_*"]
         ));
     }
+
+    #[test]
+    fn unknown_matching_strategy_rejected() {
+        conformance_support::assert_rejects!(
+            types::MatchingStrategy,
+            conformance_support::serde_json::json!("fuzzy"),
+            "MatchingStrategy has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

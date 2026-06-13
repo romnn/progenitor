@@ -33,4 +33,27 @@ mod tests {
             "unset optional fields must not serialize"
         );
     }
+
+    #[test]
+    fn finish_reason_wire_names() {
+        conformance_support::assert_wire_enum!(
+            types::ChoiceFinishReason,
+            "stop" => types::ChoiceFinishReason::Stop,
+            "length" => types::ChoiceFinishReason::Length,
+        );
+    }
+
+    #[test]
+    fn unknown_chat_role_rejected() {
+        conformance_support::assert_rejects!(
+            types::ChatMessageRole,
+            conformance_support::serde_json::json!("moderator"),
+            "ChatMessageRole has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

@@ -144,3 +144,8 @@ mod tests {
         assert_eq!(key.expire_at, None);
     }
 }
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
+}

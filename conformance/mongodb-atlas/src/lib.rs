@@ -9,7 +9,6 @@ include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     fn aws_container_payload() -> serde_json::Value {
         serde_json::json!({
@@ -30,7 +29,9 @@ mod tests {
             types::CloudProviderContainer::Aws { id, .. } => id,
             other => panic!("AWS payload must pick AWS variant, got: {other:?}"),
         };
-        assert_eq!(id.as_deref(), Some("32b6e34b3d91647abb20e7b8"));
+        // id is a regex-validated newtype (CloudProviderContainerId) that Derefs
+        // to String, so as_deref() yields Option<&String> — bridge to &str via as_str().
+        assert_eq!(id.as_deref().map(|s| s.as_str()), Some("32b6e34b3d91647abb20e7b8"));
 
         let round_tripped = serde_json::to_value(&container).expect("serializes");
         assert_eq!(round_tripped, aws_container_payload());
@@ -42,9 +43,10 @@ mod tests {
             serde_json::from_value(aws_container_payload()).expect("deserializes");
 
         match &container {
-            types::CloudProviderContainer::Aws { provisioned, provider_name, .. } => {
+            // The providerName discriminant is not stored as a separate field;
+            // verify the other base property instead.
+            types::CloudProviderContainer::Aws { provisioned, .. } => {
                 assert_eq!(*provisioned, Some(true));
-                assert_eq!(provider_name.as_deref(), Some("AWS"));
             }
             _ => panic!("wrong variant"),
         }
@@ -54,10 +56,10 @@ mod tests {
     fn azure_discriminator_routes_to_azure_variant() {
         let azure_payload = serde_json::json!({
             "providerName": "AZURE",
-            "id": "abc123",
+            "id": "5e2211c17a3e5a48f5497999",
             "provisioned": false,
             "atlasCidrBlock": "192.168.0.0/21",
-            "azureSubscriptionId": "sub-001",
+            "azureSubscriptionId": "7a3e5a48f549799932b6e34b",
             "region": "US_EAST_2"
         });
         let container: types::CloudProviderContainer =
@@ -70,16 +72,19 @@ mod tests {
     }
 
     #[test]
-    fn provider_name_guards_documented_discriminants() {
-        for name in ["AWS", "GCP", "AZURE", "TENANT", "SERVERLESS"] {
-            assert!(
-                types::CloudProviderContainerProviderName::from_str(name).is_ok(),
-                "{name} must be a documented providerName"
-            );
-        }
-        assert!(
-            types::CloudProviderContainerProviderName::from_str("BOGUS").is_err(),
-            "undocumented providerName must be rejected"
-        );
+    fn unknown_provider_name_rejected() {
+        // The discriminated union must reject an unrecognised providerName.
+        // CloudProviderContainerProviderName no longer exists as a unified enum
+        // (the schema generates per-variant types), so test via deserialization.
+        let result = serde_json::from_value::<types::CloudProviderContainer>(serde_json::json!({
+            "providerName": "BOGUS",
+            "atlasCidrBlock": "10.8.0.0/21",
+        }));
+        assert!(result.is_err(), "undocumented providerName must be rejected");
     }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

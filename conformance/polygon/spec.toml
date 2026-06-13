@@ -1,0 +1,4 @@
+name = "polygon"
+url = "https://api.polygon.io/openapi"
+version = "3.0"
+notes = "extensionless live URL; HEAD 405; caches as .json"

@@ -1,0 +1,4 @@
+name = "lago"
+url = "https://raw.githubusercontent.com/getlago/lago-openapi/main/openapi.yaml"
+version = "3.1"
+notes = "webhooks block; OSS billing API"

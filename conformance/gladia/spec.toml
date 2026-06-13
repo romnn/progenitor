@@ -1,0 +1,4 @@
+name = "gladia"
+url = "https://api.gladia.io/openapi.json"
+version = "3.1"
+notes = "webhooks, multipart, discriminator; speech-to-text FastAPI"

@@ -1,0 +1,4 @@
+name = "zoom"
+url = "https://api.apis.guru/v2/specs/zoom.us/2.0.0/openapi.json"
+version = "3.0"
+notes = "slow; 53 oneOf, heavy multipart; APIs.guru permalink (vendor spec is login-gated)"

@@ -1,0 +1,7 @@
+name = "workos"
+url = "https://raw.githubusercontent.com/workos/openapi-spec/main/spec/open-api-spec.yaml"
+version = "3.1"
+notes = "rare 3.1.1 version string; 623 const"
+# EventSchema and EventList examples fail because the untagged EventSchema
+# union doesn't match any variant with the given discriminant value.
+bad_examples = ["EventList", "EventSchema"]

@@ -1,0 +1,4 @@
+name = "chroma"
+url = "https://api.trychroma.com/openapi.json"
+version = "3.1"
+notes = "vector-DB cloud API"

@@ -1,0 +1,7 @@
+name = "twitter"
+url = "https://api.twitter.com/2/openapi.json"
+version = "3.0"
+notes = "X API v2; unusual 'openapi' : '3.0.0' spacing; HEAD 405"
+# Tweet.created_at example uses old Twitter date format ("Wed Jan 06 18:40:40 +0000 2021")
+# instead of the RFC 3339 format that the date-time field requires.
+bad_examples = ["Tweet"]

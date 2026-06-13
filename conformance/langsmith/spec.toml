@@ -1,0 +1,4 @@
+name = "langsmith"
+url = "https://api.smith.langchain.com/openapi.json"
+version = "3.1"
+notes = "minified single-line FastAPI; webhooks, prefixItems, patternProperties"

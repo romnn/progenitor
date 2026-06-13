@@ -41,30 +41,59 @@ pub(crate) fn metadata_title_and_description(metadata: &Option<Box<Metadata>>) -
 /// Anthropic API fences a raw prompt string in its `prompt` docs), which
 /// then fail `cargo test` in every consumer crate. Tag bare fence openers
 /// as `text` so the snippet stays documentation.
+///
+/// Also normalises lines indented by 4+ spaces that are outside a ``` fence:
+/// rustdoc treats such lines as indented code blocks and compiles them as
+/// Rust doctests. Stripping excess indentation to at most 3 spaces prevents
+/// that interpretation without losing the content.
 fn neutralize_doc_fences(description: &str) -> String {
-    if !description.contains("```") {
-        return description.to_string();
-    }
     let mut in_fence = false;
+    let mut changed = false;
     let lines = description.split('\n').map(|line| {
         let trimmed = line.trim_start();
-        if !trimmed.starts_with("```") {
+        let leading = line.len() - trimmed.len();
+        if trimmed.starts_with("```") {
+            // CommonMark only recognises a ``` fence opener/closer when it
+            // has at most 3 spaces of leading indentation; at 4+ spaces it
+            // becomes an indented code block whose content starts with ` `
+            // (invalid Rust).  Strip the excess indentation on fence lines
+            // too so Markdown sees them as fences, not code blocks.
+            let prefix = if leading >= 4 {
+                changed = true;
+                "   "
+            } else {
+                &line[..leading]
+            };
+            if in_fence {
+                in_fence = false;
+                return format!("{prefix}{trimmed}");
+            }
+            in_fence = true;
+            let info = trimmed.trim_start_matches('`');
+            if info.trim().is_empty() {
+                changed = true;
+                return format!("{prefix}{}text", trimmed.trim_end_matches(|c: char| c.is_whitespace()));
+            }
+            return format!("{prefix}{trimmed}");
+        }
+        if in_fence || trimmed.is_empty() {
             return line.to_string();
         }
-        if in_fence {
-            // Closing fence; the info string position is meaningless here.
-            in_fence = false;
-            return line.to_string();
+        // A leading tab also creates an indented code block in CommonMark
+        // (tab = one tab-stop = 4 spaces; rustdoc compiles it as Rust).
+        if line.starts_with('\t') {
+            changed = true;
+            return format!("   {}", line.trim_start_matches('\t'));
         }
-        in_fence = true;
-        let info = trimmed.trim_start_matches('`');
-        if info.trim().is_empty() {
-            format!("{}text", line.trim_end())
+        if leading >= 4 {
+            changed = true;
+            format!("   {trimmed}")
         } else {
             line.to_string()
         }
     });
-    lines.collect::<Vec<_>>().join("\n")
+    let result = lines.collect::<Vec<_>>().join("\n");
+    if changed { result } else { description.to_string() }
 }
 
 /// Check if all schemas are mutually exclusive.
@@ -1241,5 +1270,18 @@ mod tests {
         // Without any fence the description passes through unchanged.
         let plain = "Just words with `inline code`.";
         assert_eq!(super::neutralize_doc_fences(plain), plain);
+
+        // Lines with 4+ leading spaces outside a fence are indented code
+        // blocks in rustdoc and get compiled as Rust. Strip to ≤ 3 spaces.
+        let indented = "Example:\n    ```python\n    import foo\n    ```";
+        let neutralized = super::neutralize_doc_fences(indented);
+        assert!(
+            !neutralized.contains("    ```"),
+            "4-space indented fence should have been stripped: {neutralized:?}"
+        );
+        assert!(
+            neutralized.contains("   ```"),
+            "content should be preserved with 3 spaces: {neutralized:?}"
+        );
     }
 }

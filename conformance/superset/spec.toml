@@ -1,0 +1,4 @@
+name = "superset"
+url = "https://raw.githubusercontent.com/apache/superset/master/docs/static/resources/openapi.json"
+version = "3.0"
+notes = "flask-appbuilder; openapi key not in first 128 KB"

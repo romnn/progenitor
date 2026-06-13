@@ -1,0 +1,4 @@
+name = "runway"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/runwayml/runwayml-e4103e353904891c1dfe59c4cfaefb536c0dc20ae0316f2c18bae77aa4e8d8c7.yml"
+version = "3.1"
+notes = "Stainless hash-URL rotates; see runwayml-python .stats.yml; 54 discriminators, 163 const"

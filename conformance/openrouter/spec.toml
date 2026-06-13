@@ -1,0 +1,4 @@
+name = "openrouter"
+url = "https://openrouter.ai/docs/openapi.json"
+version = "3.1"
+notes = "patternProperties, const, multipart, octet-stream"

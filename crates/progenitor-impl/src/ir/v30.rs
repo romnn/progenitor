@@ -142,17 +142,18 @@ fn lower_operation(
     // this ordering.
     let mut responses = Vec::new();
     if let Some(ref_or_response) = &operation.responses.default {
-        responses.push(lower_response(
-            ir::ResponseStatus::Default,
-            ref_or_response.item(components)?,
-        ));
+        if let Ok(response) = ref_or_response.item(components) {
+            responses.push(lower_response(ir::ResponseStatus::Default, response));
+        }
     }
     for (status_code, ref_or_response) in &operation.responses.responses {
         let status = match status_code {
             openapiv3::StatusCode::Code(code) => ir::ResponseStatus::Code(*code),
             openapiv3::StatusCode::Range(range) => ir::ResponseStatus::Range(*range),
         };
-        responses.push(lower_response(status, ref_or_response.item(components)?));
+        if let Ok(response) = ref_or_response.item(components) {
+            responses.push(lower_response(status, response));
+        }
     }
 
     Ok(ir::Operation {

@@ -163,30 +163,62 @@ pub(crate) fn unique_ident_from(
 /// `cargo test` in every consumer crate. Tag bare fence openers as `text`
 /// so the snippet stays documentation. Twin of the same neutralization in
 /// typify's `metadata_description`, which covers schema-level docs.
+///
+/// Also normalises lines indented by 4+ spaces that are outside a ``` fence:
+/// rustdoc treats such lines as indented code blocks and compiles them as
+/// Rust doctests. Stripping excess indentation to at most 3 spaces prevents
+/// that interpretation without losing the content.
 pub(crate) fn neutralize_doc_fences(text: &str) -> String {
-    if !text.contains("```") {
-        return text.to_string();
-    }
     let mut in_fence = false;
+    let mut changed = false;
     let lines = text.split('\n').map(|line| {
         let trimmed = line.trim_start();
-        if !trimmed.starts_with("```") {
+        let leading = line.len() - trimmed.len();
+        if trimmed.starts_with("```") {
+            // CommonMark only recognises a ``` fence opener/closer when it
+            // has at most 3 spaces of leading indentation; at 4+ spaces it
+            // becomes an indented code block whose content starts with ` `
+            // (invalid Rust).  Strip the excess indentation on fence lines
+            // too so Markdown sees them as fences, not code blocks.
+            let prefix = if leading >= 4 {
+                changed = true;
+                "   "
+            } else {
+                &line[..leading]
+            };
+            if in_fence {
+                in_fence = false;
+                return format!("{prefix}{trimmed}");
+            }
+            in_fence = true;
+            let info = trimmed.trim_start_matches('`');
+            if info.trim().is_empty() {
+                changed = true;
+                return format!("{prefix}{}text", trimmed.trim_end_matches(|c: char| c.is_whitespace()));
+            }
+            return format!("{prefix}{trimmed}");
+        }
+        if in_fence || trimmed.is_empty() {
             return line.to_string();
         }
-        if in_fence {
-            // Closing fence; the info string position is meaningless here.
-            in_fence = false;
-            return line.to_string();
+        // A leading tab also creates an indented code block in CommonMark
+        // (tab = one tab-stop = 4 spaces; rustdoc compiles it as Rust).
+        if line.starts_with('\t') {
+            changed = true;
+            return format!("   {}", line.trim_start_matches('\t'));
         }
-        in_fence = true;
-        let info = trimmed.trim_start_matches('`');
-        if info.trim().is_empty() {
-            format!("{}text", line.trim_end())
+        // Lines outside a fence with 4+ leading spaces are treated by
+        // rustdoc as indented code blocks and compiled as Rust. Strip
+        // excess indentation to at most 3 leading spaces.
+        if leading >= 4 {
+            changed = true;
+            format!("   {trimmed}")
         } else {
             line.to_string()
         }
     });
-    lines.collect::<Vec<_>>().join("\n")
+    let result = lines.collect::<Vec<_>>().join("\n");
+    if changed { result } else { text.to_string() }
 }
 
 #[cfg(test)]
@@ -202,5 +234,18 @@ mod tests {
 
         let plain = "Just words with `inline code`.";
         assert_eq!(super::neutralize_doc_fences(plain), plain);
+
+        // Lines with 4+ leading spaces outside a fence are indented code
+        // blocks in rustdoc and get compiled as Rust. Strip them to ≤ 3 spaces.
+        let indented = "- `page_size`:\n        Request this many records per page\n\n        This value is automatically clamped.\n- `next`: next page";
+        let neutralized = super::neutralize_doc_fences(indented);
+        assert!(
+            !neutralized.contains("        "),
+            "8-space indent should have been stripped: {neutralized:?}"
+        );
+        assert!(
+            neutralized.contains("   Request this many records per page"),
+            "content should be preserved with ≤3 spaces"
+        );
     }
 }

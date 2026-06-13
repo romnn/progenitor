@@ -55,4 +55,18 @@ mod tests {
         ));
         assert_eq!(status.to_string(), "running");
     }
+
+    #[test]
+    fn unknown_action_status_rejected() {
+        conformance_support::assert_rejects!(
+            types::ActionStatus,
+            conformance_support::serde_json::json!("pending"),
+            "ActionStatus has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

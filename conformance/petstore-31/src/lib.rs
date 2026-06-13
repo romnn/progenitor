@@ -49,3 +49,8 @@ mod tests {
         assert_eq!(error.message, "not found");
     }
 }
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
+}

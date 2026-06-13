@@ -1,0 +1,4 @@
+name = "binance"
+url = "https://raw.githubusercontent.com/binance/binance-api-swagger/master/spot_api.yaml"
+version = "3.0"
+notes = "quoted version string '3.0.2'; huge enum/array responses"

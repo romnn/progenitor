@@ -1,0 +1,7 @@
+name = "intercom"
+url = "https://raw.githubusercontent.com/intercom/Intercom-OpenAPI/main/descriptions/2.14/api.intercom.io.yaml"
+version = "3.0"
+notes = "versioned descriptions dirs; multipart"
+# custom_attributes: example uses boolean `true` where a CustomAttributesValue
+# struct is expected.
+bad_examples = ["custom_attributes"]

@@ -1,0 +1,31 @@
+name = "jina"
+url = "https://api.jina.ai/openapi.json"
+version = "3.1"
+notes = "minified live FastAPI"
+# All *Request schemas include a `model` field whose examples reference
+# specific model IDs (e.g. "jina-clip-v1", "jina-colbert-v1-en") that are
+# no longer in the schema's enum — the enum was updated to v5 names only.
+bad_examples = [
+    "ClipCreateTrainingRequest",
+    "ClipV1Request",
+    "ClipV2Request",
+    "ClipZeroShotClassificationRequest",
+    "CodeEmbeddings1500MRequest",
+    "CodeEmbeddings500MRequest",
+    "CodeEmbeddingsZeroShotClassificationRequest",
+    "ColbertV1Request",
+    "ColbertV2Request",
+    "ELSERV2Request",
+    "EmbeddingsV2CreateTrainingRequest",
+    "EmbeddingsV2Request",
+    "EmbeddingsV2ZeroShotClassificationRequest",
+    "EmbeddingsV3CreateTrainingRequest",
+    "EmbeddingsV3Request",
+    "EmbeddingsV3ZeroShotClassificationRequest",
+    "EmbeddingsV4CreateTrainingRequest",
+    "EmbeddingsV4Request",
+    "EmbeddingsV4ZeroShotClassificationRequest",
+    "RerankerM0Request",
+    "RerankerV3Request",
+    "TextRerankerRequest",
+]

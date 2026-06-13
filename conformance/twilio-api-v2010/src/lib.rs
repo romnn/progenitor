@@ -85,4 +85,18 @@ mod tests {
             "unset optional form parameters must not serialize"
         );
     }
+
+    #[test]
+    fn unknown_account_status_rejected() {
+        conformance_support::assert_rejects!(
+            types::AccountEnumStatus,
+            conformance_support::serde_json::json!("pending"),
+            "AccountEnumStatus has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

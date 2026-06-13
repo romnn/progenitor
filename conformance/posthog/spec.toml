@@ -1,0 +1,4 @@
+name = "posthog"
+url = "https://app.posthog.com/api/schema/"
+version = "3.1"
+notes = "slow; 925 patternProperties, 3743 anyOf, 198 const, prefixItems; extensionless URL caches as .json"

@@ -1,9 +1,6 @@
-# Cap parallel jobs to avoid OOM on monster specs. Several generated clients
-# (stripe, github-31, cloudflare) peak at 6-15 GB of rustc RSS; scheduling
-# more than ~10 concurrently on a 60 GB machine causes thrashing.
-# Adjust based on your machine's RAM: 10-12 is right for 60 GB.
+# Cap parallel jobs to avoid OOM on monster specs.
 [build]
-jobs = 10
+jobs = 8
 
 # Faster linker for the dev profile. Disable or change to "lld" if mold is
 # not installed.

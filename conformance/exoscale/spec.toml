@@ -1,0 +1,4 @@
+name = "exoscale"
+url = "https://openapi-v2.exoscale.com/source.yaml"
+version = "3.0"
+notes = "chunked transfer (no content-length)"

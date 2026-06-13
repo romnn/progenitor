@@ -1,0 +1,4 @@
+name = "unstructured"
+url = "https://api.unstructuredapp.io/general/openapi.json"
+version = "3.1"
+notes = "const, binary in a tiny file"

@@ -22,8 +22,8 @@ mod tests {
         match &response {
             types::UpdateExternalDataCacheVarDataOnGlobalOrchResponse::Of0(string_data) => {
                 assert_eq!(
-                    string_data.cache_variable_data.as_deref(),
-                    Some("Updated - Hello World!")
+                    string_data.cache_variable_data.as_str(),
+                    "Updated - Hello World!"
                 );
             }
             _ => panic!("string payload must select the String Data branch"),
@@ -41,14 +41,27 @@ mod tests {
         let payload = serde_json::json!({
             "id": "ABCDEF1",
             "type": "tag_reference",
-            "summary": "Team:Engineering",
-            "label": "Engineering"
+            "summary": "Team:Engineering"
         });
         let tag: types::TagReference =
             serde_json::from_value(payload.clone()).expect("tag reference deserializes");
-        assert_eq!(tag.id.as_deref(), Some("ABCDEF1"));
-        assert_eq!(tag.label.as_deref(), Some("Engineering"));
+        assert_eq!(tag.id.as_str(), "ABCDEF1");
+        assert_eq!(tag.summary.as_deref(), Some("Team:Engineering"));
         let round_tripped = serde_json::to_value(&tag).expect("serializes");
         assert_eq!(round_tripped, payload);
     }
+
+    #[test]
+    fn unknown_alert_status_rejected() {
+        conformance_support::assert_rejects!(
+            types::AlertStatus,
+            conformance_support::serde_json::json!("pending"),
+            "AlertStatus has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

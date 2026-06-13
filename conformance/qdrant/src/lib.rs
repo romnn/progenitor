@@ -64,4 +64,18 @@ mod tests {
                 .expect("uuid id parses");
         assert!(matches!(uuid, types::ExtendedPointId::Uuid(_)));
     }
+
+    #[test]
+    fn unknown_direction_rejected() {
+        conformance_support::assert_rejects!(
+            types::Direction,
+            conformance_support::serde_json::json!("sideways"),
+            "Direction has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

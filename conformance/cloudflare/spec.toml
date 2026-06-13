@@ -1,3 +1,37 @@
 name = "cloudflare"
 url = "https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json"
 version = "3.0"
+# Cloudflare spec uses mixed naming: kebab-case with underscores and hyphens
+# (e.g. "api-shield_token_sources", "organizations-api_MemberID").
+# Failures: string "false"/"true" where boolean expected; unknown enum variants;
+# missing required fields; string where struct/sequence expected; regex
+# validation failures; longer-than-N-chars violations in example values.
+bad_examples = [
+    "aaa_mechanisms",
+    "access_allow_authenticate_via_warp",
+    "access_deny_unmatched_requests",
+    "access_is_ui_read_only",
+    "access_schemas-is_ui_read_only",
+    "api-shield_old_validation_override_mitigation_action",
+    "api-shield_per_operation_bulk_settings",
+    "api-shield_token_sources",
+    "dns-firewall_dns_firewall_ips",
+    "dns-firewall_upstream_ips",
+    "dns-records_ttl",
+    "iam_resources",
+    "images_image_identifier",
+    "images_image_variant_identifier",
+    "images_image_variants",
+    "images_images_list_continuation_token",
+    "images_signing_key_identifier",
+    "magic-visibility-mnm_mnm_rule_automatic_advertisement",
+    "magic-visibility-mnm_mnm_rule_duration",
+    "organizations-api_MemberID",
+    "organizations-api_OrganizationID",
+    "r2_queue_identifier",
+    "realtimekit_app_id",
+    "tunnel_tunnel_types",
+    "workers-kv_value",
+    "workers_multipart-script",
+    "zaraz_zaraz-config-base",
+]

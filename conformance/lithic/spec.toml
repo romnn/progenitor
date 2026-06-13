@@ -1,0 +1,13 @@
+name = "lithic"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/lithic/lithic-efe780032e44b3cf0f6914407e43bce6aa7176fa50aa6ec018f93c1f28af8490.yml"
+version = "3.1"
+notes = "Stainless hash-URL rotates; see lithic-python .stats.yml; card-issuing fintech; 99 oneOf, 86 const, patternProperties"
+# Lithic uses kebab-case schema names. All failing examples have "premature end
+# of input" — the example values are truncated objects missing required fields.
+bad_examples = [
+    "account-holder-created",
+    "account-holder-document-updated",
+    "account-holder-verification",
+    "digital-wallet-tokenization-updated",
+    "tokenization-updated",
+]

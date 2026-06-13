@@ -1572,6 +1572,17 @@ impl Type<'_> {
         type_entry.type_name(type_space)
     }
 
+    /// The bare Rust identifier for named types (struct, enum, newtype), without
+    /// any module prefix. Returns `None` for built-in and compound types.
+    pub fn named_ident(&self) -> Option<String> {
+        match &self.type_entry.details {
+            TypeEntryDetails::Enum(type_entry::TypeEntryEnum { name, .. })
+            | TypeEntryDetails::Struct(type_entry::TypeEntryStruct { name, .. })
+            | TypeEntryDetails::Newtype(TypeEntryNewtype { name, .. }) => Some(name.clone()),
+            _ => None,
+        }
+    }
+
     /// The identifier for the type as might be used for a function return or
     /// defining the type of a member of a struct..
     pub fn ident(&self) -> TokenStream {

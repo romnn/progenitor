@@ -104,6 +104,7 @@ progenitor = { path = "../crates/progenitor", default-features = false }
 progenitor-client = { path = "../crates/progenitor-client" }
 base64 = "0.22"
 bytes = "1"
+heck = "0.5.0"
 chrono = { version = "0.4", default-features = false, features = ["serde"] }
 futures = "0.3"
 futures-core = "0.3"

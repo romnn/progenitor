@@ -193,6 +193,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "conformance-binance"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
 name = "conformance-chroma"
 version = "0.0.0"
 dependencies = [
@@ -319,6 +337,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "conformance-deepinfra"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
 name = "conformance-deepl"
 version = "0.0.0"
 dependencies = [
@@ -392,6 +428,24 @@ dependencies = [
 
 [[package]]
 name = "conformance-figma"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-finch"
 version = "0.0.0"
 dependencies = [
  "bytes",
@@ -500,6 +554,24 @@ dependencies = [
 
 [[package]]
 name = "conformance-increase"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-influxdb"
 version = "0.0.0"
 dependencies = [
  "bytes",
@@ -698,6 +770,24 @@ dependencies = [
 
 [[package]]
 name = "conformance-meilisearch"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-miro"
 version = "0.0.0"
 dependencies = [
  "bytes",
@@ -988,6 +1078,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "conformance-pokeapi"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
 name = "conformance-polygon"
 version = "0.0.0"
 dependencies = [
@@ -1172,6 +1280,7 @@ name = "conformance-support"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "heck",
  "progenitor-impl",
  "serde",
  "serde_json",
@@ -1288,7 +1397,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "conformance-vapi"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
 name = "conformance-weather-gov"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-webflow"
 version = "0.0.0"
 dependencies = [
  "bytes",
@@ -1325,6 +1470,24 @@ dependencies = [
 
 [[package]]
 name = "conformance-xai"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "conformance-support",
+ "futures-core",
+ "percent-encoding",
+ "progenitor-client",
+ "regress",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "uuid",
+]
+
+[[package]]
+name = "conformance-zendesk"
 version = "0.0.0"
 dependencies = [
  "bytes",

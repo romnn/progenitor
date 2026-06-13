@@ -63,4 +63,18 @@ mod tests {
         assert!(matches!(status, types::MessageStatusText::Sending));
         assert_eq!(status.to_string(), "sending");
     }
+
+    #[test]
+    fn unknown_message_status_rejected() {
+        conformance_support::assert_rejects!(
+            types::MessageStatusText,
+            conformance_support::serde_json::json!("queued"),
+            "MessageStatusText has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

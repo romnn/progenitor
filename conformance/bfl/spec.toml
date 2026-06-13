@@ -1,0 +1,4 @@
+name = "bfl"
+url = "https://api.bfl.ai/openapi.json"
+version = "3.1"
+notes = "Black Forest Labs FLUX; HEAD 405, GET fine"

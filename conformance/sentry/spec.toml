@@ -1,0 +1,4 @@
+name = "sentry"
+url = "https://raw.githubusercontent.com/getsentry/sentry-api-schema/main/openapi-derefed.json"
+version = "3.0"
+notes = "official derefed artifact, auto-updated; 89 anyOf, patternProperties"

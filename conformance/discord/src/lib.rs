@@ -186,3 +186,8 @@ mod tests {
         assert!(err.is_err(), "content over 4000 chars must be rejected");
     }
 }
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
+}

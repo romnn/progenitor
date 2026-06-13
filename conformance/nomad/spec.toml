@@ -1,0 +1,4 @@
+name = "nomad"
+url = "https://raw.githubusercontent.com/hashicorp/nomad-openapi/main/v1/openapi.yaml"
+version = "3.0"
+notes = "starts with a license comment block (key not near byte 0)"

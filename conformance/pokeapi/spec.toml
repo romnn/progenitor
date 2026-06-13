@@ -1,0 +1,4 @@
+name = "pokeapi"
+url = "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml"
+version = "3.1"
+notes = "drf-spectacular; highly recognizable"

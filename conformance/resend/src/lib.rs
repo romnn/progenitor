@@ -64,4 +64,18 @@ mod tests {
             types::SendEmailRequestTo::Array(ref items) if items.len() == 2
         ));
     }
+
+    #[test]
+    fn unknown_api_key_permission_rejected() {
+        conformance_support::assert_rejects!(
+            types::CreateApiKeyRequestPermission,
+            conformance_support::serde_json::json!("admin"),
+            "CreateApiKeyRequestPermission has no variant for unknown wire value"
+        );
+    }
+}
+
+#[cfg(test)]
+mod example_tests {
+    include!(concat!(env!("OUT_DIR"), "/example_tests.rs"));
 }

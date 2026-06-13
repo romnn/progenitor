@@ -1,0 +1,4 @@
+name = "finch"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/finch%2Ffinch-46f433f34d440aa1dfcc48cc8d822c598571b68be2f723ec99e1b4fba6c13b1e.yml"
+version = "3.1"
+notes = "Stainless hash-URL rotates; see finch-python .stats.yml; HR/payroll; discriminators, null types"

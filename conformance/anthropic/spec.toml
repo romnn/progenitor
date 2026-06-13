@@ -1,3 +1,31 @@
 name = "anthropic"
 url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic/anthropic-5ce93251152bd7c4c288dacdf5a445383825ba50bc472ff9e9821ee9455e3564.yml"
 version = "3.1"
+# Examples reference model IDs (e.g. "claude-opus-4-6") that don't appear
+# in the schema's enum, or use tagged-union type strings not in the variant
+# list, or reference enum values not yet included in the generated type.
+bad_examples = [
+    "BetaCloudConfig",
+    "BetaCloudConfigParams",
+    "BetaCountMessageTokensParams",
+    "BetaCreateMessageParams",
+    "BetaEnvironment",
+    "BetaEnvironmentDeleteResponse",
+    "BetaManagedAgentsAgent",
+    "BetaManagedAgentsCreateAgentParams",
+    "BetaManagedAgentsListSessionThreads",
+    "BetaManagedAgentsModelConfig",
+    "BetaManagedAgentsModelConfigParams",
+    "BetaManagedAgentsSession",
+    "BetaManagedAgentsSessionAgent",
+    "BetaManagedAgentsSessionThread",
+    "BetaManagedAgentsSessionThreadAgent",
+    "BetaMessage",
+    "BetaPublicEnvironmentCreateRequest",
+    "CompletionRequest",
+    "CompletionResponse",
+    "CountMessageTokensParams",
+    "CreateMessageParams",
+    "CreateMessageParamsWithoutStream",
+    "Message",
+]

@@ -1,0 +1,14 @@
+name = "okta"
+url = "https://raw.githubusercontent.com/okta/okta-management-openapi-spec/master/dist/current/management-minimal.yaml"
+version = "3.0"
+notes = "56 discriminators — discriminator-heavy big YAML"
+# Vendor example bugs: integer where string expected, regex mismatch,
+# missing required fields, or a bare string where a struct is expected.
+bad_examples = [
+    "ApplicationUniversalLogout",
+    "AwsAccountId",
+    "AwsEventSourceName",
+    "SplunkToken",
+    "UserFactorPassCode",
+    "ZscalerbyzApplication",
+]

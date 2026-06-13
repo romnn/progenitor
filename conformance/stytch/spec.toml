@@ -1,0 +1,4 @@
+name = "stytch"
+url = "https://raw.githubusercontent.com/stytchauth/stytch-openapi/main/openapi.yml"
+version = "3.0"
+notes = "big plain YAML — bulk stress with few composition keywords"

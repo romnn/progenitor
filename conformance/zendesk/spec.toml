@@ -1,0 +1,4 @@
+name = "zendesk"
+url = "https://developer.zendesk.com/zendesk/oas.yaml"
+version = "3.0"
+notes = "34 oneOf, octet-stream, multipart"

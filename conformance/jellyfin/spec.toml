@@ -1,0 +1,4 @@
+name = "jellyfin"
+url = "https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json"
+version = "3.0"
+notes = "77 format:binary + octet-stream — best binary-body exerciser; .NET-generated"

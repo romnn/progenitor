@@ -1,0 +1,4 @@
+name = "klaviyo"
+url = "https://raw.githubusercontent.com/klaviyo/openapi/main/openapi/stable.json"
+version = "3.0"
+notes = "180 oneOf; official stable.json"

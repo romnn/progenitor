@@ -1,0 +1,4 @@
+name = "pinecone"
+url = "https://raw.githubusercontent.com/pinecone-io/pinecone-api/main/2026-04/db_control_2026-04.oas.yaml"
+version = "3.0"
+notes = "official date-stamped spec repo"

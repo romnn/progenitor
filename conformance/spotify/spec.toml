@@ -1,0 +1,4 @@
+name = "spotify"
+url = "https://raw.githubusercontent.com/sonallux/spotify-web-api/main/fixed-spotify-open-api.yml"
+version = "3.0"
+notes = "community-fixed official spec (sonallux)"

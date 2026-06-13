@@ -1,0 +1,4 @@
+name = "logfire"
+url = "https://logfire-api.pydantic.dev/openapi.json"
+version = "3.1"
+notes = "FastAPI live endpoint; prefixItems, const, multipart, discriminator"

@@ -1,0 +1,4 @@
+name = "novu"
+url = "https://api.novu.co/openapi.json"
+version = "3.0"
+notes = "NestJS minified live"

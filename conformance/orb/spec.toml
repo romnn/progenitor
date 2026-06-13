@@ -1,0 +1,4 @@
+name = "orb"
+url = "https://storage.googleapis.com/stainless-sdk-openapi-specs/orb%2Forb-c92fb451e13f157b3735f188acc8d57aa3adfbaac1683645e1ba4f432dd7a4f8.yml"
+version = "3.1"
+notes = "Stainless hash-URL rotates; see orb-python .stats.yml; 2955 oneOf lines, 19 discriminators, octet-stream, null-heavy"

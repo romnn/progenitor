@@ -1,0 +1,4 @@
+name = "scaleway-instance"
+url = "https://www.scaleway.com/en/developers/api/instance/v1/schema.yml"
+version = "3.1"
+notes = "EU cloud; sibling product schemas available for later expansion"

@@ -1,0 +1,4 @@
+name = "netbird"
+url = "https://raw.githubusercontent.com/netbirdio/netbird/main/shared/management/http/api/openapi.yml"
+version = "3.1"
+notes = "WireGuard mesh-VPN management API"

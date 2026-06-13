@@ -1,0 +1,4 @@
+name = "webflow"
+url = "https://raw.githubusercontent.com/webflow/openapi-spec/main/openapi/v2.yml"
+version = "3.1"
+notes = "webhooks block, official Data API v2"

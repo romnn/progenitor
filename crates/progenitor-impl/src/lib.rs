@@ -69,6 +69,9 @@ pub struct Generator {
     /// `extract_responses` can resolve a common-ancestor schema name back
     /// to a usable `TypeId` when rewriting response items.
     schema_type_ids: BTreeMap<String, TypeId>,
+    /// Component schemas as schemars objects, retained after `generate_tokens`
+    /// so callers can inspect metadata (e.g., examples) without a second parse.
+    component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
 }
 
 /// Settings for [Generator].
@@ -282,6 +285,7 @@ impl Default for Generator {
             uses_websockets: Default::default(),
             schema_supertypes: Default::default(),
             schema_type_ids: Default::default(),
+            component_schemas: Default::default(),
         }
     }
 }
@@ -335,6 +339,7 @@ impl Generator {
             uses_websockets: false,
             schema_supertypes: Default::default(),
             schema_type_ids: Default::default(),
+            component_schemas: Default::default(),
         }
     }
 
@@ -372,6 +377,34 @@ impl Generator {
         Ok(prettyplease::unparse(&file))
     }
 
+    /// Returns `(schema_name, rust_ident, examples)` for every component schema
+    /// that maps to a named Rust type and carries at least one example value.
+    ///
+    /// Must be called after [`generate_text`] or [`generate_tokens`]; returns
+    /// an empty vec if called before generation.
+    pub fn example_schemas(&self) -> Vec<(String, String, Vec<serde_json::Value>)> {
+        self.schema_type_ids
+            .iter()
+            .filter_map(|(schema_name, type_id)| {
+                let t = self.type_space.get_type(type_id).ok()?;
+                let ident = t.named_ident()?;
+                let schema = self.component_schemas.get(schema_name)?;
+                let examples = match schema {
+                    schemars::schema::Schema::Object(obj) => obj
+                        .metadata
+                        .as_deref()
+                        .map(|m| m.examples.clone())
+                        .unwrap_or_default(),
+                    _ => Vec::new(),
+                };
+                if examples.is_empty() {
+                    return None;
+                }
+                Some((schema_name.clone(), ident, examples))
+            })
+            .collect()
+    }
+
     /// Emit a [TokenStream] containing the generated client code.
     pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
         let document = &spec.0;
@@ -388,6 +421,7 @@ impl Generator {
         // share a common `allOf` ancestor.
         self.schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
         self.schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
+        self.component_schemas = document.schemas.clone();
 
         let mut raw_methods = document
             .operations

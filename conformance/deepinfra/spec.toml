@@ -1,0 +1,4 @@
+name = "deepinfra"
+url = "https://api.deepinfra.com/openapi.json"
+version = "3.1"
+notes = "live FastAPI; prefixItems, const, patternProperties"

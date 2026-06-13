@@ -1,0 +1,4 @@
+name = "cratesio"
+url = "https://crates.io/api/openapi.json"
+version = "3.1"
+notes = "utoipa (Rust)-generated — dogfood value"
