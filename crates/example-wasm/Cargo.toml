@@ -16,4 +16,4 @@ uuid = { version = "1.23", features = ["serde", "v4", "js"] }
 wasm-bindgen-test = "0.3.66"
 
 [build-dependencies]
-progenitor = { path = "../progenitor" }
+progenitor = { path = "../progenitor", default-features = false }

@@ -10,6 +10,10 @@ include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 mod tests {
     use super::*;
 
+    conformance_support::assert_send_sync!(Client);
+    conformance_support::assert_display!(types::MessageStatusText);
+    conformance_support::assert_from_str!(types::MessageStatusText);
+
     #[test]
     fn client_constructs() {
         let client = Client::new("https://api.svix.com");

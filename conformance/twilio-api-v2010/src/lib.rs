@@ -10,6 +10,10 @@ include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 mod tests {
     use super::*;
 
+    conformance_support::assert_send_sync!(Client);
+    conformance_support::assert_display!(types::MessageEnumStatus, types::MessageEnumDirection);
+    conformance_support::assert_from_str!(types::MessageEnumStatus, types::MessageEnumDirection);
+
     #[test]
     fn client_constructs() {
         let client = Client::new("https://api.twilio.com");

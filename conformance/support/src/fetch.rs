@@ -36,30 +36,43 @@ impl SpecManifest {
         self.url.as_deref()
     }
 
-    /// Convenience: fetch the spec document for this manifest entry.
-    /// Equivalent to calling [`fetch_spec`] with `self`.
+    /// Fetch the spec document, using `cache_root` as the on-disk cache.
+    pub fn fetch_document_with_cache(&self, cache_root: &std::path::Path) -> anyhow::Result<String> {
+        fetch_spec_with_cache(self, cache_root)
+    }
+
+    /// Fetch the spec document for use in a build script (`OUT_DIR` as cache root).
     pub fn fetch_document(&self) -> anyhow::Result<String> {
         fetch_spec(self)
     }
 }
 
-/// Compute the cache file path for a spec manifest.
-pub fn cache_path_for(manifest: &SpecManifest) -> PathBuf {
+/// Compute the spec file path within `cache_root` for a spec manifest.
+pub fn cache_path_for(manifest: &SpecManifest, cache_root: &std::path::Path) -> PathBuf {
     let extension = match &manifest.url {
         Some(url) if url.ends_with(".yaml") || url.ends_with(".yml") => "yaml",
         _ => "json",
     };
-    super::cache_dir().join(format!("{}.{extension}", manifest.name))
+    cache_root.join(format!("{}.{extension}", manifest.name))
 }
 
-/// Fetch the spec document text, preferring the on-disk cache.
+/// Returns the spec cache root for build-script contexts (`$OUT_DIR`).
+///
+/// Panics if `OUT_DIR` is not set — this is only valid inside a build script.
+pub fn build_script_cache_root() -> PathBuf {
+    let out_dir = std::env::var_os("OUT_DIR")
+        .expect("OUT_DIR not set — build_script_cache_root is only valid in build scripts");
+    PathBuf::from(out_dir)
+}
+
+/// Fetch the spec document text, preferring the on-disk cache at `cache_root`.
 ///
 /// For `file =` specs, reads the file relative to the current directory
 /// (which cargo sets to the crate root for build scripts).
 ///
-/// For `url =` specs, checks `conformance/support/cache/` first; downloads
-/// on cache miss. Set `CONFORMANCE_REFRESH=1` to force re-download.
-pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
+/// For `url =` specs, checks `cache_root` first; downloads on cache miss.
+/// Set `CONFORMANCE_REFRESH=1` to force re-download.
+pub fn fetch_spec_with_cache(manifest: &SpecManifest, cache_root: &std::path::Path) -> Result<String> {
     if let Some(file) = &manifest.file {
         let path = std::path::Path::new(file);
         return std::fs::read_to_string(path)
@@ -71,7 +84,7 @@ pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
         .as_deref()
         .with_context(|| format!("spec {:?} has neither `url` nor `file`", manifest.name))?;
 
-    let cache_path = cache_path_for(manifest);
+    let cache_path = cache_path_for(manifest, cache_root);
     let refresh = std::env::var_os("CONFORMANCE_REFRESH").is_some_and(|v| v == "1");
 
     if !refresh && cache_path.exists() {
@@ -95,6 +108,13 @@ pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
         .with_context(|| format!("writing cache {}", cache_path.display()))?;
 
     Ok(body)
+}
+
+/// Fetch the spec document text for use in a build script (`OUT_DIR` as cache root).
+///
+/// Set `CONFORMANCE_REFRESH=1` to force re-download.
+pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
+    fetch_spec_with_cache(manifest, &build_script_cache_root())
 }
 
 fn download(url: &str) -> Result<String> {

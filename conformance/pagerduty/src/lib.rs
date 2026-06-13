@@ -10,6 +10,10 @@ include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 mod tests {
     use super::*;
 
+    conformance_support::assert_send_sync!(Client);
+    conformance_support::assert_display!(types::AlertStatus);
+    conformance_support::assert_from_str!(types::AlertStatus);
+
     #[test]
     fn put_cache_variable_data_200_response_deserializes_string_example() {
         let payload = r#"{

@@ -33,11 +33,6 @@ fn conformance_root() -> PathBuf {
         .to_owned()
 }
 
-/// Shared spec cache directory (`conformance/support/cache/`).
-pub fn cache_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("cache")
-}
-
 /// Drive build.rs generation from an explicit spec manifest.
 ///
 /// Reads `spec_manifest` relative to the crate root (cargo sets cwd to the
@@ -90,16 +85,10 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
     let document = fetch::fetch_spec(&manifest).unwrap_or_else(|err| {
         panic!(
             "conformance_support::generate: cannot fetch spec for {:?}: {err}\n\
-             Hint: populate conformance/support/cache/{name}.* or set CONFORMANCE_REFRESH=1",
+             Hint: set CONFORMANCE_REFRESH=1 to force re-download",
             manifest.name,
-            name = manifest.name,
         )
     });
-
-    // Emit rerun-if-changed for the cached spec file so cargo re-generates
-    // when the spec is refreshed.
-    let cache_path = fetch::cache_path_for(&manifest);
-    println!("cargo:rerun-if-changed={}", cache_path.display());
 
     let spec = progenitor_impl::parse_openapi_str(&document).unwrap_or_else(|err| {
         panic!(
@@ -334,4 +323,59 @@ macro_rules! assert_rejects {
             )
         );
     }};
+}
+
+/// Assert at compile time that `$ty` implements `std::fmt::Display`.
+///
+/// Progenitor uses `Display` (via `to_string()`) to encode path parameters;
+/// this assertion turns a silent degradation into a compile error.
+///
+/// ```rust,ignore
+/// assert_display!(types::AccountSid);
+/// assert_display!(types::MessageStatus);
+/// ```
+#[macro_export]
+macro_rules! assert_display {
+    ($($ty:ty),+ $(,)?) => {
+        const _: () = {
+            fn _check<T: ::std::fmt::Display>() {}
+            $( let _ = _check::<$ty>; )+
+        };
+    };
+}
+
+/// Assert at compile time that `$ty` implements `std::str::FromStr`.
+///
+/// Progenitor uses `FromStr` for CLI argument parsing; this assertion
+/// ensures that path-relevant or CLI-relevant types remain parseable.
+///
+/// ```rust,ignore
+/// assert_from_str!(types::MessageEnumDirection);
+/// ```
+#[macro_export]
+macro_rules! assert_from_str {
+    ($($ty:ty),+ $(,)?) => {
+        const _: () = {
+            fn _check<T: ::std::str::FromStr>() {}
+            $( let _ = _check::<$ty>; )+
+        };
+    };
+}
+
+/// Assert at compile time that `$ty` implements `Send + Sync`.
+///
+/// All generated `Client` types must be `Send + Sync` to be safely shared
+/// across threads (e.g., wrapped in `Arc`).
+///
+/// ```rust,ignore
+/// assert_send_sync!(Client);
+/// ```
+#[macro_export]
+macro_rules! assert_send_sync {
+    ($($ty:ty),+ $(,)?) => {
+        const _: () = {
+            fn _check<T: Send + Sync>() {}
+            $( let _ = _check::<$ty>; )+
+        };
+    };
 }

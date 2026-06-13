@@ -1,3 +1,4 @@
 target/
+.cache/
 
 crates/progenitor-impl/tests/output/Cargo.lock

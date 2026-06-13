@@ -4,6 +4,14 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "generate-all"
+path = "src/bin/generate_all.rs"
+
+[[bin]]
+name = "new-spec"
+path = "src/bin/new_spec.rs"
+
 [dependencies]
 anyhow = "1"
 heck = { workspace = true }
