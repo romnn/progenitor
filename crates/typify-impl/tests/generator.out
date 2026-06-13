@@ -373,7 +373,7 @@ mod types {
 pub fn do_stuff(
     body: &types::CompoundType,
     string: &str,
-    opt_int: Option<u32>,
+    opt_int: ::std::option::Option<u32>,
     strenum: types::StringEnum,
 ) -> types::CompoundType {
     todo!()
