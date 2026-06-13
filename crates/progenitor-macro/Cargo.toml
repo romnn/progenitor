@@ -11,6 +11,11 @@ readme = "../../README.md"
 [lib]
 proc-macro = true
 
+[features]
+# Opt-in: lets `generate_api!` honor `server = true`. Empty by design — it only
+# flips a `cfg` the proc-macro reads; it must NOT pull in a runtime server crate.
+server = []
+
 [dependencies]
 proc-macro2 = "1.0"
 progenitor-impl = { version = "0.14.0", path = "../progenitor-impl" }

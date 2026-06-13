@@ -978,10 +978,7 @@ impl TypeSpace {
                                     // (?i)). Warn and skip the guard rather
                                     // than aborting generation of the entire
                                     // spec.
-                                    info!(
-                                        "skipping unsupported pattern '{}': {}",
-                                        pattern, e
-                                    );
+                                    info!("skipping unsupported pattern '{}': {}", pattern, e);
                                 }
                             }
                         }
@@ -1873,9 +1870,11 @@ impl TypeSpace {
             _ => {
                 // Complex `not` constructs (e.g. not: {anyOf:[…]}) are not
                 // yet handled — treat as unconstrained rather than aborting.
-                info!("not yet handled `not` schema, treating as unconstrained: {:#?}", subschema);
-                let (type_entry, _) =
-                    self.convert_schema(type_name, &Schema::Bool(true))?;
+                info!(
+                    "not yet handled `not` schema, treating as unconstrained: {:#?}",
+                    subschema
+                );
+                let (type_entry, _) = self.convert_schema(type_name, &Schema::Bool(true))?;
                 Ok((type_entry, metadata))
             }
         }

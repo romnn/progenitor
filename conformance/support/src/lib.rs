@@ -129,6 +129,15 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
     std::fs::write(out_dir.join("mock.rs"), &mock_src).unwrap_or_else(|err| {
         panic!("conformance_support::generate: cannot write mock.rs: {err}")
     });
+
+    // Only crates that opt in (via `server = true` in spec.toml) pay the axum
+    // compile cost; the rest of the corpus never references server.rs.
+    if manifest.server {
+        let server_src = generate_server_helpers(&mut gen, &spec);
+        std::fs::write(out_dir.join("server.rs"), &server_src).unwrap_or_else(|err| {
+            panic!("conformance_support::generate: cannot write server.rs: {err}")
+        });
+    }
 }
 
 /// Emit one `#[test]` per (named schema type, example value) found in the
@@ -201,6 +210,20 @@ fn generate_mock_helpers(
     spec: &progenitor_impl::OpenApiDocument,
 ) -> String {
     match gen.httpmock(spec, "crate") {
+        Ok(tokens) => tokens.to_string(),
+        Err(_) => String::new(),
+    }
+}
+
+/// Emit the server module body (service trait, request structs, responders, and
+/// the `{Api}Server` adapter) for every operation, referencing spec types via
+/// `crate::types`. Returns the contents of `server.rs` (empty on failure, so the
+/// `include!` still compiles). Include inside `#[cfg(test)] pub mod server { … }`.
+fn generate_server_helpers(
+    gen: &mut progenitor_impl::Generator,
+    spec: &progenitor_impl::OpenApiDocument,
+) -> String {
+    match gen.server(spec, "crate") {
         Ok(tokens) => tokens.to_string(),
         Err(_) => String::new(),
     }

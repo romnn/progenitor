@@ -29,6 +29,11 @@ pub struct SpecManifest {
     /// Example selectors to skip in T1 auto-generated round-trips.
     #[serde(default)]
     pub bad_examples: Vec<String>,
+    /// Opt in to generating the server-stub module (`$OUT_DIR/server.rs`).
+    /// Defaults to `false`; only crates that test the server set this, so the
+    /// rest of the corpus pays no axum compile cost.
+    #[serde(default)]
+    pub server: bool,
 }
 
 impl SpecManifest {

@@ -18,7 +18,7 @@ where
 }
 
 fn generate_formatted(generator: &mut Generator, spec: &OpenApiDocument) -> String {
-    let content = generator.generate_tokens(&spec).unwrap();
+    let content = generator.generate_tokens(spec).unwrap();
     reformat_code(content)
 }
 
@@ -156,7 +156,7 @@ fn test_cli_gen() {
 
 #[test]
 fn test_nexus_with_different_timeout() {
-    const OPENAPI_FILE: &'static str = "nexus.json";
+    const OPENAPI_FILE: &str = "nexus.json";
 
     let mut in_path = PathBuf::from("../../sample_openapi");
     in_path.push(OPENAPI_FILE);
@@ -170,6 +170,33 @@ fn test_nexus_with_different_timeout() {
         format!("tests/output/src/{}_with_timeout.rs", openapi_stem),
         &output,
     );
+}
+
+// Server-stub generation golden. Emits the client (for its `types` module) and
+// the server module body that references it, exercising response shapes the
+// petstore round-trip doesn't: a JSON body, a `201`/no-content (`None`) success,
+// a raw octet-stream response, an optional header, a typed default error, and an
+// upgrade op that becomes a `501` route stub (no trait method).
+#[test]
+fn test_server_gen() {
+    let spec = load_api("../../sample_openapi/server-gen.json");
+
+    // The client golden provides the `types` module the server golden imports.
+    let mut generator = Generator::default();
+    let client = generate_formatted(&mut generator, &spec);
+    expectorate::assert_contents("tests/output/src/server_gen_client.rs", &client);
+
+    let server = generator.server(&spec, "crate::server_gen_client").unwrap();
+    let output = rustfmt_wrapper::rustfmt_config(
+        rustfmt_wrapper::config::Config {
+            format_strings: Some(true),
+            ..Default::default()
+        },
+        server,
+    )
+    .unwrap();
+    let output = space_out_items(output).unwrap();
+    expectorate::assert_contents("tests/output/src/server_gen_server.rs", &output);
 }
 
 // TODO this file is full of inconsistencies and incorrectly specified types.

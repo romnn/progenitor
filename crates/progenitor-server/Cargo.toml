@@ -1,0 +1,36 @@
+[package]
+name = "progenitor-server"
+version = "0.14.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository = "https://github.com/oxidecomputer/progenitor.git"
+description = "An OpenAPI client generator - server support (axum runtime)"
+
+[features]
+default = ["transport"]
+# The serving convenience (`Server`/`Router`/`Bound`). The wrapper types,
+# `ServerError`, the extractors, and `Service::into_router` are always available
+# (they need only `axum`, which is non-optional).
+transport = ["dep:tokio", "dep:tower", "dep:tower-http", "axum/tokio", "axum/http1"]
+
+[dependencies]
+axum = { workspace = true, features = ["json", "form", "query"] }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
+http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_urlencoded = { workspace = true }
+serde_html_form = { workspace = true }
+thiserror = { workspace = true }
+
+tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "net"] }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "macros"] }
+tower = { workspace = true, features = ["util"] }
+serde = { workspace = true, features = ["derive"] }

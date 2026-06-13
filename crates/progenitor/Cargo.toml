@@ -13,6 +13,11 @@ categories = ["api-bindings", "compilers"]
 [features]
 default = ["macro"]
 macro = ["dep:progenitor-client", "dep:progenitor-macro"]
+# Opt-in server-stub generation: forwards to the macro's `server` feature so
+# `generate_api!(server = true, ...)` emits a `pub mod server`. Deliberately does
+# NOT depend on `progenitor-server` — the consumer adds that runtime crate to
+# their own `[dependencies]` (the tonic-build/tonic split).
+server = ["macro", "progenitor-macro/server"]
 
 [dependencies]
 progenitor-client = { workspace = true, optional = true }

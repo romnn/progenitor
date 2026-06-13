@@ -28,7 +28,7 @@ pub(crate) struct OperationMethod {
     pub params: Vec<OperationParameter>,
     pub responses: Vec<OperationResponse>,
     pub dropshot_paginated: Option<DropshotPagination>,
-    dropshot_websocket: bool,
+    pub(crate) dropshot_websocket: bool,
 }
 
 pub enum HttpMethod {
@@ -261,6 +261,13 @@ pub(crate) struct OperationResponse {
     /// `extract_responses` to detect sibling response types that share a
     /// common `allOf` ancestor and can be collapsed to that ancestor.
     pub schema_name: Option<String>,
+    /// The wire media type that produced this response's `typ`, when one was
+    /// selected from the response content map. `None` for bodyless / upgrade
+    /// responses and the synthesized success fallback. Captured from the same
+    /// content entry that set `typ` (not a re-scan) so kind and media type can't
+    /// disagree; used by server generation to set the `content-type` of a raw
+    /// passthrough response.
+    pub media_type: Option<String>,
     // TODO this isn't currently used because dropshot doesn't give us a
     // particularly useful message here.
     #[allow(dead_code)]
@@ -292,17 +299,19 @@ pub(crate) enum OperationResponseStatus {
 }
 
 impl OperationResponseStatus {
-    fn to_value(&self) -> u16 {
+    // Keep the ordering total and aligned with generated match-arm precedence:
+    // exact statuses in a bucket first, then that bucket's range, then default.
+    fn sort_key(&self) -> (u16, u8) {
         match self {
             OperationResponseStatus::Code(code) => {
                 assert!(*code < 1000);
-                *code
+                (*code, 0)
             }
             OperationResponseStatus::Range(range) => {
                 assert!(*range < 10);
-                *range * 100
+                (*range * 100 + 99, 1)
             }
-            OperationResponseStatus::Default => 1000,
+            OperationResponseStatus::Default => (1000, 2),
         }
     }
 
@@ -332,7 +341,7 @@ impl OperationResponseStatus {
 
 impl Ord for OperationResponseStatus {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_value().cmp(&other.to_value())
+        self.sort_key().cmp(&other.sort_key())
     }
 }
 
@@ -766,11 +775,15 @@ impl Generator {
                 // check for the content type of the response just as it
                 // currently examines the status code.
                 let mut schema_name: Option<String> = None;
-                let typ = if let Some(mt) = response
+                // Captured from the same content selection that sets `typ`, so
+                // the recorded media type can't disagree with the kind.
+                let mut media_type: Option<String> = None;
+                let json_entry = response
                     .content
                     .iter()
-                    .find_map(|(x, v)| is_json_content_type(x).then_some(v))
-                {
+                    .find(|(content_type, _)| is_json_content_type(content_type));
+                let typ = if let Some((content_type, mt)) = json_entry {
+                    media_type = Some(content_type.clone());
                     // An `encoding` map on a JSON response has no defined
                     // meaning; ignore it rather than reject specs that
                     // carry one anyway.
@@ -800,6 +813,10 @@ impl Generator {
                 } else if status_code == OperationResponseStatus::Code(101) {
                     OperationResponseKind::Upgrade
                 } else if !response.content.is_empty() {
+                    // Non-JSON content: pick a deterministic media type (the
+                    // lexicographically smallest key) so server raw passthrough
+                    // sets a stable `content-type` regardless of document order.
+                    media_type = response.content.keys().min().cloned();
                     OperationResponseKind::Raw
                 } else {
                     OperationResponseKind::None
@@ -826,6 +843,7 @@ impl Generator {
                     status_code,
                     typ,
                     schema_name,
+                    media_type,
                     description,
                 })
             })
@@ -840,6 +858,7 @@ impl Generator {
                 status_code: OperationResponseStatus::Range(2),
                 typ: OperationResponseKind::Raw,
                 schema_name: None,
+                media_type: None,
                 description: None,
             });
         }
@@ -1714,17 +1733,15 @@ impl Generator {
             .filter(|item| matches!(item.typ, OperationResponseKind::Type(_)))
             .map(|item| item.schema_name.clone())
             .collect();
-        if let Some(names) = typed_schema_names {
-            if names.len() > 1 {
-                if let Some(ancestor) = find_common_supertype(&names, &self.schema_supertypes) {
-                    if let Some(type_id) = self.schema_type_ids.get(&ancestor) {
-                        for item in &mut response_items {
-                            if matches!(item.typ, OperationResponseKind::Type(_)) {
-                                item.typ = OperationResponseKind::Type(type_id.clone());
-                                item.schema_name = Some(ancestor.clone());
-                            }
-                        }
-                    }
+        if let Some(names) = typed_schema_names
+            && names.len() > 1
+            && let Some(ancestor) = find_common_supertype(&names, &self.schema_supertypes)
+            && let Some(type_id) = self.schema_type_ids.get(&ancestor)
+        {
+            for item in &mut response_items {
+                if matches!(item.typ, OperationResponseKind::Type(_)) {
+                    item.typ = OperationResponseKind::Type(type_id.clone());
+                    item.schema_name = Some(ancestor.clone());
                 }
             }
         }
@@ -2228,7 +2245,7 @@ impl Generator {
         let send_doc = format!(
             "Sends a `{}` request to `{}`",
             method.method.as_str().to_ascii_uppercase(),
-            method.path.to_string(),
+            method.path,
         );
         let send_impl = quote! {
             #[doc = #send_doc]
@@ -2289,7 +2306,7 @@ impl Generator {
             let stream_doc = format!(
                 "Streams `{}` requests to `{}`",
                 method.method.as_str().to_ascii_uppercase(),
-                method.path.to_string(),
+                method.path,
             );
 
             quote! {
@@ -2800,7 +2817,7 @@ fn make_doc_comment(method: &OperationMethod) -> String {
     buf.push_str(&format!(
         "Sends a `{}` request to `{}`\n\n",
         method.method.as_str().to_ascii_uppercase(),
-        method.path.to_string(),
+        method.path,
     ));
 
     if method
@@ -2839,7 +2856,7 @@ fn make_stream_doc_comment(method: &OperationMethod) -> String {
     buf.push_str(&format!(
         "Sends repeated `{}` requests to `{}` until there are no more results.\n\n",
         method.method.as_str().to_ascii_uppercase(),
-        method.path.to_string(),
+        method.path,
     ));
 
     if method
@@ -2937,16 +2954,46 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
     use std::collections::{BTreeMap, BTreeSet};
     use std::str::FromStr;
 
     use super::{
-        BodyContentType, OperationResponseKind, collapse_bodyless_with_typed,
-        find_common_supertype, is_json_content_type,
+        BodyContentType, OperationResponseKind, OperationResponseStatus,
+        collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
     };
 
     fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
         items.into_iter().collect()
+    }
+
+    #[test]
+    fn response_status_order_is_total_and_specific_before_range() {
+        let mut statuses = vec![
+            OperationResponseStatus::Default,
+            OperationResponseStatus::Range(4),
+            OperationResponseStatus::Code(500),
+            OperationResponseStatus::Code(401),
+            OperationResponseStatus::Code(400),
+            OperationResponseStatus::Range(5),
+        ];
+        statuses.sort();
+
+        assert_eq!(
+            statuses,
+            vec![
+                OperationResponseStatus::Code(400),
+                OperationResponseStatus::Code(401),
+                OperationResponseStatus::Range(4),
+                OperationResponseStatus::Code(500),
+                OperationResponseStatus::Range(5),
+                OperationResponseStatus::Default,
+            ],
+        );
+        assert_ne!(
+            OperationResponseStatus::Code(400).cmp(&OperationResponseStatus::Range(4)),
+            Ordering::Equal,
+        );
     }
 
     #[test]

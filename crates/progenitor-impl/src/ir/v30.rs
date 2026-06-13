@@ -141,10 +141,10 @@ fn lower_operation(
     // codes in document order — downstream response processing relies on
     // this ordering.
     let mut responses = Vec::new();
-    if let Some(ref_or_response) = &operation.responses.default {
-        if let Ok(response) = ref_or_response.item(components) {
-            responses.push(lower_response(ir::ResponseStatus::Default, response));
-        }
+    if let Some(ref_or_response) = &operation.responses.default
+        && let Ok(response) = ref_or_response.item(components)
+    {
+        responses.push(lower_response(ir::ResponseStatus::Default, response));
     }
     for (status_code, ref_or_response) in &operation.responses.responses {
         let status = match status_code {

@@ -72,7 +72,10 @@ fn neutralize_doc_fences(description: &str) -> String {
             let info = trimmed.trim_start_matches('`');
             if info.trim().is_empty() {
                 changed = true;
-                return format!("{prefix}{}text", trimmed.trim_end_matches(|c: char| c.is_whitespace()));
+                return format!(
+                    "{prefix}{}text",
+                    trimmed.trim_end_matches(|c: char| c.is_whitespace())
+                );
             }
             return format!("{prefix}{trimmed}");
         }
@@ -93,7 +96,11 @@ fn neutralize_doc_fences(description: &str) -> String {
         }
     });
     let result = lines.collect::<Vec<_>>().join("\n");
-    if changed { result } else { description.to_string() }
+    if changed {
+        result
+    } else {
+        description.to_string()
+    }
 }
 
 /// Check if all schemas are mutually exclusive.

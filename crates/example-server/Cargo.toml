@@ -1,0 +1,16 @@
+[package]
+name = "example-server"
+version = "0.0.1"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# `server` turns on server-stub generation in the macro. The generated server
+# code references `progenitor-server`, which we add directly (the tonic-style
+# split: the generator never pulls the runtime in for you).
+progenitor = { path = "../progenitor", features = ["server"] }
+progenitor-server = { path = "../progenitor-server", features = ["transport"] }
+# The generated client (always emitted alongside the server) uses reqwest.
+reqwest = { version = "0.13.3", features = ["json", "query", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

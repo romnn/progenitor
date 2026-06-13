@@ -26,6 +26,7 @@ mod httpmock;
 mod ir;
 mod method;
 mod openapi;
+mod server;
 mod template;
 mod to_schema;
 mod util;
@@ -74,11 +75,23 @@ pub struct Generator {
     component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
 }
 
+/// The shared generation IR produced once per spec by [`Generator::prepare`].
+///
+/// Owned so it can outlive the `&mut self` token-generation calls (which mutate
+/// generator state such as `uses_futures`) without holding a borrow of `self`.
+pub(crate) struct PreparedIr {
+    /// Operation methods with operation IDs already deduped.
+    pub raw_methods: Vec<method::OperationMethod>,
+}
+
 /// Settings for [Generator].
 #[derive(Default, Clone)]
 pub struct GenerationSettings {
     interface: InterfaceStyle,
     tag: TagStyle,
+    /// Emit a server-stub module (service trait + axum adapter) alongside the
+    /// client. Default `false`.
+    generate_server: bool,
     inner_type: Option<TokenStream>,
     pre_hook: Option<TokenStream>,
     pre_hook_async: Option<TokenStream>,
@@ -104,33 +117,23 @@ struct CrateSpec {
 }
 
 /// Style of generated client.
-#[derive(Clone, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Default, Deserialize, PartialEq, Eq)]
 pub enum InterfaceStyle {
     /// Use positional style.
+    #[default]
     Positional,
     /// Use builder style.
     Builder,
 }
 
-impl Default for InterfaceStyle {
-    fn default() -> Self {
-        Self::Positional
-    }
-}
-
 /// Style for using the OpenAPI tags when generating names in the client.
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Default, Deserialize)]
 pub enum TagStyle {
     /// Merge tags to create names in the generated client.
+    #[default]
     Merged,
     /// Use each tag name to create separate names in the generated client.
     Separate,
-}
-
-impl Default for TagStyle {
-    fn default() -> Self {
-        Self::Merged
-    }
 }
 
 impl GenerationSettings {
@@ -148,6 +151,17 @@ impl GenerationSettings {
     /// Set the [TagStyle].
     pub fn with_tag(&mut self, tag: TagStyle) -> &mut Self {
         self.tag = tag;
+        self
+    }
+
+    /// Enable generation of the server-stub module (default `false`).
+    ///
+    /// When enabled, [`Generator::generate_tokens`] appends a `pub mod server`
+    /// containing the service trait and an axum adapter. The generated code
+    /// references the `progenitor-server` runtime crate, which the consumer must
+    /// add to its own dependencies (it is never pulled in by the generator).
+    pub fn with_server(&mut self, generate_server: bool) -> &mut Self {
+        self.generate_server = generate_server;
         self
     }
 
@@ -405,8 +419,20 @@ impl Generator {
             .collect()
     }
 
-    /// Emit a [TokenStream] containing the generated client code.
-    pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
+    /// Prepare the shared generation IR for a spec: register component schemas
+    /// in the type space, build the supertype / schema-`TypeId` maps that
+    /// [`Generator::extract_responses`](crate::method) relies on, retain the
+    /// component schemas, and produce the per-operation methods with deduped
+    /// operation IDs.
+    ///
+    /// Returns an **owned** [`PreparedIr`] (not a borrow of `self`) so callers
+    /// can pass `&prepared.raw_methods` into the `&mut self` token-generation
+    /// methods without holding a borrow of `self`. Shared by `generate_tokens`
+    /// and the standalone `server` entry point so the client and server agree on
+    /// types and method names; safe to call more than once on the same generator
+    /// (`add_ref_types` is idempotent for already-registered names, which the
+    /// existing `generate_text`-then-`httpmock` flow already relies on).
+    pub(crate) fn prepare(&mut self, spec: &OpenApiDocument) -> Result<PreparedIr> {
         let document = &spec.0;
 
         self.type_space.add_ref_types(
@@ -416,9 +442,6 @@ impl Generator {
                 .map(|(name, schema)| (name.clone(), schema.clone())),
         )?;
 
-        // Build the supertype map and the schema-name → TypeId map used
-        // by `extract_responses` to collapse sibling response types that
-        // share a common `allOf` ancestor.
         self.schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
         self.schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
         self.component_schemas = document.schemas.clone();
@@ -439,11 +462,19 @@ impl Generator {
                 let count = seen.entry(method.operation_id.clone()).or_insert(0);
                 *count += 1;
                 if *count > 1 {
-                    method.operation_id =
-                        format!("{}_{}", method.operation_id, count);
+                    method.operation_id = format!("{}_{}", method.operation_id, count);
                 }
             }
         }
+
+        Ok(PreparedIr { raw_methods })
+    }
+
+    /// Emit a [TokenStream] containing the generated client code.
+    pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
+        let document = &spec.0;
+
+        let raw_methods = self.prepare(spec)?.raw_methods;
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
             (InterfaceStyle::Positional, TagStyle::Merged) => self
@@ -514,6 +545,29 @@ impl Generator {
         };
 
         let version_str = &document.info.version;
+
+        // When server generation is enabled, emit the server-stub module body
+        // (trait + axum adapter) and wrap it once in `pub mod server`. When
+        // disabled this is an empty `TokenStream`, which contributes zero tokens
+        // to the parsed `syn::File`, keeping the formatted client output
+        // byte-identical to the flag-off case. The body references the SDK's own
+        // types via `crate::types` (this is the in-crate path).
+        let server_module = if self.settings.generate_server {
+            let server_body = self.server_body(&raw_methods, document, "crate")?;
+            quote! {
+                /// Server-stub module: the service trait and its axum adapter.
+                ///
+                /// Implement the trait, then mount the `{Api}Server` via the
+                /// `progenitor-server` runtime (or `into_router()` to compose it
+                /// into your own axum app).
+                #[allow(clippy::all)]
+                pub mod server {
+                    #server_body
+                }
+            }
+        } else {
+            quote! {}
+        };
 
         // The allow(unused_imports) on the `pub use` is necessary with Rust
         // 1.76+, in case the generated file is not at the top level of the
@@ -615,6 +669,8 @@ impl Generator {
             impl ClientHooks<#inner_type> for &Client {}
 
             #operation_code
+
+            #server_module
         };
 
         Ok(file)

@@ -102,6 +102,7 @@ members = [
 conformance-support = { path = "support" }
 progenitor = { path = "../crates/progenitor", default-features = false }
 progenitor-client = { path = "../crates/progenitor-client" }
+progenitor-server = { path = "../crates/progenitor-server", features = ["transport"] }
 base64 = "0.22"
 bytes = "1"
 heck = "0.5.0"

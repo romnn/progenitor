@@ -233,10 +233,10 @@ impl SchemaLowering {
         // `example` (singular) is the deprecated 3.0 spelling; schemars
         // models the draft-07 `examples` array, which is also what the
         // 3.0 frontend produces.
-        if let Some(example) = map.shift_remove("example") {
-            if !map.contains_key("examples") {
-                map.insert("examples".to_string(), Value::Array(vec![example]));
-            }
+        if let Some(example) = map.shift_remove("example")
+            && !map.contains_key("examples")
+        {
+            map.insert("examples".to_string(), Value::Array(vec![example]));
         }
 
         // typify ignores `const` entirely; a single-value `enum` is

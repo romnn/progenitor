@@ -406,3 +406,67 @@ Currently, the generated code doesn't deal with request headers. To add default 
 
     let client = Client::new_with_client(baseurl, client_with_custom_defaults);
 ```
+
+## Server generation
+
+In addition to a client, progenitor can generate an **opt-in server stub** from
+the same OpenAPI document, in the style of `tonic` + `prost`: it emits a service
+**trait** with one `async fn` per operation, taking a typed, wrapped request and
+returning a typed, wrapped response. Implement the trait and you get a server
+that is wire-compatible with the generated client; you never touch
+deserialization, header parsing, or status codes.
+
+Server generation is **off by default** and, when enabled, the generated code
+depends on the `progenitor-server` runtime crate (axum-based). The generator
+crates never pull `progenitor-server` in for you — you add it to your own
+`[dependencies]`, exactly like the `tonic-build` / `tonic` split.
+
+Enable it via the macro's `server` key (gated behind the `server` cargo feature
+on `progenitor`):
+
+```toml
+# Cargo.toml
+[dependencies]
+progenitor = { version = "*", features = ["server"] }
+progenitor-server = { version = "*", features = ["transport"] }
+```
+
+```rust
+progenitor::generate_api!(
+    spec = "path/to/openapi.json",
+    server = true,
+);
+
+use progenitor_server::codegen::async_trait;
+use progenitor_server::{Request, Response};
+
+struct MyApi;
+
+#[async_trait]
+impl server::MyService for MyApi {
+    async fn get_thing(
+        &self,
+        request: Request<server::GetThingRequest>,
+    ) -> Result<Response<types::Thing>, server::GetThingError> {
+        let id = &request.get_ref().id; // typed, already parsed
+        Ok(Response::new(types::Thing { /* ... */ }))
+    }
+    // ... one method per supported operation ...
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    progenitor_server::Server::builder()
+        .add_service(server::MyServiceServer::new(MyApi))
+        .serve("0.0.0.0:8080".parse()?)
+        .await?;
+    Ok(())
+}
+```
+
+To compose the generated routes into your own axum app instead, use
+`MyServiceServer::new(MyApi).into_router()`. `cargo progenitor --server` produces
+a standalone crate with the server module included. See
+`crates/example-server` for a complete example, and `plan/07-server-generation.md`
+for the design.
+```

@@ -1,6 +1,6 @@
 // Copyright 2022 Oxide Computer Company
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -35,7 +35,7 @@ impl PathTemplate {
                     "{}",
                     rename
                         .get(&n)
-                        .expect(&format!("missing path name mapping {}", n)),
+                        .unwrap_or_else(|| panic!("missing path name mapping {}", n)),
                 );
                 Some(quote! {
                     encode_path(&#param.to_string())
@@ -83,6 +83,19 @@ impl PathTemplate {
             })
             .collect::<String>();
         format!("^{}$", inner)
+    }
+
+    /// Render the path for axum 0.8 routing.
+    ///
+    /// OpenAPI path templates use `{name}` for parameters, and axum 0.8 uses the
+    /// same `{name}` brace syntax (it dropped the 0.7 `:name` form), so this is
+    /// nearly an identity transform: constants are emitted verbatim and each
+    /// parameter is rendered as `{wire_name}`. The parser already normalises
+    /// adjacent slashes into the constant components, so no rewriting is needed
+    /// here. There is no catch-all (`{*rest}`) form in the OpenAPI grammar we
+    /// accept, so we never emit one.
+    pub fn as_axum_path(&self) -> String {
+        self.to_string()
     }
 }
 
@@ -158,15 +171,15 @@ pub fn parse(t: &str) -> Result<PathTemplate> {
     Ok(PathTemplate { components })
 }
 
-impl ToString for PathTemplate {
-    fn to_string(&self) -> std::string::String {
-        self.components
-            .iter()
-            .map(|component| match component {
-                Component::Constant(s) => s.clone(),
-                Component::Parameter(s) => format!("{{{}}}", s),
-            })
-            .fold(String::new(), |a, b| a + &b)
+impl fmt::Display for PathTemplate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for component in &self.components {
+            match component {
+                Component::Constant(s) => f.write_str(s)?,
+                Component::Parameter(s) => write!(f, "{{{}}}", s)?,
+            }
+        }
+        Ok(())
     }
 }
 
@@ -178,7 +191,7 @@ mod tests {
 
     #[test]
     fn basic() {
-        let trials = vec![
+        let trials = [
             (
                 "/info",
                 "/info",
@@ -271,7 +284,7 @@ mod tests {
 
     #[test]
     fn names() {
-        let trials = vec![
+        let trials = [
             ("/info", vec![]),
             ("/measure/{number}", vec!["number".to_string()]),
             (
@@ -324,5 +337,31 @@ mod tests {
             )
         };
         assert_eq!(want.to_string(), out.to_string());
+    }
+
+    #[test]
+    fn as_axum_path() {
+        let trials = [
+            ("/info", "/info"),
+            ("/pets/{petId}", "/pets/{petId}"),
+            ("/measure/{number}", "/measure/{number}"),
+            ("/one/{two}/three", "/one/{two}/three"),
+            ("/{foo}-{bar}-{baz}", "/{foo}-{bar}-{baz}"),
+            (
+                "//normalise/////{adjacent}:x///slashes",
+                "/normalise/{adjacent}:x/slashes",
+            ),
+            (
+                "/v1/files/{fileId}:completeUpload",
+                "/v1/files/{fileId}:completeUpload",
+            ),
+        ];
+
+        for (path, want) in trials.iter() {
+            match parse(path) {
+                Ok(t) => assert_eq!(t.as_axum_path().as_str(), *want),
+                Err(e) => panic!("path {} {}", path, e),
+            }
+        }
     }
 }

@@ -153,7 +153,7 @@ pub(crate) fn unique_ident_from(
             return ident;
         }
 
-        name.insert_str(0, "_");
+        name.insert(0, '_');
     }
 }
 
@@ -194,7 +194,10 @@ pub(crate) fn neutralize_doc_fences(text: &str) -> String {
             let info = trimmed.trim_start_matches('`');
             if info.trim().is_empty() {
                 changed = true;
-                return format!("{prefix}{}text", trimmed.trim_end_matches(|c: char| c.is_whitespace()));
+                return format!(
+                    "{prefix}{}text",
+                    trimmed.trim_end_matches(|c: char| c.is_whitespace())
+                );
             }
             return format!("{prefix}{trimmed}");
         }

@@ -4,7 +4,7 @@
 
 #![deny(missing_docs)]
 
-use std::{collections::HashMap, fs::File, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
 use proc_macro::TokenStream;
 use progenitor_impl::{
@@ -214,6 +214,11 @@ struct MacroSettings {
     #[serde(default)]
     convert: OrderedMap<SchemaObject, ParseWrapper<TypeAndImpls>>,
     timeout: Option<u64>,
+    /// Emit a server-stub module alongside the client. Requires the `server`
+    /// cargo feature on the `progenitor` crate; the generated code references
+    /// `progenitor-server`, which the consumer must add to their own deps.
+    #[serde(default)]
+    server: bool,
 }
 
 #[derive(Deserialize)]
@@ -321,13 +326,6 @@ fn is_crate(s: &str) -> bool {
     !s.contains(|cc: char| !cc.is_alphanumeric() && cc != '_' && cc != '-')
 }
 
-fn open_file(path: PathBuf, span: proc_macro2::Span) -> Result<File, syn::Error> {
-    File::open(path.clone()).map_err(|e| {
-        let path_str = path.to_string_lossy();
-        syn::Error::new(span, format!("couldn't read file {}: {}", path_str, e))
-    })
-}
-
 fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
     let (spec_source, settings) = if let Ok(spec) = syn::parse::<LitStr>(item.clone()) {
         let spec_source = SpecSource {
@@ -353,6 +351,7 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
             replace,
             convert,
             timeout,
+            server,
         } = serde_tokenstream::from_tokenstream(&item.into())?;
 
         let spec = spec.into_inner();
@@ -397,6 +396,17 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
         });
         if let Some(timeout) = timeout {
             settings.with_timeout(timeout);
+        }
+        if server {
+            if cfg!(feature = "server") {
+                settings.with_server(true);
+            } else {
+                return Err(syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "`server = true` requires the `server` feature on the \
+                     `progenitor` crate",
+                ));
+            }
         }
         (spec, settings)
     };

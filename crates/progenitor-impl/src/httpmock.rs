@@ -153,8 +153,7 @@ impl Generator {
                  }| {
                     let arg_type_name = match typ {
                         OperationParameterType::Type(arg_type_id) => {
-                            let arg_type =
-                                self.type_space.get_type(arg_type_id).unwrap();
+                            let arg_type = self.type_space.get_type(arg_type_id).unwrap();
                             // Body params use json_body_obj which requires &T: Serialize,
                             // not Option<&T>. Unwrap any Optional wrapper so the function
                             // signature and call site are consistent.

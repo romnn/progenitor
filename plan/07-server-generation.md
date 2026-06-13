@@ -13,11 +13,16 @@ register one or more services (the user types implementing the generated trait).
 The runtime crate is optional and **must not be re-exported by the build.rs-side
 generator crate**."
 
-Status: **plan only — nothing implemented**. This document is meant to be
-iterated on until an agent can implement it end to end. All progenitor/tonic
-references are `file:line` against the tree at branch `feat/openapi3.1-support`
-(progenitor) and a shallow clone of `hyperium/tonic` under
-`target/plan-scratch/reference/tonic` (gitignored; safe to delete).
+Status: **IMPLEMENTED** (2026-06-13). The `progenitor-server` runtime crate, the
+`Generator::server` codegen + `with_server` setting, the macro `server` key/feature,
+`cargo progenitor --server`, the conformance integration (petstore-31 round-trip),
+`crates/example-server`, and a server golden fixture all exist and pass.
+Synthesized multi-kind responses now generate server-side status-keyed enums
+rather than 501 stubs, and the generated per-op responder validates success/error
+statuses against the same classifier shape the client uses. (Original design
+notes below; `file:line` references are against the tree at branch
+`feat/openapi3.1-support`, with a `hyperium/tonic` clone under
+`target/plan-scratch/reference/tonic`, gitignored.)
 
 ---
 
@@ -38,11 +43,9 @@ the client progenitor generates from the same spec — that round-trip is the
 headline acceptance test.
 
 Non-goals for v1 (tracked in §12): websocket/upgrade endpoints, SSE/streaming
-response bodies, multipart, per-tag trait splitting, OpenAPI-level auth
-enforcement. These degrade gracefully — a **501 route stub** (no trait method) plus
-a build warning, never a silent drop (§6.5, D-skip) — analogous to how httpmock
-skips the synthesized multi-kind responses today
-(`crates/progenitor-impl/src/httpmock.rs:379-384`).
+response bodies, multipart, deepObject query extraction, per-tag trait splitting,
+OpenAPI-level auth enforcement. These degrade gracefully — a **501 route stub**
+(no trait method) plus a build warning, never a silent drop (§6.5, D-skip).
 
 ---
 
@@ -1100,7 +1103,7 @@ repeated-key query before the generator is written.
 | D-async | `#[async_trait]` (tonic's choice, dyn-friendly, simple) vs **native AFIT + `trait_variant`** (no per-call Box; MSRV 1.88 allows it) | **DECIDED — `#[async_trait]`** (2026-06-13, matches tonic; dodges `Send`-inference pitfalls with axum). Native AFIT + `trait_variant::make(.. : Send)` is noted as a later perf pass. The chosen macro is re-exported via `progenitor_server::codegen`. |
 | D-tag | Single trait for the whole API vs per-tag traits | Single (v1). Add per-tag behind the existing `TagStyle::Separate` later, kept consistent with the client. |
 | D-stream | Websocket `Upgrade` and SSE/streaming response bodies | Defer; skip-with-comment in v1. Raw `Bytes` request/response bodies are in v1. |
-| D-deepobject | deepObject/exploded query params | Skip-with-`#[allow]`+TODO in v1 (httpmock already skips these); raw query reachable via the request parts. |
+| D-deepobject | deepObject/exploded query params | Skip in v1: omit the trait method and emit a 501 route stub (httpmock already skips these). |
 | D-runtime-feat | Feature split for the runtime crate | **DECIDED (Finding 5):** one crate, `axum` **non-optional**; `transport` (default on) gates only the tokio serving convenience (`Server`/`Bound`/`serve*`). With it off you still get wrappers + `into_router` + extractors. The earlier "off = wrappers + into_router only" was contradictory — `into_router` needs axum. |
 | D-skip | Known-but-unsupported ops (upgrade/multipart/deepObject) | **DECIDED (Finding 9):** omit from the trait but emit a **501 route stub**, so routing is complete and clients see 501 not 404. Acceptance reads "one method per *supported* op." |
 | D-server-only | A true server-only crate (no `Client`) | **Deferred (Finding 6):** needs type emission factored out of client emission (a types-only generator). v1 always emits client + types; no `--no-client` flag until that lands. |

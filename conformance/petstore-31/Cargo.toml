@@ -26,5 +26,7 @@ tokio = { workspace = true }
 [dev-dependencies]
 conformance-support = { workspace = true }
 httpmock = { workspace = true }
+progenitor-server = { workspace = true, features = ["transport"] }
 regex = { workspace = true }
+reqwest = { workspace = true }
 tokio = { workspace = true }

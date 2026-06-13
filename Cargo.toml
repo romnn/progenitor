@@ -1,7 +1,10 @@
 [workspace]
+resolver = "3"
+exclude = ["conformance"]
 members = [
 	"crates/cargo-progenitor",
 	"crates/example-build",
+	"crates/example-server",
 	"crates/example-macro",
 	"crates/example-out-dir",
 	"crates/example-wasm",
@@ -9,12 +12,11 @@ members = [
 	"crates/progenitor-client",
 	"crates/progenitor-impl",
 	"crates/progenitor-macro",
+	"crates/progenitor-server",
 	"crates/typify",
 	"crates/typify-impl",
 	"crates/typify-macro",
 ]
-resolver = "3"
-exclude = ["conformance"]
 
 [workspace.package]
 edition = "2024"
@@ -26,9 +28,12 @@ progenitor = { version = "0.14.0", path = "crates/progenitor", default-features 
 progenitor-client = { version = "0.14.0", path = "crates/progenitor-client" }
 progenitor-impl = { version = "0.14.0", path = "crates/progenitor-impl" }
 progenitor-macro = { version = "0.14.0", path = "crates/progenitor-macro" }
+progenitor-server = { version = "0.14.0", path = "crates/progenitor-server" }
 
 anyhow = "1.0.102"
 assert_cmd = "2.2.2"
+async-trait = "0.1.83"
+axum = { version = "0.8", default-features = false }
 base64 = "0.22.1"
 bytes = "1.11.1"
 chrono = { version = "0.4.44", default-features = false, features = ["serde"] }
@@ -66,6 +71,7 @@ rustfmt-wrapper = "0.2.1"
 schemars = "0.8.22"
 semver = "1.0.28"
 serde = { version = "1.0.226", features = ["derive"] }
+serde_html_form = "0.2.7"
 # `preserve_order` is load-bearing: `parse_openapi_str` round-trips the
 # document through `serde_json::Value`, and without it object keys are
 # re-sorted alphabetically — silently reordering paths/components, which
@@ -77,10 +83,11 @@ serde_yaml = "0.9"
 syn = { version = "2.0.117", features = ["full", "parsing"] }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["rt", "net"] }
+tower = "0.5.2"
+tower-http = "0.6.2"
 typify = { version = "0.6.2", path = "crates/typify" }
 typify-impl = { version = "0.6.2", path = "crates/typify-impl" }
 typify-macro = { version = "0.6.2", path = "crates/typify-macro" }
 url = "2.5.8"
 unicode-ident = "1.0.24"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
-

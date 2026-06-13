@@ -15,6 +15,7 @@ clap = { version = "4", features = ["string"] }
 futures = "0.3"
 httpmock = "0.8.0-alpha.1"
 progenitor-client = { path = "../../../progenitor-client" }
+progenitor-server = { path = "../../../progenitor-server", features = ["transport"] }
 rand = { version = "0.8", features = ["serde1"] }
 regex = "1.10"
 regress = "0.7"

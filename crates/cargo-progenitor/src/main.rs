@@ -52,6 +52,10 @@ struct Args {
     /// Include client code rather than depending on progenitor-client
     #[clap(default_value = match is_non_release() { true => "true", false => "false" }, long, action = clap::ArgAction::Set)]
     include_client: bool,
+    /// Also generate a server-stub module (service trait + axum router adapter).
+    /// The generated crate will depend on `progenitor-server`.
+    #[clap(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+    server: bool,
 }
 
 #[derive(Copy, Clone, ValueEnum)]
@@ -116,7 +120,8 @@ fn main() -> Result<()> {
     let mut builder = Generator::new(
         GenerationSettings::default()
             .with_interface(args.interface.into())
-            .with_tag(args.tags.into()),
+            .with_tag(args.tags.into())
+            .with_server(args.server),
     );
 
     match builder.generate_text(&api) {
@@ -161,7 +166,7 @@ fn main() -> Result<()> {
                 [dependencies]\n\
                 {}\n\
                 \n",
-                    dependencies(builder, args.include_client).join("\n"),
+                    dependencies(builder, args.include_client, args.server).join("\n"),
                 )
                 .chars(),
             );
@@ -213,6 +218,7 @@ struct Dependencies {
     chrono: &'static str,
     futures: &'static str,
     percent_encoding: &'static str,
+    progenitor_server: &'static str,
     rand: &'static str,
     regress: &'static str,
     reqwest: &'static str,
@@ -228,6 +234,7 @@ static DEPENDENCIES: Dependencies = Dependencies {
     chrono: "0.4",
     futures: "0.3",
     percent_encoding: "2.3",
+    progenitor_server: "0.14",
     rand: "0.10",
     regress: "0.11",
     reqwest: "0.13",
@@ -237,7 +244,7 @@ static DEPENDENCIES: Dependencies = Dependencies {
     uuid: "1",
 };
 
-pub fn dependencies(builder: Generator, include_client: bool) -> Vec<String> {
+pub fn dependencies(builder: Generator, include_client: bool, server: bool) -> Vec<String> {
     let mut deps = vec![
         format!("bytes = \"{}\"", DEPENDENCIES.bytes),
         format!("futures-core = \"{}\"", DEPENDENCIES.futures),
@@ -297,6 +304,17 @@ pub fn dependencies(builder: Generator, include_client: bool) -> Vec<String> {
     }
     if type_space.uses_serde_json() || needs_serde_json {
         deps.push(format!("serde_json = \"{}\"", DEPENDENCIES.serde_json));
+    }
+    if server {
+        // The generated `server` module references the `progenitor-server`
+        // runtime (which transitively provides axum/async-trait/etc. through its
+        // `codegen` re-exports — those are not added here). Note: until
+        // `progenitor-server` is published to crates.io, the generated crate will
+        // need a `[patch.crates-io]` (or a path dep) to resolve it.
+        deps.push(format!(
+            "progenitor-server = {{ version = \"{}\", features = [\"transport\"] }}",
+            DEPENDENCIES.progenitor_server
+        ));
     }
     deps.sort_unstable();
     deps
