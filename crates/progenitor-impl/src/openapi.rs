@@ -200,6 +200,7 @@ pub fn parse_openapi_value(
     // relocated copy as well.
     ref_repair::relocate_kind_mismatched_component_refs(&mut value);
     ref_repair::hoist_deep_pointer_refs(&mut value);
+    normalize_real_world_sloppiness(&mut value);
 
     let version = value
         .get(OPENAPI_VERSION_KEY)
@@ -233,6 +234,103 @@ fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseO
             message: err.inner().to_string(),
         }
     })
+}
+
+fn normalize_real_world_sloppiness(value: &mut Value) {
+    ensure_info_version(value);
+    normalize_type_strings(value);
+    normalize_response_descriptions(value);
+    normalize_non_query_deep_object_parameters(value);
+}
+
+fn ensure_info_version(value: &mut Value) {
+    let Some(info) = value.get_mut("info").and_then(Value::as_object_mut) else {
+        return;
+    };
+    if !matches!(info.get("version"), Some(Value::String(_))) {
+        info.insert("version".to_string(), Value::String("unknown".to_string()));
+    }
+}
+
+fn normalize_type_strings(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(type_name)) = map.get(TYPE_KEY) {
+                let canonical = type_name.to_ascii_lowercase();
+                if type_name.is_empty() || canonical == "unknown" {
+                    map.shift_remove(TYPE_KEY);
+                } else if matches!(
+                    canonical.as_str(),
+                    "null" | "boolean" | "object" | "array" | "number" | "string" | "integer"
+                ) && canonical != *type_name
+                {
+                    map.insert(TYPE_KEY.to_string(), Value::String(canonical));
+                }
+            }
+            for entry in map.values_mut() {
+                normalize_type_strings(entry);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_type_strings(item);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
+}
+
+fn normalize_response_descriptions(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::Object(responses)) = map.get_mut("responses") {
+                for response in responses.values_mut() {
+                    let Some(response) = response.as_object_mut() else {
+                        continue;
+                    };
+                    if response.contains_key("$ref") {
+                        continue;
+                    }
+                    if !matches!(response.get("description"), Some(Value::String(_))) {
+                        response.insert("description".to_string(), Value::String(String::new()));
+                    }
+                }
+            }
+            for entry in map.values_mut() {
+                normalize_response_descriptions(entry);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_response_descriptions(item);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
+}
+
+fn normalize_non_query_deep_object_parameters(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            let is_non_query_deep_object = matches!(
+                (map.get("in"), map.get("style")),
+                (Some(Value::String(location)), Some(Value::String(style)))
+                    if location != "query" && style == "deepObject"
+            );
+            if is_non_query_deep_object {
+                map.shift_remove("style");
+            }
+            for entry in map.values_mut() {
+                normalize_non_query_deep_object_parameters(entry);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_non_query_deep_object_parameters(item);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
 }
 
 fn normalize_nullable_type_unions(value: &mut Value) {
@@ -339,7 +437,7 @@ fn normalize_object_type_union(map: &mut Map<String, Value>) {
 
 #[cfg(test)]
 mod tests {
-    use super::normalized_openapiv3;
+    use super::{normalized_openapiv3, parse_openapi_value};
     use openapiv3::{ReferenceOr, SchemaKind, Type};
     use serde_json::json;
 
@@ -384,5 +482,161 @@ mod tests {
             deprecation_schema.schema_kind,
             SchemaKind::Type(Type::String(_))
         ));
+    }
+
+    #[test]
+    fn fills_missing_info_version() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.0",
+            "info": {
+                "title": "example"
+            },
+            "paths": {}
+        }))
+        .expect("parse openapi");
+
+        assert_eq!(document.0.info.version, "unknown");
+    }
+
+    #[test]
+    fn tolerates_null_response_description() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.0",
+            "info": {
+                "title": "example",
+                "version": "1.0.0"
+            },
+            "paths": {
+                "/things": {
+                    "get": {
+                        "operationId": "listThings",
+                        "responses": {
+                            "200": {
+                                "description": null
+                            }
+                        }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert_eq!(document.0.operations[0].responses[0].description, "");
+    }
+
+    #[test]
+    fn tolerates_non_query_deep_object_parameter_style() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.0",
+            "info": {
+                "title": "example",
+                "version": "1.0.0"
+            },
+            "paths": {
+                "/users/{user}": {
+                    "get": {
+                        "operationId": "getUser",
+                        "parameters": [
+                            {
+                                "name": "user",
+                                "in": "path",
+                                "required": true,
+                                "style": "deepObject",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "ok"
+                            }
+                        }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert_eq!(document.0.operations[0].parameters[0].name, "user");
+    }
+
+    #[test]
+    fn tolerates_empty_schema_type_string() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.1.0",
+            "info": {
+                "title": "example",
+                "version": "1.0.0"
+            },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "MaybeAnything": {
+                        "type": ""
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert!(document.0.schemas.contains_key("MaybeAnything"));
+    }
+
+    #[test]
+    fn tolerates_unknown_schema_type_string() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.1.0",
+            "info": {
+                "title": "example",
+                "version": "1.0.0"
+            },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "MaybeAnything": {
+                        "type": "unknown"
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert!(document.0.schemas.contains_key("MaybeAnything"));
+    }
+
+    #[test]
+    fn canonicalizes_schema_type_string_case() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.1.0",
+            "info": {
+                "title": "example",
+                "version": "1.0.0"
+            },
+            "paths": {
+                "/payment/checklist": {
+                    "get": {
+                        "operationId": "getPaymentChecklist",
+                        "parameters": [
+                            {
+                                "name": "session",
+                                "in": "cookie",
+                                "schema": {
+                                    "type": "String"
+                                }
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "ok"
+                            }
+                        }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert_eq!(document.0.operations[0].parameters[0].name, "session");
     }
 }

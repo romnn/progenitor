@@ -238,6 +238,22 @@ impl SchemaLowering {
         {
             map.insert("examples".to_string(), Value::Array(vec![example]));
         }
+        if let Some(Value::Object(examples)) = map.get("examples") {
+            let values = examples
+                .values()
+                .map(|example| {
+                    example
+                        .get("value")
+                        .cloned()
+                        .unwrap_or_else(|| example.clone())
+                })
+                .collect();
+            map.insert("examples".to_string(), Value::Array(values));
+        }
+
+        if matches!(map.get("properties"), Some(Value::Null)) {
+            map.shift_remove("properties");
+        }
 
         // typify ignores `const` entirely; a single-value `enum` is
         // equivalent and matches what 3.0 documents express.
@@ -275,6 +291,7 @@ impl SchemaLowering {
         }
 
         self.rewrite_prefix_items(map);
+        self.rewrite_items_array(map);
 
         // Fold the hybrid `nullable: true` (3.0 spelling appearing in
         // wild 3.1 documents) into the type set / nullable wrapper.
@@ -378,6 +395,20 @@ impl SchemaLowering {
             // to an untyped array rather than failing the whole document.
             map.shift_remove("items");
         }
+    }
+
+    /// Some wild 3.1 documents still emit draft-07 tuple syntax under
+    /// `items`. typify can represent pinned tuples, but unpinned item
+    /// arrays in API specs usually mean "any element may match any of
+    /// these schemas"; lower that shape to a homogeneous `oneOf` item.
+    fn rewrite_items_array(&self, map: &mut Map<String, Value>) {
+        let Some(Value::Array(items)) = map.get("items").cloned() else {
+            return;
+        };
+        if items.is_empty() || has_pinned_tuple_bounds(map, items.len()) {
+            return;
+        }
+        map.insert("items".to_string(), json!({ "oneOf": items }));
     }
 
     /// Normalize `type` arrays: drop duplicates, unwrap single-element
@@ -520,6 +551,17 @@ fn has_type_array_with_null(map: &Map<String, Value>) -> bool {
     matches!(
         map.get("type"),
         Some(Value::Array(types)) if types.iter().any(|t| t == "null")
+    )
+}
+
+fn has_pinned_tuple_bounds(map: &Map<String, Value>, len: usize) -> bool {
+    let Some(len) = u64::try_from(len).ok() else {
+        return false;
+    };
+    matches!(
+        (map.get("minItems"), map.get("maxItems")),
+        (Some(Value::Number(min)), Some(Value::Number(max)))
+            if min.as_u64() == Some(len) && max.as_u64() == Some(len)
     )
 }
 
@@ -673,6 +715,86 @@ mod tests {
             lower_one(json!({"type": "string", "example": "a"})),
             lower_v30(json!({"type": "string", "example": "a"})),
         );
+    }
+
+    #[test]
+    fn examples_map_lowers_to_values_array() {
+        let lowered = lower_one(json!({
+            "type": "string",
+            "examples": {
+                "first": {
+                    "summary": "first example",
+                    "value": "a"
+                },
+                "second": {
+                    "summary": "second example",
+                    "value": "b"
+                }
+            }
+        }));
+        let value = serde_json::to_value(lowered).unwrap();
+        assert_eq!(value["examples"], json!(["a", "b"]));
+    }
+
+    #[test]
+    fn null_properties_are_removed() {
+        let lowered = lower_one(json!({
+            "type": "object",
+            "properties": null,
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
+        }));
+        let value = serde_json::to_value(lowered).unwrap();
+        assert!(value.get("properties").is_none());
+    }
+
+    #[test]
+    fn unpinned_items_array_becomes_oneof_item() {
+        let lowered = lower_one(json!({
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
+        }));
+        let value = serde_json::to_value(lowered).unwrap();
+        assert!(value["items"]["oneOf"].is_array());
+    }
+
+    #[test]
+    fn pinned_items_array_stays_tuple() {
+        let lowered = lower_one(json!({
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "integer"
+                }
+            ]
+        }));
+        let value = serde_json::to_value(lowered).unwrap();
+        assert!(value["items"].is_array());
     }
 
     #[test]
