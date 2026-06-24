@@ -1107,10 +1107,13 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
         None
     };
 
-    // Pass 1: build base -> [subtype names] map. A subtype is a definition
-    // whose top-level `allOf` contains exactly one `$ref` to another
-    // definition (the standard "extends" pattern). Schemas with no `allOf`,
-    // multiple parent refs, or mixed inline content don't qualify.
+    // Pass 1: collect top-level `allOf` parent refs. The conservative
+    // `subtypes_of` map preserves the historical implicit-discovery rule:
+    // only a definition with exactly one parent ref qualifies as an
+    // unambiguous subtype. Discriminator mappings below may still promote a
+    // multi-parent definition when it explicitly maps to the base and its
+    // `allOf` contains that base ref.
+    let mut allof_parents_by_subtype: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut subtypes_of: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (key, schema) in definitions.iter() {
         let RefKey::Def(subtype_name) = key else {
@@ -1133,11 +1136,17 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
             })
             .filter_map(strip_ref)
             .collect();
+        if parent_refs.is_empty() {
+            continue;
+        }
+        allof_parents_by_subtype.insert(subtype_name.clone(), parent_refs.clone());
         if parent_refs.len() == 1 {
-            subtypes_of
-                .entry(parent_refs.into_iter().next().expect("len == 1 above"))
-                .or_default()
-                .push(subtype_name.clone());
+            if let Some(parent_ref) = parent_refs.first() {
+                subtypes_of
+                    .entry(parent_ref.clone())
+                    .or_default()
+                    .push(subtype_name.clone());
+            }
         }
     }
 
@@ -1223,18 +1232,6 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
                         .filter_map(strip_ref)
                         .collect()
                 });
-            let subtypes: Vec<String> = match &union_members {
-                Some(members) => subtypes_of
-                    .get(base_name)?
-                    .iter()
-                    .filter(|subtype| members.contains(*subtype))
-                    .cloned()
-                    .collect(),
-                None => subtypes_of.get(base_name)?.clone(),
-            };
-            if subtypes.is_empty() {
-                return None;
-            }
             let property_name = discriminator
                 .get("propertyName")
                 .and_then(serde_json::Value::as_str)
@@ -1261,6 +1258,25 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
                         }
                     }
                 }
+            }
+            let mut candidate_subtypes = subtypes_of.get(base_name).cloned().unwrap_or_default();
+            for (subtype_name, _) in &mapped {
+                let has_base_ref = allof_parents_by_subtype
+                    .get(subtype_name)
+                    .is_some_and(|parents| parents.iter().any(|parent| parent == base_name));
+                if has_base_ref && !candidate_subtypes.contains(subtype_name) {
+                    candidate_subtypes.push(subtype_name.clone());
+                }
+            }
+            let subtypes: Vec<String> = match &union_members {
+                Some(members) => candidate_subtypes
+                    .into_iter()
+                    .filter(|subtype| members.contains(subtype))
+                    .collect(),
+                None => candidate_subtypes,
+            };
+            if subtypes.is_empty() {
+                return None;
             }
             // Stamps go to genuine allOf-subtypes only; a definition the
             // mapping merely points at is shared with other contexts and
@@ -2107,6 +2123,114 @@ mod tests {
         let aws_fields = &aws_struct[..aws_struct.find('}').unwrap()];
         assert!(aws_fields.contains("region_name"), "{}", actual);
         assert!(aws_fields.contains("provider_name"), "{}", actual);
+    }
+
+    #[test]
+    fn test_discriminator_mapped_multi_parent_subtypes_terminate() {
+        // Some specs model a variant as implementing multiple discriminated
+        // bases. The mapping makes the variant relationship explicit for
+        // each base, so every mapped base ref must be stripped; otherwise
+        // merging either base's synthesized oneOf resolves back into the
+        // same multi-parent allOf and recurses forever.
+        let definitions: serde_json::Map<String, serde_json::Value> = json!({
+            "LiquidierbareVerwendung": {
+                "type": "object",
+                "properties": {
+                    "@type": { "type": "string" },
+                    "verwendungId": { "type": "string" }
+                },
+                "required": ["@type"],
+                "x-discriminator": {
+                    "propertyName": "@type",
+                    "mapping": {
+                        "AUFLOESUNG_ALS_VERWENDUNG": "#/components/schemas/AufloesungAlsVerwendung",
+                        "KEINE_VERWENDUNG": "#/components/schemas/KeineVerwendung"
+                    }
+                }
+            },
+            "LiquidierbareZusatzsicherheitVerwendung": {
+                "type": "object",
+                "properties": {
+                    "@type": { "type": "string" },
+                    "zusatzsicherheitId": { "type": "string" }
+                },
+                "required": ["@type"],
+                "x-discriminator": {
+                    "propertyName": "@type",
+                    "mapping": {
+                        "ABTRETEN_ALS_VERWENDUNG": "#/components/schemas/AbtretenAlsVerwendung",
+                        "AUFLOESUNG_ALS_VERWENDUNG": "#/components/schemas/AufloesungAlsVerwendung",
+                        "KEINE_VERWENDUNG": "#/components/schemas/KeineVerwendung"
+                    }
+                }
+            },
+            "AbtretenAlsVerwendung": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/LiquidierbareZusatzsicherheitVerwendung" },
+                    {
+                        "type": "object",
+                        "properties": { "kommentar": { "type": "string" } }
+                    }
+                ]
+            },
+            "AufloesungAlsVerwendung": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/LiquidierbareVerwendung" },
+                    {
+                        "type": "object",
+                        "properties": { "maximalEinzusetzenderBetrag": { "type": "number" } }
+                    },
+                    { "$ref": "#/components/schemas/LiquidierbareZusatzsicherheitVerwendung" }
+                ]
+            },
+            "KeineVerwendung": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/LiquidierbareVerwendung" },
+                    {
+                        "type": "object",
+                        "properties": { "kommentar": { "type": "string" } }
+                    },
+                    { "$ref": "#/components/schemas/LiquidierbareZusatzsicherheitVerwendung" }
+                ]
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_ref_types(definitions.into_iter().map(|(name, value)| {
+                (
+                    name,
+                    serde_json::from_value::<schemars::schema::Schema>(value).unwrap(),
+                )
+            }))
+            .unwrap();
+
+        let actual = type_space.to_stream().to_string();
+        assert!(
+            actual.contains("enum LiquidierbareVerwendung"),
+            "{}",
+            actual
+        );
+        assert!(
+            actual.contains("enum LiquidierbareZusatzsicherheitVerwendung"),
+            "{}",
+            actual
+        );
+        let aufloesung = actual
+            .split("pub struct AufloesungAlsVerwendung")
+            .nth(1)
+            .expect("AufloesungAlsVerwendung struct exists");
+        let fields = &aufloesung[..aufloesung.find('}').unwrap()];
+        assert!(
+            fields.contains("maximal_einzusetzender_betrag"),
+            "{}",
+            actual
+        );
+        assert!(fields.contains("verwendung_id"), "{}", actual);
+        assert!(fields.contains("zusatzsicherheit_id"), "{}", actual);
     }
 
     #[test]
