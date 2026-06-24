@@ -1064,6 +1064,12 @@ impl TypeSpace {
         }
         None
     }
+
+    pub(crate) fn resolve_ref_type_id(&self, reference: &str) -> Option<TypeId> {
+        self.ref_to_id
+            .get(&crate::util::ref_key(reference))
+            .cloned()
+    }
 }
 
 /// When a definition declares an OpenAPI `discriminator` AND sibling

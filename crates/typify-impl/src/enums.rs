@@ -20,7 +20,7 @@ use crate::{
         constant_string_value, get_object, get_type_name, metadata_description,
         metadata_title_and_description, schema_is_named,
     },
-    Name, Result, TypeSpace,
+    Name, Result, TypeId, TypeSpace,
 };
 
 impl TypeSpace {
@@ -310,20 +310,31 @@ impl TypeSpace {
         // `untagged_enum` — which then deserialises by structural
         // shape, picking the wrong variant when subtype payloads
         // overlap.
-        let resolved_subschemas: Vec<Schema> = subschemas
+        struct ResolvedSubschema<'a> {
+            original: &'a Schema,
+            resolved: Schema,
+        }
+
+        let resolved_subschemas: Vec<ResolvedSubschema<'_>> = subschemas
             .iter()
             .map(|schema| match schema {
-                Schema::Object(obj) => obj
-                    .reference
-                    .as_deref()
-                    .and_then(|reference| self.resolve_ref_schema(reference).cloned())
-                    .unwrap_or_else(|| schema.clone()),
-                Schema::Bool(_) => schema.clone(),
+                Schema::Object(obj) => ResolvedSubschema {
+                    original: schema,
+                    resolved: obj
+                        .reference
+                        .as_deref()
+                        .and_then(|reference| self.resolve_ref_schema(reference).cloned())
+                        .unwrap_or_else(|| schema.clone()),
+                },
+                Schema::Bool(_) => ResolvedSubschema {
+                    original: schema,
+                    resolved: schema.clone(),
+                },
             })
             .collect();
         let constant_value_properties_sets = resolved_subschemas
             .iter()
-            .map(|schema| match get_object(schema) {
+            .map(|schema| match get_object(&schema.resolved) {
                 Some((_, validation)) => {
                     validation
                         .properties
@@ -377,7 +388,7 @@ impl TypeSpace {
             .map(|schema| {
                 // We've already validated this; we just need to pluck out the
                 // pieces we need to construct the variant.
-                let Some((metadata, validation)) = get_object(schema) else {
+                let Some((metadata, validation)) = get_object(&schema.resolved) else {
                     unreachable!();
                 };
 
@@ -389,7 +400,22 @@ impl TypeSpace {
                     _ => unreachable!(),
                 }
 
-                self.internal_variant(type_name.clone(), metadata, validation, tag)
+                let reference_type_id = match schema.original {
+                    Schema::Object(obj) => obj.reference.as_deref().and_then(|reference| {
+                        schema_contains_ref(&schema.resolved, reference)
+                            .then(|| self.resolve_ref_type_id(reference))
+                            .flatten()
+                    }),
+                    Schema::Bool(_) => None,
+                };
+
+                self.internal_variant(
+                    type_name.clone(),
+                    metadata,
+                    validation,
+                    tag,
+                    reference_type_id,
+                )
             })
             .collect::<Result<Vec<_>>>()
             .ok()?;
@@ -411,6 +437,7 @@ impl TypeSpace {
         metadata: &Option<Box<schemars::schema::Metadata>>,
         validation: &ObjectValidation,
         tag: &str,
+        reference_type_id: Option<TypeId>,
     ) -> Result<Variant> {
         if validation.properties.len() == 1 {
             let (tag_name, schema) = validation.properties.iter().next().unwrap();
@@ -428,6 +455,14 @@ impl TypeSpace {
         } else {
             let tag_schema = validation.properties.get(tag).unwrap();
             let variant_name = constant_string_value(tag_schema).unwrap();
+
+            if let Some(type_id) = reference_type_id {
+                return Ok(Variant::new(
+                    variant_name.to_string(),
+                    metadata_title_and_description(metadata),
+                    VariantDetails::Item(type_id),
+                ));
+            }
 
             // Make a new object validation that omits the tag.
             let mut new_validation = validation.clone();
@@ -746,6 +781,87 @@ fn is_null_schema(schema: &Schema) -> bool {
 
         _ => false,
     }
+}
+
+fn schema_contains_ref(schema: &Schema, reference: &str) -> bool {
+    match schema {
+        Schema::Object(object) => schema_object_contains_ref(object, reference),
+        Schema::Bool(_) => false,
+    }
+}
+
+fn schema_object_contains_ref(object: &SchemaObject, reference: &str) -> bool {
+    if object.reference.as_deref() == Some(reference) {
+        return true;
+    }
+
+    if let Some(subschemas) = object.subschemas.as_deref() {
+        if subschemas
+            .all_of
+            .iter()
+            .chain(subschemas.any_of.iter())
+            .chain(subschemas.one_of.iter())
+            .flatten()
+            .any(|schema| schema_contains_ref(schema, reference))
+        {
+            return true;
+        }
+        if [
+            subschemas.not.as_deref(),
+            subschemas.if_schema.as_deref(),
+            subschemas.then_schema.as_deref(),
+            subschemas.else_schema.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        .any(|schema| schema_contains_ref(schema, reference))
+        {
+            return true;
+        }
+    }
+
+    if let Some(array) = object.array.as_deref() {
+        let items_contains_ref = match &array.items {
+            Some(SingleOrVec::Single(schema)) => schema_contains_ref(schema, reference),
+            Some(SingleOrVec::Vec(schemas)) => schemas
+                .iter()
+                .any(|schema| schema_contains_ref(schema, reference)),
+            None => false,
+        };
+        if items_contains_ref {
+            return true;
+        }
+        if [array.additional_items.as_deref(), array.contains.as_deref()]
+            .into_iter()
+            .flatten()
+            .any(|schema| schema_contains_ref(schema, reference))
+        {
+            return true;
+        }
+    }
+
+    if let Some(object_validation) = object.object.as_deref() {
+        if object_validation
+            .properties
+            .values()
+            .chain(object_validation.pattern_properties.values())
+            .any(|schema| schema_contains_ref(schema, reference))
+        {
+            return true;
+        }
+        if [
+            object_validation.additional_properties.as_deref(),
+            object_validation.property_names.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        .any(|schema| schema_contains_ref(schema, reference))
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Get the string that represents the common prefix, considering only
@@ -1470,6 +1586,95 @@ mod tests {
             }
             _ => panic!("{:#?}", type_entry),
         }
+    }
+
+    #[test]
+    fn test_recursive_ref_only_internal_enum_uses_reference_variants() {
+        let schema_json = r##"
+        {
+            "definitions": {
+                "Condition": {
+                    "type": "object",
+                    "oneOf": [
+                        { "$ref": "#/definitions/RegexCondition" },
+                        { "$ref": "#/definitions/LiquidCondition" },
+                        { "$ref": "#/definitions/GroupCondition" }
+                    ]
+                },
+                "RegexCondition": {
+                    "type": "object",
+                    "required": ["type", "regex"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["regex"] },
+                        "regex": { "type": "string" },
+                        "negate": { "type": "boolean" }
+                    }
+                },
+                "LiquidCondition": {
+                    "type": "object",
+                    "required": ["type", "liquid"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["liquid"] },
+                        "liquid": { "type": "string" }
+                    }
+                },
+                "GroupCondition": {
+                    "type": "object",
+                    "required": ["type", "operator", "conditions"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["group"] },
+                        "operator": {
+                            "type": "string",
+                            "enum": ["AND", "OR"]
+                        },
+                        "conditions": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    { "$ref": "#/definitions/RegexCondition" },
+                                    { "$ref": "#/definitions/LiquidCondition" },
+                                    { "$ref": "#/definitions/GroupCondition" }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "##;
+
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+
+        let mut type_space = TypeSpace::default();
+        type_space.add_ref_types(schema.definitions).unwrap();
+
+        let type_id = type_space
+            .ref_to_id
+            .get(&RefKey::Def("Condition".to_string()))
+            .unwrap();
+        let type_entry = type_space.id_to_entry.get(type_id).unwrap();
+
+        match &type_entry.details {
+            TypeEntryDetails::Enum(TypeEntryEnum {
+                tag_type: EnumTagType::Internal { tag },
+                variants,
+                ..
+            }) => {
+                assert_eq!(tag, "type");
+                for variant in variants {
+                    match variant.raw_name.as_str() {
+                        "group" => assert!(matches!(variant.details, VariantDetails::Item(_))),
+                        "regex" | "liquid" => {
+                            assert!(matches!(variant.details, VariantDetails::Struct(_)));
+                        }
+                        _ => panic!("{:#?}", variant),
+                    }
+                }
+            }
+            _ => panic!("{:#?}", type_entry),
+        }
+
+        syn::parse2::<syn::File>(type_space.to_stream()).unwrap();
     }
 
     #[allow(dead_code)]
