@@ -17,6 +17,14 @@ fn generate_all_specs() {
     let manifests = all_spec_manifests();
     assert!(!manifests.is_empty(), "no spec.toml files found in conformance/");
 
+    let cache_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("support has parent")
+        .parent()
+        .expect("conformance has parent")
+        .join(".cache");
+    std::fs::create_dir_all(&cache_root).expect("create conformance cache directory");
+
     let mut failures = Vec::new();
 
     for (crate_path, manifest) in &manifests {
@@ -33,7 +41,7 @@ fn generate_all_specs() {
                 }
             }
         } else {
-            match manifest.fetch_document() {
+            match manifest.fetch_document_with_cache(&cache_root) {
                 Ok(s) => s,
                 Err(err) => {
                     failures.push(format!("{name}: fetch failed: {err}"));

@@ -135,6 +135,12 @@ tasks:
         --no-tests "warn"
         {{.CLI_ARGS}}
 
+  test:conformance:
+    desc: "run conformance suite"
+    dir: "{{.ROOT_DIR}}/conformance"
+    cmds:
+      - cargo test --workspace --all-targets {{.CLI_ARGS}}
+
   lint:ast-grep:
     desc: "lint with ast-grep rules"
     cmds:

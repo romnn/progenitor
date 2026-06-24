@@ -18,6 +18,37 @@ Progenitor may fail for some OpenAPI documents. If you encounter a problem, you
 can help the project by filing an issue that includes the OpenAPI document that
 produced the problem.
 
+## Development
+
+### Conformance Suite
+
+The conformance suite lives in its own Cargo workspace under `conformance/`.
+Run the full suite with:
+
+```sh
+task test:conformance
+```
+
+Or directly:
+
+```sh
+cd conformance
+cargo test --workspace --all-targets
+```
+
+The suite caches remote OpenAPI documents in each build script's `OUT_DIR`.
+Set `CONFORMANCE_REFRESH=1` to force a fresh download:
+
+```sh
+CONFORMANCE_REFRESH=1 task test:conformance
+```
+
+Extra arguments after `--` are forwarded to `cargo test`, for example:
+
+```sh
+task test:conformance -- --exclude conformance-influxdb
+```
+
 ## Using Progenitor
 
 There are three different ways of using the `progenitor` crate. The one you

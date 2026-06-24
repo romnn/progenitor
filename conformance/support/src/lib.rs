@@ -25,7 +25,10 @@ mod fetch;
 
 pub use fetch::SpecManifest;
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 /// Root of the conformance workspace (one level above this crate).
 fn conformance_root() -> PathBuf {
@@ -229,16 +232,19 @@ fn generate_server_helpers(
     }
 }
 
-/// Enumerate all spec crates in the conformance workspace by globbing
-/// `conformance/*/spec.toml` (excluding the support crate itself).
+/// Enumerate default workspace-member spec crates in the conformance workspace.
 pub fn all_spec_manifests() -> Vec<(PathBuf, SpecManifest)> {
     let root = conformance_root();
+    let members = workspace_member_dirs(&root);
     let mut result = Vec::new();
     let entries = std::fs::read_dir(&root)
         .unwrap_or_else(|err| panic!("cannot read conformance root {}: {err}", root.display()));
     for entry in entries.flatten() {
         let path = entry.path();
         if !path.is_dir() {
+            continue;
+        }
+        if !members.contains(&path) {
             continue;
         }
         let spec_toml = path.join("spec.toml");
@@ -255,6 +261,24 @@ pub fn all_spec_manifests() -> Vec<(PathBuf, SpecManifest)> {
     }
     result.sort_by(|a, b| a.1.name.cmp(&b.1.name));
     result
+}
+
+fn workspace_member_dirs(root: &Path) -> BTreeSet<PathBuf> {
+    let cargo_toml = root.join("Cargo.toml");
+    let text = std::fs::read_to_string(&cargo_toml)
+        .unwrap_or_else(|err| panic!("cannot read {}: {err}", cargo_toml.display()));
+    let value: toml::Value = toml::from_str(&text)
+        .unwrap_or_else(|err| panic!("{} is not valid toml: {err}", cargo_toml.display()));
+
+    value
+        .get("workspace")
+        .and_then(|workspace| workspace.get("members"))
+        .and_then(toml::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(toml::Value::as_str)
+        .map(|member| root.join(member))
+        .collect()
 }
 
 /// Deserialize → serialize → deserialize and assert the two deserialized

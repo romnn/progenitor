@@ -843,24 +843,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "conformance-launchdarkly"
-version = "0.0.0"
-dependencies = [
- "bytes",
- "chrono",
- "conformance-support",
- "futures-core",
- "percent-encoding",
- "progenitor-client",
- "regress",
- "reqwest",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "uuid",
-]
-
-[[package]]
 name = "conformance-lithic"
 version = "0.0.0"
 dependencies = [

@@ -71,7 +71,6 @@ members = [
     "intercom",
     "jellyfin",
     "klaviyo",
-    "launchdarkly",
     "neon",
     "nomad",
     "novu",
@@ -97,6 +96,10 @@ members = [
     "webflow",
     "zendesk",
 ]
+
+# launchdarkly is intentionally not a default workspace member while its
+# OAS 3 endpoint returns 403 AccessDenied. The public ld-openapi repository
+# currently publishes only Swagger 2.0, which this branch does not parse.
 
 [workspace.lints.rust]
 unsafe_code = "deny"
