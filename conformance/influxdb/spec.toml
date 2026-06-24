@@ -2,3 +2,13 @@ name = "influxdb"
 url = "https://raw.githubusercontent.com/influxdata/openapi/master/contracts/ref/cloud.yml"
 version = "3.0"
 notes = "openapi key deep in YAML; multipart, binary"
+# Measurement schema examples use `integer` where the type enum only allows
+# `timestamp`, `tag`, or `field`; Variables omits required `orgID`.
+bad_examples = [
+    "MeasurementSchema",
+    "MeasurementSchemaColumn",
+    "MeasurementSchemaCreateRequest",
+    "MeasurementSchemaList",
+    "MeasurementSchemaUpdateRequest",
+    "Variables",
+]

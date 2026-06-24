@@ -11,6 +11,7 @@ bad_examples = [
     "access_allow_authenticate_via_warp",
     "access_deny_unmatched_requests",
     "access_is_ui_read_only",
+    "access_is_ui_read_only-2",
     "access_schemas-is_ui_read_only",
     "api-shield_old_validation_override_mitigation_action",
     "api-shield_per_operation_bulk_settings",

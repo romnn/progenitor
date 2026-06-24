@@ -8,6 +8,8 @@ bad_examples = [
     "account-holder-created",
     "account-holder-document-updated",
     "account-holder-verification",
+    "card_transaction",
     "digital-wallet-tokenization-updated",
+    "list_transactions_response",
     "tokenization-updated",
 ]

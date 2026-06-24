@@ -3,6 +3,7 @@ url = "https://raw.githubusercontent.com/codatio/oas/main/yaml/Codat-Accounting.
 version = "3.1"
 # BillPayment: examples are missing the required `date` field.
 # BillCreditNote: example uses a plain map where a single-key tagged map is expected.
+# CompanyDataset: example has an address missing the required `type` field.
 # CreditNote: example provides a map where an f64 is expected.
 # SalesOrder: example uses "string" literal where a TrackingRecordRef struct is expected.
-bad_examples = ["BillCreditNote", "BillPayment", "CreditNote", "SalesOrder"]
+bad_examples = ["BillCreditNote", "BillPayment", "CompanyDataset", "CreditNote", "SalesOrder"]
