@@ -121,6 +121,7 @@ pub enum OperationParameterKind {
     Path,
     Query(bool),
     Header(bool),
+    Cookie(bool),
     // TODO bodies may be optional
     Body(BodyContentType),
 }
@@ -131,6 +132,7 @@ impl OperationParameterKind {
             OperationParameterKind::Path => true,
             OperationParameterKind::Query(required) => *required,
             OperationParameterKind::Header(required) => *required,
+            OperationParameterKind::Cookie(required) => *required,
             // TODO may be optional
             OperationParameterKind::Body(_) => true,
         }
@@ -661,6 +663,48 @@ impl Generator {
                             deep_object_query: false,
                         })
                     }
+                    ir::ParameterKind::Cookie => {
+                        let schema = parameter_schema(parameter);
+                        let name = sanitize(
+                            &format!("{}-{}", operation_id, &parameter.name),
+                            Case::Pascal,
+                        );
+
+                        let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
+
+                        let (type_id, required) = {
+                            let ty = self.type_space.get_type(&type_id).unwrap();
+                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
+                                (inner_type_id, false)
+                            } else {
+                                (type_id, parameter.required)
+                            }
+                        };
+
+                        let has_display = {
+                            let ty = self.type_space.get_type(&type_id).unwrap();
+                            ty.has_impl(typify::TypeSpaceImpl::Display)
+                        };
+                        let type_id = if has_display {
+                            type_id
+                        } else {
+                            let string: schemars::schema::Schema = schemars::schema::SchemaObject {
+                                instance_type: Some(schemars::schema::InstanceType::String.into()),
+                                ..Default::default()
+                            }
+                            .into();
+                            self.type_space.add_type(&string)?
+                        };
+
+                        Ok(OperationParameter {
+                            name: sanitize(&parameter.name, Case::Snake),
+                            api_name: parameter.name.clone(),
+                            description: parameter.description.clone(),
+                            typ: OperationParameterType::Type(type_id),
+                            kind: OperationParameterKind::Cookie(required),
+                            deep_object_query: false,
+                        })
+                    }
                     ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
                         "unsupported style of path parameter {:#?}",
                         style,
@@ -668,10 +712,6 @@ impl Generator {
                     ir::ParameterKind::Query { style, .. } => Err(Error::UnexpectedFormat(
                         format!("unsupported style of query parameter {:#?}", style,),
                     )),
-                    ir::ParameterKind::Cookie => Err(Error::UnexpectedFormat(format!(
-                        "cookie parameters are not supported: {}",
-                        parameter.name,
-                    ))),
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -1167,6 +1207,38 @@ impl Generator {
             })
             .collect::<Vec<_>>();
 
+        let cookies = method
+            .params
+            .iter()
+            .filter_map(|param| match &param.kind {
+                OperationParameterKind::Cookie(required) => {
+                    let cookie_name = &param.api_name;
+                    let cookie_ident = format_ident!("{}", &param.name);
+                    let cookie = if *required {
+                        quote! {
+                            cookie_header_values.push(format!(
+                                "{}={}",
+                                #cookie_name,
+                                #cookie_ident,
+                            ));
+                        }
+                    } else {
+                        quote! {
+                            if let Some(value) = #cookie_ident {
+                                cookie_header_values.push(format!(
+                                    "{}={}",
+                                    #cookie_name,
+                                    value,
+                                ));
+                            }
+                        }
+                    };
+                    Some(cookie)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
         let headers = method
             .params
             .iter()
@@ -1198,6 +1270,20 @@ impl Generator {
             .collect::<Vec<_>>();
 
         let headers_size = headers.len() + 1;
+        let cookies_build = if cookies.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                let mut cookie_header_values = Vec::new();
+                #(#cookies)*
+                if !cookie_header_values.is_empty() {
+                    header_map.append(
+                        ::reqwest::header::COOKIE,
+                        cookie_header_values.join("; ").try_into()?
+                    );
+                }
+            }
+        };
         let headers_build = quote! {
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(#headers_size);
             header_map.append(
@@ -1206,6 +1292,7 @@ impl Generator {
             );
 
             #(#headers)*
+            #cookies_build
         };
 
         let headers_use = quote! {
@@ -2913,6 +3000,7 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
                 (OperationParameterKind::Path, OperationParameterKind::Query(_)) => Ordering::Less,
                 (OperationParameterKind::Path, OperationParameterKind::Body(_)) => Ordering::Less,
                 (OperationParameterKind::Path, OperationParameterKind::Header(_)) => Ordering::Less,
+                (OperationParameterKind::Path, OperationParameterKind::Cookie(_)) => Ordering::Less,
 
                 // Query params are in lexicographic order.
                 (OperationParameterKind::Query(_), OperationParameterKind::Body(_)) => {
@@ -2927,6 +3015,9 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
                 (OperationParameterKind::Query(_), OperationParameterKind::Header(_)) => {
                     Ordering::Less
                 }
+                (OperationParameterKind::Query(_), OperationParameterKind::Cookie(_)) => {
+                    Ordering::Less
+                }
 
                 // Body params are last and should be singular.
                 (OperationParameterKind::Body(_), OperationParameterKind::Path) => {
@@ -2938,15 +3029,28 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
                 (OperationParameterKind::Body(_), OperationParameterKind::Header(_)) => {
                     Ordering::Greater
                 }
+                (OperationParameterKind::Body(_), OperationParameterKind::Cookie(_)) => {
+                    Ordering::Greater
+                }
                 (OperationParameterKind::Body(_), OperationParameterKind::Body(_)) => {
                     panic!("should only be one body")
                 }
 
-                // Header params are in lexicographic order.
+                // Header and cookie params are in lexicographic order.
                 (OperationParameterKind::Header(_), OperationParameterKind::Header(_)) => {
                     a_name.cmp(b_name)
                 }
+                (OperationParameterKind::Header(_), OperationParameterKind::Cookie(_)) => {
+                    a_name.cmp(b_name)
+                }
                 (OperationParameterKind::Header(_), _) => Ordering::Greater,
+                (OperationParameterKind::Cookie(_), OperationParameterKind::Cookie(_)) => {
+                    a_name.cmp(b_name)
+                }
+                (OperationParameterKind::Cookie(_), OperationParameterKind::Header(_)) => {
+                    a_name.cmp(b_name)
+                }
+                (OperationParameterKind::Cookie(_), _) => Ordering::Greater,
             }
         },
     );

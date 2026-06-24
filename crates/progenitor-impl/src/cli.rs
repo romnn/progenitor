@@ -389,6 +389,7 @@ impl Generator {
                 OperationParameterKind::Path => true,
                 OperationParameterKind::Query(required) => *required,
                 OperationParameterKind::Header(required) => *required,
+                OperationParameterKind::Cookie(required) => *required,
             };
 
             // For paginated endpoints, we don't generate 'page_token' args.

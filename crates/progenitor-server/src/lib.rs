@@ -35,7 +35,8 @@ mod service;
 
 pub use error::{BoxError, ServerError};
 pub use extract::{
-    Bytes, Form, Json, Metadata, Path, Query, Rejection, Text, optional_header, required_header,
+    Bytes, Form, Json, Metadata, Path, Query, Rejection, Text, optional_cookie, optional_header,
+    required_cookie, required_header,
 };
 pub use request::Request;
 pub use response::{Response, respond};

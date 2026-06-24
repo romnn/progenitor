@@ -272,6 +272,29 @@ where
     }
 }
 
+/// Parse a required typed cookie from already-extracted [`Metadata`].
+pub fn required_cookie<T>(meta: &Metadata, name: &str) -> Result<T, Rejection>
+where
+    T: std::str::FromStr,
+{
+    optional_cookie(meta, name)?
+        .ok_or_else(|| Rejection::bad_request(format!("missing required cookie `{name}`")))
+}
+
+/// Parse an optional typed cookie from already-extracted [`Metadata`].
+pub fn optional_cookie<T>(meta: &Metadata, name: &str) -> Result<Option<T>, Rejection>
+where
+    T: std::str::FromStr,
+{
+    let Some(value) = cookie_value(meta, name)? else {
+        return Ok(None);
+    };
+    value
+        .parse::<T>()
+        .map(Some)
+        .map_err(|_| Rejection::bad_request(format!("cookie `{name}` is malformed")))
+}
+
 fn parse_header_value<T>(value: &http::HeaderValue, name: &str) -> Result<T, Rejection>
 where
     T: std::str::FromStr,
@@ -281,6 +304,23 @@ where
         .map_err(|_| Rejection::bad_request(format!("header `{name}` is not valid text")))?;
     text.parse::<T>()
         .map_err(|_| Rejection::bad_request(format!("header `{name}` is malformed")))
+}
+
+fn cookie_value(meta: &Metadata, name: &str) -> Result<Option<String>, Rejection> {
+    for value in meta.headers().get_all(http::header::COOKIE) {
+        let text = value
+            .to_str()
+            .map_err(|_| Rejection::bad_request("cookie header is not valid text"))?;
+        for pair in text.split(';') {
+            let Some((cookie_name, cookie_value)) = pair.trim().split_once('=') else {
+                continue;
+            };
+            if cookie_name.trim() == name {
+                return Ok(Some(cookie_value.trim().to_string()));
+            }
+        }
+    }
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -343,6 +383,29 @@ mod tests {
     fn optional_header_absent_is_none() {
         let meta = meta_with(HeaderMap::new());
         assert!(optional_header::<i32>(&meta, "absent").unwrap().is_none());
+    }
+
+    #[test]
+    fn required_cookie_parses_present_and_rejects_absent() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::COOKIE,
+            http::HeaderValue::from_static("session=42; theme=dark"),
+        );
+        let meta = meta_with(headers);
+
+        let session: i32 = required_cookie(&meta, "session").unwrap();
+        assert_eq!(session, 42);
+        let theme: String = required_cookie(&meta, "theme").unwrap();
+        assert_eq!(theme, "dark");
+        let err = required_cookie::<i32>(&meta, "absent").unwrap_err();
+        assert_eq!(err.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn optional_cookie_absent_is_none() {
+        let meta = meta_with(HeaderMap::new());
+        assert!(optional_cookie::<i32>(&meta, "absent").unwrap().is_none());
     }
 
     // A required array query param the generator marks `#[serde(default)]` must

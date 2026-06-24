@@ -798,6 +798,43 @@ impl Generator {
                     header_lets.push(stmt);
                     field_inits.push(quote! { #ident });
                 }
+                OperationParameterKind::Cookie(required) => {
+                    let ident = format_ident!("{}", param.name);
+                    let api_name = &param.api_name;
+                    let (base, optional) = self.header_base_type(param, *required);
+                    let (field_ty, stmt) = if optional {
+                        (
+                            quote! { Option<#base> },
+                            quote! {
+                                let #ident = match ::progenitor_server::optional_cookie::<#base>(
+                                    &__progenitor_meta, #api_name,
+                                ) {
+                                    Ok(value) => value,
+                                    Err(rejection) => {
+                                        return axum::response::IntoResponse::into_response(rejection);
+                                    }
+                                };
+                            },
+                        )
+                    } else {
+                        (
+                            base.clone(),
+                            quote! {
+                                let #ident = match ::progenitor_server::required_cookie::<#base>(
+                                    &__progenitor_meta, #api_name,
+                                ) {
+                                    Ok(value) => value,
+                                    Err(rejection) => {
+                                        return axum::response::IntoResponse::into_response(rejection);
+                                    }
+                                };
+                            },
+                        )
+                    };
+                    request_fields.extend(quote! { pub #ident: #field_ty, });
+                    header_lets.push(stmt);
+                    field_inits.push(quote! { #ident });
+                }
                 OperationParameterKind::Body(content_type) => {
                     let (extractor, field_ty) = self.body_extractor(content_type, &param.typ);
                     request_fields.extend(quote! { pub body: #field_ty, });

@@ -226,6 +226,12 @@ impl Generator {
                                 Self(self.0.header(#api_name, #value_to_str))
                             },
                         ),
+                        OperationParameterKind::Cookie(true) => (
+                            true,
+                            quote! {
+                                Self(self.0.cookie(#api_name, #value_to_str))
+                            },
+                        ),
 
                         OperationParameterKind::Query(false) => (
                             false,
@@ -250,6 +256,19 @@ impl Generator {
                                     ))
                                 } else {
                                     Self(self.0.header_missing(#api_name))
+                                }
+                            },
+                        ),
+                        OperationParameterKind::Cookie(false) => (
+                            false,
+                            quote! {
+                                if let Some(value) = value.into() {
+                                    Self(self.0.cookie(
+                                        #api_name,
+                                        #value_to_str,
+                                    ))
+                                } else {
+                                    Self(self.0.cookie_missing(#api_name))
                                 }
                             },
                         ),
