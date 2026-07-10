@@ -7,6 +7,9 @@ license.workspace = true
 repository = "https://github.com/oxidecomputer/progenitor.git"
 description = "An OpenAPI client generator - server support (axum runtime)"
 
+[lints]
+workspace = true
+
 [features]
 default = ["transport"]
 # The serving convenience (`Server`/`Router`/`Bound`). The wrapper types,

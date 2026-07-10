@@ -12,6 +12,7 @@ use http::{HeaderMap, StatusCode};
 /// success status (the lowest declared 2xx). An override is validated against the
 /// operation's declared success set by the responder (off-contract → `500`).
 #[derive(Debug, Clone)]
+#[must_use = "a response must be returned or converted into an HTTP response"]
 pub struct Response<T> {
     message: T,
     status: Option<StatusCode>,
@@ -85,7 +86,7 @@ impl<T> Response<T> {
 /// of these. Keeping the encoders here (not in generated code) makes them
 /// unit-testable and lets us evolve the wire format without regenerating.
 pub mod respond {
-    use super::*;
+    use super::{HeaderMap, StatusCode};
     use axum::response::{IntoResponse, Response};
     use http::header;
 
@@ -95,7 +96,7 @@ pub mod respond {
         // seen key forward and `append` (not `insert`) so multi-valued headers
         // like `Set-Cookie` survive the merge.
         let mut last_key: Option<http::HeaderName> = None;
-        for (key, value) in src.into_iter() {
+        for (key, value) in src {
             let key = match key {
                 Some(key) => {
                     last_key = Some(key.clone());
@@ -128,6 +129,7 @@ pub mod respond {
     }
 
     /// Encode an empty body (status only) with merged `headers`.
+    #[must_use]
     pub fn empty(status: StatusCode, headers: HeaderMap) -> Response {
         let mut response = status.into_response();
         merge_headers(response.headers_mut(), headers);
@@ -152,6 +154,7 @@ pub mod respond {
 
     /// Encode a `500 Internal Server Error` with a generic body. The underlying
     /// error is intentionally not leaked to the client.
+    #[must_use]
     pub fn internal(_error: crate::BoxError) -> Response {
         // TODO: surface `_error` through `tracing` once that dependency lands.
         (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()

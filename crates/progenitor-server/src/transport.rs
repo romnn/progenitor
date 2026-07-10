@@ -21,6 +21,7 @@ use crate::service::Service;
 ///     .await?;
 /// ```
 #[derive(Default)]
+#[must_use = "the server builder must be configured and served"]
 pub struct Server {
     router: axum::Router,
 }
@@ -43,6 +44,7 @@ impl Server {
 
 /// One or more registered services, ready to serve. Multiple services (multiple
 /// specs, or per-tag traits) can be mounted on one socket.
+#[must_use = "the router must be served or converted into an axum router"]
 pub struct Router {
     router: axum::Router,
 }
@@ -69,6 +71,7 @@ impl Router {
     /// The router as a `MakeService`, for `axum::serve(listener,
     /// router.into_make_service())` or for `into_make_service_with_connect_info`
     /// on the underlying router.
+    #[must_use]
     pub fn into_make_service(self) -> axum::routing::IntoMakeService<axum::Router> {
         self.router.into_make_service()
     }
@@ -76,17 +79,31 @@ impl Router {
     /// Bind `addr` and return a [`Bound`] server. Bind-first so callers (and
     /// tests) can read the actually-bound port via [`Bound::local_addr`] before
     /// serving — essential for ephemeral `127.0.0.1:0` binds.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if the address cannot be bound or its local address
+    /// cannot be read.
     pub async fn bind(self, addr: SocketAddr) -> std::io::Result<Bound> {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         Bound::new(listener, self.router)
     }
 
     /// Bind `addr` and serve until the process ends.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if binding or serving fails.
     pub async fn serve(self, addr: SocketAddr) -> std::io::Result<()> {
         self.bind(addr).await?.serve().await
     }
 
     /// Serve on an already-bound listener.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if the listener address cannot be read or serving
+    /// fails.
     pub async fn serve_listener(self, listener: tokio::net::TcpListener) -> std::io::Result<()> {
         Bound::new(listener, self.router)?.serve().await
     }
@@ -94,6 +111,7 @@ impl Router {
 
 /// A bound server: a listener plus the router. Read [`local_addr`](Bound::local_addr)
 /// then [`serve`](Bound::serve).
+#[must_use = "the bound server must be served"]
 pub struct Bound {
     listener: tokio::net::TcpListener,
     local_addr: SocketAddr,
@@ -116,11 +134,19 @@ impl Bound {
     }
 
     /// Serve until the process ends.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if serving fails.
     pub async fn serve(self) -> std::io::Result<()> {
         axum::serve(self.listener, self.router).await
     }
 
     /// Serve until `signal` resolves, then shut down gracefully.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if serving or graceful shutdown fails.
     pub async fn serve_with_shutdown<F>(self, signal: F) -> std::io::Result<()>
     where
         F: Future<Output = ()> + Send + 'static,

@@ -49,11 +49,13 @@ impl Rejection {
     }
 
     /// The HTTP status this rejection encodes to.
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         self.status
     }
 
     /// The human-readable message.
+    #[must_use]
     pub fn message(&self) -> &str {
         &self.message
     }
@@ -250,6 +252,11 @@ where
 /// Called in-route by generated code (the header name and type are known there);
 /// a name-less runtime extractor couldn't know them without generated marker
 /// types. A missing or unparseable header yields a runtime-standard `400`.
+///
+/// # Errors
+///
+/// Returns a rejection when the header is absent, is not valid text, or cannot
+/// be parsed as `T`.
 pub fn required_header<T>(meta: &Metadata, name: &str) -> Result<T, Rejection>
 where
     T: std::str::FromStr,
@@ -262,6 +269,11 @@ where
 }
 
 /// Parse an optional typed header from already-extracted [`Metadata`].
+///
+/// # Errors
+///
+/// Returns a rejection when a present header is not valid text or cannot be
+/// parsed as `T`.
 pub fn optional_header<T>(meta: &Metadata, name: &str) -> Result<Option<T>, Rejection>
 where
     T: std::str::FromStr,
@@ -273,6 +285,11 @@ where
 }
 
 /// Parse a required typed cookie from already-extracted [`Metadata`].
+///
+/// # Errors
+///
+/// Returns a rejection when the cookie is absent, the cookie header is not
+/// valid text, or the value cannot be parsed as `T`.
 pub fn required_cookie<T>(meta: &Metadata, name: &str) -> Result<T, Rejection>
 where
     T: std::str::FromStr,
@@ -282,6 +299,11 @@ where
 }
 
 /// Parse an optional typed cookie from already-extracted [`Metadata`].
+///
+/// # Errors
+///
+/// Returns a rejection when the cookie header is not valid text or a present
+/// value cannot be parsed as `T`.
 pub fn optional_cookie<T>(meta: &Metadata, name: &str) -> Result<Option<T>, Rejection>
 where
     T: std::str::FromStr,
@@ -344,7 +366,7 @@ mod tests {
         struct Q {
             x: Vec<i32>,
         }
-        let (mut parts, _) = http::Request::builder()
+        let (mut parts, ()) = http::Request::builder()
             .uri("/items?x=1&x=2")
             .body(())
             .unwrap()
@@ -359,7 +381,7 @@ mod tests {
         struct Q {
             x: Option<i32>,
         }
-        let (mut parts, _) = http::Request::builder()
+        let (mut parts, ()) = http::Request::builder()
             .uri("/items")
             .body(())
             .unwrap()
@@ -418,7 +440,7 @@ mod tests {
             #[serde(default)]
             tags: Vec<i32>,
         }
-        let (mut parts, _) = http::Request::builder()
+        let (mut parts, ()) = http::Request::builder()
             .uri("/items")
             .body(())
             .unwrap()

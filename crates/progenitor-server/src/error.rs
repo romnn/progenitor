@@ -50,6 +50,7 @@ impl<E> ServerError<E> {
     }
 
     /// Construct a [`ServerError::Response`] escape hatch from a raw response.
+    #[must_use]
     pub fn response(response: axum::response::Response) -> Self {
         ServerError::Response(response)
     }
