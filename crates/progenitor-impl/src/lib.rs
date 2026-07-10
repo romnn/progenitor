@@ -25,6 +25,7 @@ mod cli;
 mod httpmock;
 mod ir;
 mod method;
+mod operation;
 mod openapi;
 mod server;
 mod template;
@@ -81,7 +82,7 @@ pub struct Generator {
 /// generator state such as `uses_futures`) without holding a borrow of `self`.
 pub(crate) struct PreparedIr {
     /// Operation methods with operation IDs already deduped.
-    pub raw_methods: Vec<method::OperationMethod>,
+    pub raw_methods: Vec<operation::OperationMethod>,
 }
 
 /// Settings for [Generator].
@@ -686,7 +687,7 @@ impl Generator {
 
     fn generate_tokens_positional_merged(
         &mut self,
-        input_methods: &[method::OperationMethod],
+        input_methods: &[operation::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
@@ -722,7 +723,7 @@ impl Generator {
 
     fn generate_tokens_builder_merged(
         &mut self,
-        input_methods: &[method::OperationMethod],
+        input_methods: &[operation::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
@@ -777,7 +778,7 @@ impl Generator {
 
     fn generate_tokens_builder_separate(
         &mut self,
-        input_methods: &[method::OperationMethod],
+        input_methods: &[operation::OperationMethod],
         tag_info: BTreeMap<&String, &ir::Tag>,
         has_inner: bool,
     ) -> Result<TokenStream> {

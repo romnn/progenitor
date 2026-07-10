@@ -23,7 +23,7 @@ use typify::TypeDetails;
 use crate::{
     Generator, OpenApiDocument, Result,
     ir::Document,
-    method::{
+    operation::{
         BodyContentType, HttpMethod, OperationMethod, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
         ResponseSide,
@@ -872,7 +872,7 @@ impl Generator {
     /// array, or set) — used to decide whether a query field needs
     /// `#[serde(default)]` so an absent (empty-array) key deserializes to an
     /// empty collection.
-    fn is_sequence_param(&self, param: &crate::method::OperationParameter) -> bool {
+    fn is_sequence_param(&self, param: &crate::operation::OperationParameter) -> bool {
         let OperationParameterType::Type(type_id) = &param.typ else {
             return false;
         };
@@ -896,7 +896,7 @@ impl Generator {
     /// type.
     fn owned_field_type(
         &self,
-        param: &crate::method::OperationParameter,
+        param: &crate::operation::OperationParameter,
         kind_required: bool,
     ) -> (TokenStream, bool) {
         match &param.typ {
@@ -922,7 +922,7 @@ impl Generator {
     /// the generated `required_header`/`optional_header` call always compiles.
     fn header_base_type(
         &self,
-        param: &crate::method::OperationParameter,
+        param: &crate::operation::OperationParameter,
         kind_required: bool,
     ) -> (TokenStream, bool) {
         match &param.typ {

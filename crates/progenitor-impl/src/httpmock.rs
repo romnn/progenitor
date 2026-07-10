@@ -7,7 +7,7 @@ use quote::{ToTokens, format_ident, quote};
 
 use crate::{
     Generator, OpenApiDocument, Result,
-    method::{
+    operation::{
         BodyContentType, HttpMethod, OperationParameter, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseStatus,
     },
@@ -100,7 +100,7 @@ impl Generator {
         Ok(code)
     }
 
-    fn httpmock_method(&mut self, method: &crate::method::OperationMethod) -> MockOp {
+    fn httpmock_method(&mut self, method: &crate::operation::OperationMethod) -> MockOp {
         let when_name = sanitize(&format!("{}-when", method.operation_id), Case::Pascal);
         let when = format_ident!("{}", when_name).to_token_stream();
         let then_name = sanitize(&format!("{}-then", method.operation_id), Case::Pascal);
@@ -348,7 +348,7 @@ impl Generator {
                  status_code, typ, ..
              }| {
                 let (value_param, value_use) = match typ {
-                    crate::method::OperationResponseKind::Type(arg_type_id) => {
+                    crate::operation::OperationResponseKind::Type(arg_type_id) => {
                         let arg_type = self.type_space.get_type(arg_type_id).unwrap();
                         // If the response type is Option<T>, use the inner T so the
                         // Then builder accepts a concrete body rather than an Option.
@@ -370,8 +370,8 @@ impl Generator {
                             },
                         )
                     }
-                    crate::method::OperationResponseKind::None => Default::default(),
-                    crate::method::OperationResponseKind::Raw => (
+                    crate::operation::OperationResponseKind::None => Default::default(),
+                    crate::operation::OperationResponseKind::Raw => (
                         quote! {
                             value: ::serde_json::Value,
                         },
@@ -380,12 +380,12 @@ impl Generator {
                             .json_body(value)
                         },
                     ),
-                    crate::method::OperationResponseKind::Upgrade => Default::default(),
+                    crate::operation::OperationResponseKind::Upgrade => Default::default(),
                     // httpmock generation for the synthesised multi-kind sum
                     // type isn't implemented — there's no single schema to
                     // pivot the mock body on. Skip the parameter; mocks for
                     // these operations need to be hand-written.
-                    crate::method::OperationResponseKind::Synth(_) => Default::default(),
+                    crate::operation::OperationResponseKind::Synth(_) => Default::default(),
                 };
 
                 match status_code {
