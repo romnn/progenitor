@@ -29,20 +29,7 @@ impl Generator {
     /// the SDK. This can include `::` and instances of `-` in the crate name
     /// should be converted to `_`.
     pub fn httpmock(&mut self, spec: &OpenApiDocument, crate_path: &str) -> Result<TokenStream> {
-        let document = &spec.0;
-
-        self.type_space.add_ref_types(
-            document
-                .schemas
-                .iter()
-                .map(|(name, schema)| (name.clone(), schema.clone())),
-        )?;
-
-        let raw_methods = document
-            .operations
-            .iter()
-            .map(|operation| self.process_operation(operation, &document.schemas))
-            .collect::<Result<Vec<_>>>()?;
+        let raw_methods = self.prepare(spec)?.raw_methods;
 
         let methods = raw_methods
             .iter()

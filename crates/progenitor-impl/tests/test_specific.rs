@@ -179,6 +179,74 @@ fn test_default_params() {
     );
 }
 
+#[test]
+fn cli_output_does_not_depend_on_prior_client_generation() {
+    let spec = progenitor_impl::parse_openapi_value(serde_json::json!({
+        "openapi": "3.0.3",
+        "info": { "title": "test", "version": "1" },
+        "paths": {
+            "/thing": {
+                "get": {
+                    "operationId": "getThing",
+                    "responses": {
+                        "400": {
+                            "description": "first child",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/FirstChild" }
+                                }
+                            }
+                        },
+                        "401": {
+                            "description": "second child",
+                            "content": {
+                                "application/json": {
+                                    "schema": { "$ref": "#/components/schemas/SecondChild" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Parent": {
+                    "type": "object",
+                    "properties": { "message": { "type": "string" } }
+                },
+                "FirstChild": {
+                    "allOf": [
+                        { "$ref": "#/components/schemas/Parent" },
+                        {
+                            "type": "object",
+                            "properties": { "first": { "type": "string" } }
+                        }
+                    ]
+                },
+                "SecondChild": {
+                    "allOf": [
+                        { "$ref": "#/components/schemas/Parent" },
+                        {
+                            "type": "object",
+                            "properties": { "second": { "type": "string" } }
+                        }
+                    ]
+                }
+            }
+        }
+    }))
+    .unwrap();
+
+    let fresh = Generator::default().cli(&spec, "crate").unwrap().to_string();
+
+    let mut warmed = Generator::default();
+    warmed.generate_tokens(&spec).unwrap();
+    let warmed = warmed.cli(&spec, "crate").unwrap().to_string();
+
+    assert_eq!(fresh, warmed);
+}
+
 #[derive(Debug)]
 struct PaginatedU32sContext {
     all_values: std::ops::Range<u32>,

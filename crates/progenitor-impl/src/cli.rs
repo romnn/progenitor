@@ -22,20 +22,7 @@ struct CliOperation {
 impl Generator {
     /// Generate a `clap`-based CLI.
     pub fn cli(&mut self, spec: &OpenApiDocument, crate_name: &str) -> Result<TokenStream> {
-        let document = &spec.0;
-
-        self.type_space.add_ref_types(
-            document
-                .schemas
-                .iter()
-                .map(|(name, schema)| (name.clone(), schema.clone())),
-        )?;
-
-        let raw_methods = document
-            .operations
-            .iter()
-            .map(|operation| self.process_operation(operation, &document.schemas))
-            .collect::<Result<Vec<_>>>()?;
+        let raw_methods = self.prepare(spec)?.raw_methods;
 
         let methods = raw_methods
             .iter()

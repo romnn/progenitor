@@ -18,6 +18,8 @@ references), design, concrete steps, risks, and acceptance criteria.
 | [04-repo-layout.md](04-repo-layout.md) | Move all crates under `crates/`, flatten `crates/typify/` | 4 (first) |
 | [05-harness-unification.md](05-harness-unification.md) | One harness: conformance/ crate-per-spec; remove crates/wild-tests | 4 (second) |
 | [06-buildrs-and-deps.md](06-buildrs-and-deps.md) | build.rs simplification, `generate_text` everywhere, dep consolidation | 5 |
+| [07-server-generation.md](07-server-generation.md) | Server stub generation (tonic-style traits + axum runtime) — implemented 2026-06-13 | later request |
+| [08-impl-architecture.md](08-impl-architecture.md) | Generator-core architecture: correctness fixes, schema-lowering convergence, backend-model extraction, lint enforcement | architecture review 2026-07-10 |
 
 ## The one finding that reorders everything
 
