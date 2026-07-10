@@ -39,6 +39,14 @@ struct BuilderImpl {
     body: TokenStream,
 }
 
+struct BuilderParameter {
+    name: proc_macro2::Ident,
+    typ: TokenStream,
+    initial_value: TokenStream,
+    finalize: TokenStream,
+    implementation: TokenStream,
+}
+
 /// Find the lowest common ancestor of `names` in the inheritance graph
 /// described by `supertype_map`. Returns the deepest ancestor present in
 /// every input's supertype chain; `None` if no shared ancestor exists.
@@ -1769,6 +1777,157 @@ impl Generator {
     /// items (currently the synthesized response/error sum-type enums)
     /// that must be emitted alongside the builder rather than inside its
     /// `impl` block.
+    fn builder_parameter(
+        &self,
+        param: &OperationParameter,
+        cloneable: &mut bool,
+    ) -> Result<BuilderParameter> {
+        let name = format_ident!("{}", param.name);
+        let (typ, initial_value, finalize, implementation) = match &param.typ {
+            OperationParameterType::Type(type_id) => {
+                let ty = self.type_space.get_type(type_id)?;
+                let builder = ty.builder();
+                let type_name = ty.ident();
+
+                let typ = if let (OperationParameterKind::Body(_), Some(builder_name)) =
+                    (&param.kind, builder.as_ref())
+                {
+                    quote! { ::std::result::Result<#builder_name, ::std::string::String> }
+                } else if param.optional {
+                    quote! { ::std::result::Result<::std::option::Option<#type_name>, ::std::string::String> }
+                } else {
+                    quote! { ::std::result::Result<#type_name, ::std::string::String> }
+                };
+
+                let initial_value =
+                    if matches!(param.kind, OperationParameterKind::Body(_)) && builder.is_some() {
+                        quote! { Ok(::std::default::Default::default()) }
+                    } else if param.optional {
+                        quote! { Ok(None) }
+                    } else {
+                        let error = format!("{} was not initialized", param.name);
+                        quote! { Err(#error.to_string()) }
+                    };
+
+                let finalize = if builder.is_some() {
+                    quote! {
+                        .and_then(|v| #type_name::try_from(v)
+                            .map_err(|e| e.to_string()))
+                    }
+                } else {
+                    quote! {}
+                };
+
+                let implementation = match (builder.as_ref(), param.optional) {
+                    (Some(_), true) => unreachable!(),
+                    (None, optional) => {
+                        let error =
+                            format!("conversion to `{}` for {} failed", ty.name(), param.name,);
+                        let assign = if optional {
+                            quote! { value.try_into().map(Some) }
+                        } else {
+                            quote! { value.try_into() }
+                        };
+                        quote! {
+                            pub fn #name<V>(mut self, value: V) -> Self
+                            where
+                                V: std::convert::TryInto<#type_name>,
+                            {
+                                self.#name = #assign
+                                    .map_err(|_| #error.to_string());
+                                self
+                            }
+                        }
+                    }
+                    (Some(builder_name), false) => {
+                        assert_eq!(param.name, "body");
+                        let error = format!(
+                            "conversion to `{}` for {} failed: {{}}",
+                            ty.name(),
+                            param.name,
+                        );
+                        quote! {
+                            pub fn body<V>(mut self, value: V) -> Self
+                            where
+                                V: std::convert::TryInto<#type_name>,
+                                <V as std::convert::TryInto<#type_name>>::Error:
+                                    std::fmt::Display,
+                            {
+                                self.body = value.try_into()
+                                    .map(From::from)
+                                    .map_err(|s| format!(#error, s));
+                                self
+                            }
+
+                            pub fn body_map<F>(mut self, f: F) -> Self
+                            where
+                                F: std::ops::FnOnce(#builder_name) -> #builder_name,
+                            {
+                                self.body = self.body.map(f);
+                                self
+                            }
+                        }
+                    }
+                };
+
+                (typ, initial_value, finalize, implementation)
+            }
+            OperationParameterType::RawBody => {
+                *cloneable = false;
+                let error = format!("{} was not initialized", param.name);
+                let implementation = match &param.kind {
+                    OperationParameterKind::Body(
+                        BodyContentType::OctetStream | BodyContentType::Raw(_),
+                    ) => {
+                        let conversion_error =
+                            format!("conversion to `reqwest::Body` for {} failed", param.name);
+                        quote! {
+                            pub fn #name<B>(mut self, value: B) -> Self
+                            where
+                                B: std::convert::TryInto<reqwest::Body>,
+                            {
+                                self.#name = value.try_into()
+                                    .map_err(|_| #conversion_error.to_string());
+                                self
+                            }
+                        }
+                    }
+                    OperationParameterKind::Body(BodyContentType::Text(_)) => {
+                        let conversion_error =
+                            format!("conversion to `String` for {} failed", param.name);
+                        quote! {
+                            pub fn #name<V>(mut self, value: V) -> Self
+                            where
+                                V: std::convert::TryInto<String>,
+                            {
+                                self.#name = value
+                                    .try_into()
+                                    .map_err(|_| #conversion_error.to_string())
+                                    .map(|v| v.into());
+                                self
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                (
+                    quote! { ::std::result::Result<reqwest::Body, ::std::string::String> },
+                    quote! { Err(#error.to_string()) },
+                    quote! {},
+                    implementation,
+                )
+            }
+        };
+
+        Ok(BuilderParameter {
+            name,
+            typ,
+            initial_value,
+            finalize,
+            implementation,
+        })
+    }
+
     pub(crate) fn builder_struct(
         &mut self,
         prepared: &PreparedIr,
@@ -1779,236 +1938,21 @@ impl Generator {
         let struct_name = sanitize(&method.operation_id, Case::Pascal);
         let struct_ident = format_ident!("{}", struct_name);
 
-        // Generate an ident for each parameter.
-        let param_names = method
-            .params
-            .iter()
-            .map(|param| format_ident!("{}", param.name))
-            .collect::<Vec<_>>();
-
-        let client_ident = unique_ident_from("client", &param_names);
-
         let mut cloneable = true;
-
-        // Generate the type for each parameter.
-        let param_types = method
+        let parameters = method
             .params
             .iter()
-            .map(|param| match &param.typ {
-                OperationParameterType::Type(type_id) => {
-                    let ty = self.type_space.get_type(type_id)?;
-
-                    // For body parameters only, if there's a builder we'll
-                    // nest that within this builder.
-                    if let (OperationParameterKind::Body(_), Some(builder_name)) =
-                        (&param.kind, ty.builder())
-                    {
-                        Ok(quote! { ::std::result::Result<#builder_name, ::std::string::String> })
-                    } else if !param.optional {
-                        let t = ty.ident();
-                        Ok(quote! { ::std::result::Result<#t, ::std::string::String> })
-                    } else {
-                        let t = ty.ident();
-                        Ok(quote! { ::std::result::Result<::std::option::Option<#t>, ::std::string::String> })
-                    }
-                }
-
-                OperationParameterType::RawBody => {
-                    cloneable = false;
-                    Ok(quote! { ::std::result::Result<reqwest::Body, ::std::string::String> })
-                }
-            })
+            .map(|param| self.builder_parameter(param, &mut cloneable))
             .collect::<Result<Vec<_>>>()?;
-
-        // Generate the default value value for each parameter. For optional
-        // parameters it's just `Ok(None)`. For builders it's
-        // `Ok(Default::default())`. For required, non-builders it's an Err(_)
-        // that indicates which field isn't initialized.
-        let param_values = method
-            .params
+        let param_names = parameters
             .iter()
-            .map(|param| match &param.typ {
-                OperationParameterType::Type(type_id) => {
-                    let ty = self.type_space.get_type(type_id)?;
-
-                    // Fill in the appropriate initial value for the
-                    // param_types generated above.
-                    if let (OperationParameterKind::Body(_), Some(_)) = (&param.kind, ty.builder())
-                    {
-                        Ok(quote! { Ok(::std::default::Default::default()) })
-                    } else if !param.optional {
-                        let err_msg = format!("{} was not initialized", param.name);
-                        Ok(quote! { Err(#err_msg.to_string()) })
-                    } else {
-                        Ok(quote! { Ok(None) })
-                    }
-                }
-
-                OperationParameterType::RawBody => {
-                    let err_msg = format!("{} was not initialized", param.name);
-                    Ok(quote! { Err(#err_msg.to_string()) })
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        // For builders we map `Ok` values to perform a `try_from` to attempt
-        // to convert the builder into the desired type. No "finalization" is
-        // required for non-builders (required or optional).
-        let param_finalize = method
-            .params
-            .iter()
-            .map(|param| match &param.typ {
-                OperationParameterType::Type(type_id) => {
-                    let ty = self.type_space.get_type(type_id)?;
-                    if ty.builder().is_some() {
-                        let type_name = ty.ident();
-                        Ok(quote! {
-                            .and_then(|v| #type_name::try_from(v)
-                                .map_err(|e| e.to_string()))
-                        })
-                    } else {
-                        Ok(quote! {})
-                    }
-                }
-                OperationParameterType::RawBody => Ok(quote! {}),
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        // For each parameter, we need an impl for the builder to let consumers
-        // provide a value.
-        let param_impls = method
-            .params
-            .iter()
-            .map(|param| {
-                let param_name = format_ident!("{}", param.name);
-                match &param.typ {
-                    OperationParameterType::Type(type_id) => {
-                        let ty = self.type_space.get_type(type_id)?;
-                        match (ty.builder(), param.optional) {
-                            // TODO right now optional body parameters are not
-                            // addressed
-                            (Some(_), true) => {
-                                unreachable!()
-                            }
-                            (None, true) => {
-                                let typ = ty.ident();
-                                let err_msg = format!(
-                                    "conversion to `{}` for {} failed",
-                                    ty.name(),
-                                    param.name,
-                                );
-                                Ok(quote! {
-                                    pub fn #param_name<V>(
-                                        mut self,
-                                        value: V,
-                                    ) -> Self
-                                        where V: std::convert::TryInto<#typ>,
-                                    {
-                                        self.#param_name = value.try_into()
-                                            .map(Some)
-                                            .map_err(|_| #err_msg.to_string());
-                                        self
-                                    }
-                                })
-                            }
-                            (None, false) => {
-                                let typ = ty.ident();
-                                let err_msg = format!(
-                                    "conversion to `{}` for {} failed",
-                                    ty.name(),
-                                    param.name,
-                                );
-                                Ok(quote! {
-                                    pub fn #param_name<V>(
-                                        mut self,
-                                        value: V,
-                                    ) -> Self
-                                        where V: std::convert::TryInto<#typ>,
-                                    {
-                                        self.#param_name = value.try_into()
-                                            .map_err(|_| #err_msg.to_string());
-                                        self
-                                    }
-                                })
-                            }
-
-                            // For builder-capable bodies we offer a `body()`
-                            // method that sets the full body (by constructing
-                            // a builder **from** the body type). We also offer
-                            // a `body_map()` method that operates on the
-                            // builder itself.
-                            (Some(builder_name), false) => {
-                                assert_eq!(param.name, "body");
-                                let typ = ty.ident();
-                                let err_msg = format!(
-                                    "conversion to `{}` for {} failed: {{}}",
-                                    ty.name(),
-                                    param.name,
-                                );
-                                Ok(quote! {
-                                    pub fn body<V>(mut self, value: V) -> Self
-                                    where
-                                        V: std::convert::TryInto<#typ>,
-                                        <V as std::convert::TryInto<#typ>>::Error:
-                                            std::fmt::Display,
-                                    {
-                                        self.body = value.try_into()
-                                            .map(From::from)
-                                            .map_err(|s| format!(#err_msg, s));
-                                        self
-                                    }
-
-                                    pub fn body_map<F>(mut self, f: F) -> Self
-                                    where
-                                        F: std::ops::FnOnce(#builder_name)
-                                            -> #builder_name,
-                                    {
-                                        self.body = self.body.map(f);
-                                        self
-                                    }
-                                })
-                            }
-                        }
-                    }
-
-                    OperationParameterType::RawBody => match &param.kind {
-                        OperationParameterKind::Body(
-                            BodyContentType::OctetStream | BodyContentType::Raw(_),
-                        ) => {
-                            let err_msg =
-                                format!("conversion to `reqwest::Body` for {} failed", param.name);
-
-                            Ok(quote! {
-                                pub fn #param_name<B>(mut self, value: B) -> Self
-                                    where B: std::convert::TryInto<reqwest::Body>
-                                {
-                                    self.#param_name = value.try_into()
-                                        .map_err(|_| #err_msg.to_string());
-                                    self
-                                }
-                            })
-                        }
-                        OperationParameterKind::Body(BodyContentType::Text(_)) => {
-                            let err_msg =
-                                format!("conversion to `String` for {} failed", param.name);
-
-                            Ok(quote! {
-                                pub fn #param_name<V>(mut self, value: V) -> Self
-                                    where V: std::convert::TryInto<String>
-                                {
-                                    self.#param_name = value
-                                        .try_into()
-                                        .map_err(|_| #err_msg.to_string())
-                                        .map(|v| v.into());
-                                    self
-                                }
-                            })
-                        }
-                        _ => unreachable!(),
-                    },
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+            .map(|parameter| parameter.name.clone())
+            .collect::<Vec<_>>();
+        let client_ident = unique_ident_from("client", &param_names);
+        let param_types = parameters.iter().map(|parameter| &parameter.typ);
+        let param_values = parameters.iter().map(|parameter| &parameter.initial_value);
+        let param_finalize = parameters.iter().map(|parameter| &parameter.finalize);
+        let param_impls = parameters.iter().map(|parameter| &parameter.implementation);
 
         let MethodSigBody {
             success,
