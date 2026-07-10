@@ -26,6 +26,7 @@ use crate::{
     method::{
         BodyContentType, HttpMethod, OperationMethod, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
+        ResponseSide,
     },
     util::{Case, sanitize},
 };
@@ -176,10 +177,8 @@ impl Generator {
         let axum_path = method.path.as_axum_path();
         let routing_fn = http_routing_fn(&method.method);
 
-        let (success_items, success_kind) =
-            self.extract_responses(method, OperationResponseStatus::is_success_or_default);
-        let (error_items, error_kind) =
-            self.extract_responses(method, OperationResponseStatus::is_error_or_default);
+        let (success_items, success_kind) = self.extract_responses(method, ResponseSide::Success);
+        let (error_items, error_kind) = self.extract_responses(method, ResponseSide::Error);
 
         // Decide whether this operation is supported. Websocket/upgrade and
         // deepObject query parameters get a 501 stub instead of a trait method

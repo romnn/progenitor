@@ -1388,7 +1388,7 @@ impl Generator {
         assert!(body_func.clone().count() <= 1);
 
         let (success_response_items, response_type) =
-            self.extract_responses(method, OperationResponseStatus::is_success_or_default);
+            self.extract_responses(method, ResponseSide::Success);
 
         let success_synth_name = match &response_type {
             OperationResponseKind::Synth(name) => Some(name.clone()),
@@ -1445,7 +1445,7 @@ impl Generator {
 
         // Errors...
         let (error_response_items, error_type) =
-            self.extract_responses(method, OperationResponseStatus::is_error_or_default);
+            self.extract_responses(method, ResponseSide::Error);
 
         let error_synth_name = match &error_type {
             OperationResponseKind::Synth(name) => Some(name.clone()),
@@ -1744,7 +1744,7 @@ impl Generator {
         }
     }
 
-    /// Extract responses that match criteria specified by the `filter`. The
+    /// Extract responses for the requested side of an operation. The
     /// result is a `Vec<OperationResponse>` that enumerates the cases matching
     /// the filter, and an `OperationResponseKind` that represents the common
     /// generated type for those cases. Items may be rewritten relative to
@@ -1753,18 +1753,11 @@ impl Generator {
     pub(crate) fn extract_responses(
         &self,
         method: &OperationMethod,
-        filter: fn(&OperationResponseStatus) -> bool,
+        side: ResponseSide,
     ) -> (Vec<OperationResponse>, OperationResponseKind) {
-        // We need to know whether this is the success or error side to
-        // synthesise a meaningful enum name when multi-kind collapse fails.
-        // The two filters are the only ones the rest of the crate uses, so
-        // identifier equality is a safe discriminator.
-        let success_filter_ptr =
-            OperationResponseStatus::is_success_or_default as *const () as usize;
-        let side = if filter as *const () as usize == success_filter_ptr {
-            ResponseSide::Success
-        } else {
-            ResponseSide::Error
+        let filter: fn(&OperationResponseStatus) -> bool = match side {
+            ResponseSide::Success => OperationResponseStatus::is_success_or_default,
+            ResponseSide::Error => OperationResponseStatus::is_error_or_default,
         };
         self.extract_responses_inner(method, filter, side)
     }
@@ -1789,9 +1782,9 @@ impl Generator {
         // explicit code, and any 4xx/5xx that would otherwise fall through
         // to `default` is picked up by the error-side `extract_responses`
         // call anyway. Pop the trailing `default` so we don't trip the
-        // multi-distinct-kind assert below with a `{Type(success), Type(default)}`
-        // set. No-op for error-side calls because the error filter excludes
-        // 2xx codes.
+        // unstable collapsed response signature with a
+        // `{Type(success), Type(default)}` set. No-op for error-side calls
+        // because the error filter excludes 2xx codes.
         let len = response_items.len();
         if len >= 2
             && matches!(

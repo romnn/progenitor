@@ -9,7 +9,7 @@ use typify::{Type, TypeEnumVariant, TypeSpaceImpl, TypeStructPropInfo};
 
 use crate::{
     Generator, OpenApiDocument, Result,
-    method::{OperationParameterKind, OperationParameterType, OperationResponseStatus},
+    method::{OperationParameterKind, OperationParameterType, ResponseSide},
     util::{Case, sanitize},
 };
 
@@ -189,10 +189,8 @@ impl Generator {
         let fn_name = format_ident!("execute_{}", &method.operation_id);
         let op_name = format_ident!("{}", &method.operation_id);
 
-        let (_, success_kind) =
-            self.extract_responses(method, OperationResponseStatus::is_success_or_default);
-        let (_, error_kind) =
-            self.extract_responses(method, OperationResponseStatus::is_error_or_default);
+        let (_, success_kind) = self.extract_responses(method, ResponseSide::Success);
+        let (_, error_kind) = self.extract_responses(method, ResponseSide::Error);
 
         let execute_and_output = match method.dropshot_paginated {
             // Normal, one-shot API calls.
