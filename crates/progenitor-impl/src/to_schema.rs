@@ -704,7 +704,9 @@ impl Convert<Value> for Option<String> {
 impl Convert<Value> for Option<f64> {
     fn convert(&self) -> Value {
         match self {
-            Some(value) => Value::Number(serde_json::Number::from_f64(*value).unwrap()),
+            Some(value) => {
+                serde_json::Number::from_f64(*value).map_or(Value::Null, Value::Number)
+            }
             None => Value::Null,
         }
     }
@@ -867,6 +869,15 @@ mod tests {
         let schema = oa_schema.convert();
 
         assert_eq!(schema.into_object().instance_type, None);
+    }
+
+    #[test]
+    fn test_non_finite_number_is_omitted() {
+        let nan: serde_json::Value = Some(f64::NAN).convert();
+        let infinity: serde_json::Value = Some(f64::INFINITY).convert();
+
+        assert_eq!(nan, serde_json::Value::Null);
+        assert_eq!(infinity, serde_json::Value::Null);
     }
 
     #[test]
