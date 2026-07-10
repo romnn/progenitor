@@ -91,9 +91,15 @@ pub(crate) enum ParameterKind {
     },
     Query {
         style: QueryStyle,
-        #[allow(dead_code)]
+        #[expect(
+            dead_code,
+            reason = "query serialization does not yet honor allowReserved"
+        )]
         allow_reserved: bool,
-        #[allow(dead_code)]
+        #[expect(
+            dead_code,
+            reason = "query serialization does not yet honor allowEmptyValue"
+        )]
         allow_empty_value: Option<bool>,
     },
     Header {
@@ -126,7 +132,10 @@ pub(crate) struct RequestBody {
     pub description: Option<String>,
     /// Carried for future use; the generator currently treats every body
     /// as required (long-standing upstream TODO).
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "request-body optionality is not implemented yet"
+    )]
     pub required: bool,
     /// Media type → content, in document order. Order is semantic: the
     /// generator prefers a JSON variant and otherwise takes the first.
@@ -140,7 +149,10 @@ pub(crate) struct MediaTypeObject {
     /// form/JSON serialization covers the common cases), but the IR
     /// records their presence for when the generator learns to honor
     /// them.
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "media-type encoding maps are recorded for future support"
+    )]
     pub has_encoding: bool,
 }
 
