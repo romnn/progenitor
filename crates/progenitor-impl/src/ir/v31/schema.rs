@@ -482,12 +482,11 @@ impl SchemaLowering {
         }
         if let Some(name) = reference.strip_prefix("#/components/schemas/") {
             if !name.contains('/') {
-                if self.known.contains(name) {
-                    return Ok(reference.to_string());
-                }
-                return Err(Error::UnexpectedFormat(format!(
-                    "unresolved schema reference: {reference}"
-                )));
+                // Preserve dangling component refs. The document-level IR
+                // repair pass replaces them with permissive placeholder
+                // schemas after every schema has been lowered, matching the
+                // legacy 3.0 frontend's wild-spec tolerance.
+                return Ok(reference.to_string());
             }
             return Err(Error::UnexpectedFormat(format!(
                 "JSON-pointer references into a schema body are not supported: {reference}"
@@ -944,7 +943,7 @@ mod tests {
     }
 
     #[test]
-    fn unresolved_and_external_refs_error() {
+    fn dangling_component_refs_are_preserved_but_external_refs_error() {
         let attempt = |schema: Value| -> crate::Result<_> {
             let schemas: IndexMap<String, Value> =
                 [("Test".to_string(), schema)].into_iter().collect();
@@ -952,8 +951,11 @@ mod tests {
             lowering.lower_components(schemas)
         };
 
-        let err = attempt(json!({"$ref": "#/components/schemas/Missing"})).unwrap_err();
-        assert!(err.to_string().contains("unresolved schema reference"));
+        let lowered = attempt(json!({"$ref": "#/components/schemas/Missing"})).unwrap();
+        assert_eq!(
+            serde_json::to_value(&lowered["Test"]).unwrap(),
+            json!({"$ref": "#/components/schemas/Missing"})
+        );
 
         let err = attempt(json!({"$ref": "./common.yaml#/Foo"})).unwrap_err();
         assert!(err.to_string().contains("external references"));
