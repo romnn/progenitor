@@ -4,7 +4,7 @@
 
 #![deny(missing_docs)]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -456,13 +456,21 @@ impl Generator {
         // Deduplicate by appending _2, _3, … to later occurrences so the
         // generated Rust methods don't collide.
         {
-            let mut seen: ::std::collections::HashMap<String, usize> =
-                ::std::collections::HashMap::new();
+            let mut taken = HashSet::new();
             for method in &mut raw_methods {
-                let count = seen.entry(method.operation_id.clone()).or_insert(0);
-                *count += 1;
-                if *count > 1 {
-                    method.operation_id = format!("{}_{}", method.operation_id, count);
+                let base = method.operation_id.clone();
+                if taken.insert(base.clone()) {
+                    continue;
+                }
+
+                let mut suffix = 2;
+                loop {
+                    let candidate = format!("{base}_{suffix}");
+                    if taken.insert(candidate.clone()) {
+                        method.operation_id = candidate;
+                        break;
+                    }
+                    suffix += 1;
                 }
             }
         }
@@ -855,7 +863,45 @@ pub fn space_out_items(content: String) -> Result<String> {
 mod tests {
     use serde_json::json;
 
-    use crate::Error;
+    use crate::{Error, Generator, parse_openapi_value};
+
+    #[test]
+    fn sanitized_operation_ids_are_globally_unique() {
+        let spec = parse_openapi_value(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "test", "version": "1" },
+            "paths": {
+                "/first": {
+                    "get": {
+                        "operationId": "foo",
+                        "responses": { "204": { "description": "ok" } }
+                    }
+                },
+                "/second": {
+                    "get": {
+                        "operationId": "foo_2",
+                        "responses": { "204": { "description": "ok" } }
+                    }
+                },
+                "/third": {
+                    "get": {
+                        "operationId": "Foo",
+                        "responses": { "204": { "description": "ok" } }
+                    }
+                }
+            }
+        }))
+        .unwrap();
+
+        let prepared = Generator::default().prepare(&spec).unwrap();
+        let operation_ids = prepared
+            .raw_methods
+            .iter()
+            .map(|method| method.operation_id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(operation_ids, ["foo", "foo_2", "foo_3"]);
+    }
 
     #[test]
     fn test_bad_value() {
