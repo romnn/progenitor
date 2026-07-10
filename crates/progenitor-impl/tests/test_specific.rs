@@ -247,6 +247,68 @@ fn cli_output_does_not_depend_on_prior_client_generation() {
     assert_eq!(fresh, warmed);
 }
 
+#[test]
+fn cli_skips_paginated_operations_with_raw_errors() {
+    let spec = progenitor_impl::parse_openapi_value(serde_json::json!({
+        "openapi": "3.0.3",
+        "info": { "title": "test", "version": "1" },
+        "paths": {
+            "/things": {
+                "get": {
+                    "operationId": "listThings",
+                    "x-dropshot-pagination": {},
+                    "parameters": [
+                        {
+                            "name": "page_token",
+                            "in": "query",
+                            "schema": { "type": "string", "nullable": true }
+                        },
+                        {
+                            "name": "limit",
+                            "in": "query",
+                            "schema": { "type": "integer", "nullable": true }
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "page",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "required": ["items", "next_page"],
+                                        "properties": {
+                                            "items": {
+                                                "type": "array",
+                                                "items": { "type": "string" }
+                                            },
+                                            "next_page": {
+                                                "type": "string",
+                                                "nullable": true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "400": {
+                            "description": "raw error",
+                            "content": {
+                                "text/plain": { "schema": { "type": "string" } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }))
+    .unwrap();
+
+    let output = Generator::default().cli(&spec, "crate").unwrap().to_string();
+
+    assert!(!output.contains("list_things"));
+}
+
 #[derive(Debug)]
 struct PaginatedU32sContext {
     all_values: std::ops::Range<u32>,

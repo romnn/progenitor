@@ -8,7 +8,7 @@ use quote::{format_ident, quote};
 use typify::{Type, TypeEnumVariant, TypeSpaceImpl, TypeStructPropInfo};
 
 use crate::{
-    Generator, OpenApiDocument, Result,
+    Error, Generator, OpenApiDocument, Result,
     method::{OperationParameterKind, OperationParameterType, ResponseSide},
     util::{Case, sanitize},
 };
@@ -22,12 +22,17 @@ struct CliOperation {
 impl Generator {
     /// Generate a `clap`-based CLI.
     pub fn cli(&mut self, spec: &OpenApiDocument, crate_name: &str) -> Result<TokenStream> {
-        let raw_methods = self.prepare(spec)?.raw_methods;
+        let raw_methods = self
+            .prepare(spec)?
+            .raw_methods
+            .into_iter()
+            .filter(|method| self.cli_method_supported(method))
+            .collect::<Vec<_>>();
 
         let methods = raw_methods
             .iter()
             .map(|method| self.cli_method(method))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         let cli_ops = methods.iter().map(|op| &op.cli_fn);
         let execute_ops = methods.iter().map(|op| &op.execute_fn);
@@ -156,7 +161,24 @@ impl Generator {
         Ok(code)
     }
 
-    fn cli_method(&mut self, method: &crate::method::OperationMethod) -> CliOperation {
+    fn cli_method_supported(&self, method: &crate::method::OperationMethod) -> bool {
+        if method.dropshot_paginated.is_none() {
+            return true;
+        }
+
+        [ResponseSide::Success, ResponseSide::Error]
+            .into_iter()
+            .map(|side| self.extract_responses(method, side).1)
+            .all(|kind| {
+                !matches!(
+                    kind,
+                    crate::method::OperationResponseKind::Raw
+                        | crate::method::OperationResponseKind::Upgrade
+                )
+            })
+    }
+
+    fn cli_method(&mut self, method: &crate::method::OperationMethod) -> Result<CliOperation> {
         let CliArg {
             parser: parser_args,
             consumer: consumer_args,
@@ -265,8 +287,13 @@ impl Generator {
                         quote! { #ident }
                     }
                     crate::method::OperationResponseKind::None => quote! { () },
-                    crate::method::OperationResponseKind::Raw => todo!(),
-                    crate::method::OperationResponseKind::Upgrade => todo!(),
+                    crate::method::OperationResponseKind::Raw
+                    | crate::method::OperationResponseKind::Upgrade => {
+                        return Err(Error::UnexpectedFormat(format!(
+                            "paginated operation {} has unsupported streaming responses",
+                            method.operation_id
+                        )));
+                    }
                 };
                 let error_output = match error_kind {
                     crate::method::OperationResponseKind::Type(_)
@@ -281,11 +308,10 @@ impl Generator {
                     }
                     crate::method::OperationResponseKind::Raw
                     | crate::method::OperationResponseKind::Upgrade => {
-                        quote! {
-                            {
-                                todo!()
-                            }
-                        }
+                        return Err(Error::UnexpectedFormat(format!(
+                            "paginated operation {} has unsupported streaming errors",
+                            method.operation_id
+                        )));
                     }
                 };
                 quote! {
@@ -345,11 +371,11 @@ impl Generator {
             }
         };
 
-        CliOperation {
+        Ok(CliOperation {
             cli_fn,
             execute_fn,
             execute_trait,
-        }
+        })
     }
 
     fn cli_method_args(&self, method: &crate::method::OperationMethod) -> CliArg {
