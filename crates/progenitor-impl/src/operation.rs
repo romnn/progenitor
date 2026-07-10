@@ -114,16 +114,9 @@ pub(crate) enum OperationParameterType {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum OperationParameterKind {
     Path,
-    Query {
-        required: bool,
-        deep_object: bool,
-    },
-    Header {
-        required: bool,
-    },
-    Cookie {
-        required: bool,
-    },
+    Query { required: bool, deep_object: bool },
+    Header { required: bool },
+    Cookie { required: bool },
     // TODO bodies may be optional
     Body(BodyContentType),
 }

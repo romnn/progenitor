@@ -24,9 +24,9 @@ use crate::{
     Generator, OpenApiDocument, PreparedIr, Result,
     ir::Document,
     operation::{
-        BodyContentType, OperationMethod, OperationParameterKind,
-        OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
-        ResponseSide, synth_variant_name,
+        BodyContentType, OperationMethod, OperationParameterKind, OperationParameterType,
+        OperationResponse, OperationResponseKind, OperationResponseStatus, ResponseSide,
+        synth_variant_name,
     },
     util::{Case, sanitize},
 };
@@ -740,8 +740,7 @@ impl Generator {
             match &param.kind {
                 OperationParameterKind::Path => {}
                 OperationParameterKind::Query {
-                    deep_object: false,
-                    ..
+                    deep_object: false, ..
                 } => {
                     has_query = true;
                     let ident = format_ident!("{}", param.name);
@@ -1015,7 +1014,9 @@ fn response_status_guard(
     success_items: Option<(&[OperationResponse], bool)>,
 ) -> TokenStream {
     let invalid_condition = match side {
-        ResponseSide::Success => response_status_predicate(items, side, is_synth).invalid_condition(),
+        ResponseSide::Success => {
+            response_status_predicate(items, side, is_synth).invalid_condition()
+        }
         ResponseSide::Error => {
             let error_match = response_status_predicate(items, side, is_synth);
             let (success_items, success_is_synth) = success_items.unwrap_or((&[], false));

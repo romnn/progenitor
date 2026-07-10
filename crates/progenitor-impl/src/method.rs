@@ -13,10 +13,10 @@ use quote::{ToTokens, format_ident, quote};
 use crate::{
     Error, Generator, PreparedIr, Result, TagStyle, ir,
     operation::{
-        BodyContentType, DropshotPagination, HttpMethod, OperationMethod, OperationParameter,
-        OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
-        OperationResponseStatus, ResponseSide, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM,
-        is_json_content_type, synth_variant_name,
+        BodyContentType, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM, DropshotPagination,
+        HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
+        OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
+        ResponseSide, is_json_content_type, synth_variant_name,
     },
     util::{Case, sanitize, unique_ident_from},
 };
@@ -38,7 +38,6 @@ struct BuilderImpl {
     sig: TokenStream,
     body: TokenStream,
 }
-
 
 /// Find the lowest common ancestor of `names` in the inheritance graph
 /// described by `supertype_map`. Returns the deepest ancestor present in
@@ -92,7 +91,6 @@ fn collapse_bodyless_with_typed(
         .find(|kind| !matches!(kind, OperationResponseKind::None))
         .cloned()
 }
-
 
 /// Pattern to emit in the success-arm `match` for a given status code.
 /// In the regular (single-kind) case all 2xx statuses collapse into the
@@ -701,7 +699,13 @@ impl Generator {
             error: error_type,
             body,
             extra_types,
-        } = self.method_sig_body(prepared, method, quote! { Self }, quote! { self }, has_inner)?;
+        } = self.method_sig_body(
+            prepared,
+            method,
+            quote! { Self },
+            quote! { self },
+            has_inner,
+        )?;
 
         let method_impl = quote! {
             #[doc = #doc_comment]
@@ -2715,15 +2719,19 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Resul
          }| {
             match (a_kind, b_kind) {
                 // Path params are first and are in positional order.
-                (OperationParameterKind::Path, OperationParameterKind::Path) => {
-                    path_positions
-                        .get(a_name.as_str())
-                        .cmp(&path_positions.get(b_name.as_str()))
+                (OperationParameterKind::Path, OperationParameterKind::Path) => path_positions
+                    .get(a_name.as_str())
+                    .cmp(&path_positions.get(b_name.as_str())),
+                (OperationParameterKind::Path, OperationParameterKind::Query { .. }) => {
+                    Ordering::Less
                 }
-                (OperationParameterKind::Path, OperationParameterKind::Query { .. }) => Ordering::Less,
                 (OperationParameterKind::Path, OperationParameterKind::Body(_)) => Ordering::Less,
-                (OperationParameterKind::Path, OperationParameterKind::Header { .. }) => Ordering::Less,
-                (OperationParameterKind::Path, OperationParameterKind::Cookie { .. }) => Ordering::Less,
+                (OperationParameterKind::Path, OperationParameterKind::Header { .. }) => {
+                    Ordering::Less
+                }
+                (OperationParameterKind::Path, OperationParameterKind::Cookie { .. }) => {
+                    Ordering::Less
+                }
 
                 // Query params are in lexicographic order.
                 (OperationParameterKind::Query { .. }, OperationParameterKind::Body(_)) => {
@@ -2793,8 +2801,7 @@ mod tests {
     use super::{
         BodyContentType, HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
-        collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
-        sort_params,
+        collapse_bodyless_with_typed, find_common_supertype, is_json_content_type, sort_params,
     };
 
     fn raw_parameter(api_name: &str, kind: OperationParameterKind) -> OperationParameter {
@@ -2821,10 +2828,7 @@ mod tests {
     #[test]
     fn sort_params_rejects_duplicate_bodies() {
         let mut params = [
-            raw_parameter(
-                "first",
-                OperationParameterKind::Body(BodyContentType::Json),
-            ),
+            raw_parameter("first", OperationParameterKind::Body(BodyContentType::Json)),
             raw_parameter(
                 "second",
                 OperationParameterKind::Body(BodyContentType::Json),

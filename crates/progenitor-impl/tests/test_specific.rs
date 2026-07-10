@@ -238,7 +238,10 @@ fn cli_output_does_not_depend_on_prior_client_generation() {
     }))
     .unwrap();
 
-    let fresh = Generator::default().cli(&spec, "crate").unwrap().to_string();
+    let fresh = Generator::default()
+        .cli(&spec, "crate")
+        .unwrap()
+        .to_string();
 
     let mut warmed = Generator::default();
     warmed.generate_tokens(&spec).unwrap();
@@ -304,7 +307,10 @@ fn cli_skips_paginated_operations_with_raw_errors() {
     }))
     .unwrap();
 
-    let output = Generator::default().cli(&spec, "crate").unwrap().to_string();
+    let output = Generator::default()
+        .cli(&spec, "crate")
+        .unwrap()
+        .to_string();
 
     assert!(!output.contains("list_things"));
 }

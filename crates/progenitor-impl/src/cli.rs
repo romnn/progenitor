@@ -221,8 +221,7 @@ impl Generator {
         let fn_name = format_ident!("execute_{}", &method.operation_id);
         let op_name = format_ident!("{}", &method.operation_id);
 
-        let (_, success_kind) =
-            self.extract_responses(prepared, method, ResponseSide::Success);
+        let (_, success_kind) = self.extract_responses(prepared, method, ResponseSide::Success);
         let (_, error_kind) = self.extract_responses(prepared, method, ResponseSide::Error);
 
         let execute_and_output = match method.dropshot_paginated {

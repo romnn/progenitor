@@ -8,8 +8,8 @@ use quote::{ToTokens, format_ident, quote};
 use crate::{
     Generator, OpenApiDocument, Result,
     operation::{
-        BodyContentType, OperationParameter, OperationParameterKind,
-        OperationParameterType, OperationResponse, OperationResponseStatus,
+        BodyContentType, OperationParameter, OperationParameterKind, OperationParameterType,
+        OperationResponse, OperationResponseStatus,
     },
     util::{Case, sanitize},
 };
@@ -200,57 +200,63 @@ impl Generator {
                                 },
                             )
                         }
-                        OperationParameterKind::Query { .. } => if *optional {
-                            (
-                                false,
-                                quote! {
-                                    if let Some(value) = value.into() {
-                                        Self(self.0.query_param(#api_name, #value_to_str))
-                                    } else {
-                                        Self(self.0.query_param_missing(#api_name))
-                                    }
-                                },
-                            )
-                        } else {
-                            (
-                                true,
-                                quote! { Self(self.0.query_param(#api_name, #value_to_str)) },
-                            )
-                        },
-                        OperationParameterKind::Header { .. } => if *optional {
-                            (
-                                false,
-                                quote! {
-                                    if let Some(value) = value.into() {
-                                        Self(self.0.header(#api_name, #value_to_str))
-                                    } else {
-                                        Self(self.0.header_missing(#api_name))
-                                    }
-                                },
-                            )
-                        } else {
-                            (
-                                true,
-                                quote! { Self(self.0.header(#api_name, #value_to_str)) },
-                            )
-                        },
-                        OperationParameterKind::Cookie { .. } => if *optional {
-                            (
-                                false,
-                                quote! {
-                                    if let Some(value) = value.into() {
-                                        Self(self.0.cookie(#api_name, #value_to_str))
-                                    } else {
-                                        Self(self.0.cookie_missing(#api_name))
-                                    }
-                                },
-                            )
-                        } else {
-                            (
-                                true,
-                                quote! { Self(self.0.cookie(#api_name, #value_to_str)) },
-                            )
-                        },
+                        OperationParameterKind::Query { .. } => {
+                            if *optional {
+                                (
+                                    false,
+                                    quote! {
+                                        if let Some(value) = value.into() {
+                                            Self(self.0.query_param(#api_name, #value_to_str))
+                                        } else {
+                                            Self(self.0.query_param_missing(#api_name))
+                                        }
+                                    },
+                                )
+                            } else {
+                                (
+                                    true,
+                                    quote! { Self(self.0.query_param(#api_name, #value_to_str)) },
+                                )
+                            }
+                        }
+                        OperationParameterKind::Header { .. } => {
+                            if *optional {
+                                (
+                                    false,
+                                    quote! {
+                                        if let Some(value) = value.into() {
+                                            Self(self.0.header(#api_name, #value_to_str))
+                                        } else {
+                                            Self(self.0.header_missing(#api_name))
+                                        }
+                                    },
+                                )
+                            } else {
+                                (
+                                    true,
+                                    quote! { Self(self.0.header(#api_name, #value_to_str)) },
+                                )
+                            }
+                        }
+                        OperationParameterKind::Cookie { .. } => {
+                            if *optional {
+                                (
+                                    false,
+                                    quote! {
+                                        if let Some(value) = value.into() {
+                                            Self(self.0.cookie(#api_name, #value_to_str))
+                                        } else {
+                                            Self(self.0.cookie_missing(#api_name))
+                                        }
+                                    },
+                                )
+                            } else {
+                                (
+                                    true,
+                                    quote! { Self(self.0.cookie(#api_name, #value_to_str)) },
+                                )
+                            }
+                        }
                         OperationParameterKind::Body(body_content_type) => match typ {
                             OperationParameterType::Type(_) => (
                                 true,
