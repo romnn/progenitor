@@ -7,6 +7,9 @@ license.workspace = true
 repository = "https://github.com/oxidecomputer/progenitor.git"
 description = "An OpenAPI client generator - client support"
 
+[lints]
+workspace = true
+
 [dependencies]
 bytes = { workspace = true }
 futures-core = { workspace = true }

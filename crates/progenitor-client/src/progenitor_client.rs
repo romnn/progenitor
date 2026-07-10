@@ -21,14 +21,16 @@ type InnerByteStream = std::pin::Pin<Box<dyn Stream<Item = reqwest::Result<Bytes
 pub struct ByteStream(InnerByteStream);
 
 impl ByteStream {
-    /// Creates a new ByteStream
+    /// Creates a new `ByteStream`.
     ///
     /// Useful for generating test fixtures.
+    #[must_use]
     pub fn new(inner: InnerByteStream) -> Self {
         Self(inner)
     }
 
     /// Consumes the [`ByteStream`] and return its inner [`Stream`].
+    #[must_use]
     pub fn into_inner(self) -> InnerByteStream {
         self.0
     }
@@ -52,7 +54,7 @@ impl DerefMut for ByteStream {
 pub trait ClientInfo<Inner> {
     /// Get the version of this API.
     ///
-    /// This string is pulled directly from the source OpenAPI document and may
+    /// This string is pulled directly from the source `OpenAPI` document and may
     /// be in any format the API selects.
     fn api_version() -> &'static str;
 
@@ -89,7 +91,7 @@ where
 
 /// Information about an operation, consumed by hook implementations.
 pub struct OperationInfo {
-    /// The corresponding operationId from the source OpenAPI document.
+    /// The corresponding `operationId` from the source `OpenAPI` document.
     pub operation_id: &'static str,
 }
 
@@ -203,6 +205,7 @@ impl ResponseValue<reqwest::Upgraded> {
 
 impl ResponseValue<ByteStream> {
     #[doc(hidden)]
+    #[must_use]
     pub fn stream(response: reqwest::Response) -> Self {
         let status = response.status();
         let headers = response.headers().clone();
@@ -216,9 +219,11 @@ impl ResponseValue<ByteStream> {
 
 impl ResponseValue<()> {
     #[doc(hidden)]
+    #[must_use]
     pub fn empty(response: reqwest::Response) -> Self {
         let status = response.status();
         let headers = response.headers().clone();
+        drop(response);
         // TODO is there anything we want to do to confirm that there is no
         // content?
         Self {
@@ -241,7 +246,7 @@ impl<T> ResponseValue<T> {
         }
     }
 
-    /// Consumes the ResponseValue, returning the wrapped value.
+    /// Consumes the `ResponseValue`, returning the wrapped value.
     pub fn into_inner(self) -> T {
         self.inner
     }
@@ -296,6 +301,7 @@ impl<T> ResponseValue<T> {
 
 impl ResponseValue<ByteStream> {
     /// Consumes the `ResponseValue`, returning the wrapped [`Stream`].
+    #[must_use]
     pub fn into_inner_stream(self) -> InnerByteStream {
         self.into_inner().into_inner()
     }
@@ -363,13 +369,13 @@ impl<E> Error<E> {
     /// Returns the status code, if the error was generated from a response.
     pub fn status(&self) -> Option<reqwest::StatusCode> {
         match self {
-            Error::InvalidRequest(_) => None,
-            Error::Custom(_) => None,
-            Error::CommunicationError(e) => e.status(),
+            Error::InvalidRequest(_) | Error::Custom(_) | Error::InvalidResponsePayload(_, _) => {
+                None
+            }
+            Error::CommunicationError(e)
+            | Error::InvalidUpgrade(e)
+            | Error::ResponseBodyError(e) => e.status(),
             Error::ErrorResponse(rv) => Some(rv.status()),
-            Error::InvalidUpgrade(e) => e.status(),
-            Error::ResponseBodyError(e) => e.status(),
-            Error::InvalidResponsePayload(_, _) => None,
             Error::UnexpectedResponse(r) => Some(r.status()),
         }
     }
@@ -400,9 +406,9 @@ impl<E> Error<E> {
                 //   it is appropriate to check for retryability.
                 e.status().is_some_and(is_retryable_status)
             }
-            Error::InvalidRequest(_) => false,
-            Error::InvalidResponsePayload(_, _) => false,
-            Error::Custom(_) => false,
+            Error::InvalidRequest(_) | Error::InvalidResponsePayload(_, _) | Error::Custom(_) => {
+                false
+            }
         }
     }
 
@@ -457,29 +463,29 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::InvalidRequest(s) => {
-                write!(f, "Invalid Request: {}", s)?;
+                write!(f, "Invalid Request: {s}")?;
             }
             Error::CommunicationError(e) => {
-                write!(f, "Communication Error: {}", e)?;
+                write!(f, "Communication Error: {e}")?;
             }
             Error::ErrorResponse(rve) => {
                 write!(f, "Error Response: ")?;
                 rve.fmt_info(f)?;
             }
             Error::InvalidUpgrade(e) => {
-                write!(f, "Invalid Response Upgrade: {}", e)?;
+                write!(f, "Invalid Response Upgrade: {e}")?;
             }
             Error::ResponseBodyError(e) => {
-                write!(f, "Invalid Response Body Bytes: {}", e)?;
+                write!(f, "Invalid Response Body Bytes: {e}")?;
             }
             Error::InvalidResponsePayload(b, e) => {
-                write!(f, "Invalid Response Payload ({:?}): {}", b, e)?;
+                write!(f, "Invalid Response Payload ({b:?}): {e}")?;
             }
             Error::UnexpectedResponse(r) => {
-                write!(f, "Unexpected Response: {:?}", r)?;
+                write!(f, "Unexpected Response: {r:?}")?;
             }
             Error::Custom(s) => {
-                write!(f, "Error: {}", s)?;
+                write!(f, "Error: {s}")?;
             }
         }
 
@@ -537,9 +543,9 @@ where
 {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::CommunicationError(e) => Some(e),
-            Error::InvalidUpgrade(e) => Some(e),
-            Error::ResponseBodyError(e) => Some(e),
+            Error::CommunicationError(e)
+            | Error::InvalidUpgrade(e)
+            | Error::ResponseBodyError(e) => Some(e),
             Error::InvalidResponsePayload(_b, e) => Some(e),
             _ => None,
         }
@@ -574,6 +580,7 @@ const PATH_SET: &percent_encoding::AsciiSet = &percent_encoding::CONTROLS
 
 #[doc(hidden)]
 /// Percent encode input string.
+#[must_use]
 pub fn encode_path(pc: &str) -> String {
     percent_encoding::utf8_percent_encode(pc, PATH_SET).to_string()
 }

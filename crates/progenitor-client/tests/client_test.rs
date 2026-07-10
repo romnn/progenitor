@@ -21,7 +21,21 @@ fn encode_query_param<T: Serialize>(param_name: &str, value: &T) -> Result<Strin
     QueryParam::new(param_name, value).serialize(serializer)?;
     drop(pairs);
 
-    Ok(url.query().unwrap().to_owned())
+    Ok(url
+        .query()
+        .ok_or_else(|| std::io::Error::other("serialized query is absent"))?
+        .to_owned())
+}
+
+#[derive(Serialize)]
+#[serde(transparent)]
+struct Name(String);
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum NameOrId {
+    Name(Name),
+    Id(uuid::Uuid),
 }
 
 #[test]
@@ -190,15 +204,6 @@ fn test_query_enum_untagged() {
     let result = encode_query_param("paramName", &value).unwrap();
     assert_eq!(result, "paramName=1&paramName=2&paramName=3&paramName=4");
 
-    #[derive(Serialize)]
-    #[serde(transparent)]
-    struct Name(String);
-    #[derive(Serialize)]
-    #[serde(untagged)]
-    enum NameOrId {
-        Name(Name),
-        Id(uuid::Uuid),
-    }
     let value = Some(NameOrId::Name(Name("xyz".to_string())));
     let result = encode_query_param("paramName", &value).unwrap();
     assert_eq!(result, "paramName=xyz");
