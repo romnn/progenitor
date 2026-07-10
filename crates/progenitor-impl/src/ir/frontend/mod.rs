@@ -1,6 +1,6 @@
 // Copyright 2026 Oxide Computer Company
 
-//! Tolerant OpenAPI 3.0/3.1 frontend that lowers documents into the
+//! Tolerant `OpenAPI` 3.0/3.1 frontend that lowers documents into the
 //! version-agnostic [`super`] model.
 //!
 //! The document structure (paths, operations, parameters, bodies,
@@ -348,7 +348,7 @@ fn parse_status(status: &str, context: &str) -> Result<ir::ResponseStatus> {
     }
     let bytes = status.as_bytes();
     if bytes.len() == 3 && bytes[0].is_ascii_digit() && status[1..].eq_ignore_ascii_case("xx") {
-        return Ok(ir::ResponseStatus::Range((bytes[0] - b'0') as u16));
+        return Ok(ir::ResponseStatus::Range(u16::from(bytes[0] - b'0')));
     }
     Err(Error::UnexpectedFormat(format!(
         "invalid response status `{status}` in {context}"

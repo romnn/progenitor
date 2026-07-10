@@ -1,8 +1,8 @@
 // Copyright 2026 Oxide Computer Company
 
-//! OpenAPI schema dialect → JSON Schema draft-07 lowering.
+//! `OpenAPI` schema dialect → JSON Schema draft-07 lowering.
 //!
-//! OpenAPI 3.1 schemas are full JSON Schema 2020-12 and OpenAPI 3.0 has its
+//! `OpenAPI` 3.1 schemas are full JSON Schema 2020-12 and `OpenAPI` 3.0 has its
 //! own schema dialect, while typify consumes the schemars 0.8 draft-07 model.
 //! This module rewrites schema values as a pure `Value → Value` transformation;
 //! deserialization into `schemars` happens as a separate final step

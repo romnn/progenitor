@@ -381,23 +381,20 @@ impl Generator {
         items: &[OperationResponse],
         default_status: u16,
     ) -> TokenStream {
-        match kind {
-            OperationResponseKind::Synth(name) => {
-                self.synth_success_encoder(operation_id, name, items)
-            }
-            _ => {
-                let success_status_guard =
-                    response_status_guard(operation_id, items, ResponseSide::Success, false, None);
-                let success_encode = self.success_encoder(kind, items);
-                quote! {
-                    let (__status_override, __headers, __body) = response.into_parts();
-                    let __status = match __status_override {
-                        Some(status) => status,
-                        None => http::StatusCode::from_u16(#default_status).unwrap(),
-                    };
-                    #success_status_guard
-                    #success_encode
-                }
+        if let OperationResponseKind::Synth(name) = kind {
+            self.synth_success_encoder(operation_id, name, items)
+        } else {
+            let success_status_guard =
+                response_status_guard(operation_id, items, ResponseSide::Success, false, None);
+            let success_encode = self.success_encoder(kind, items);
+            quote! {
+                let (__status_override, __headers, __body) = response.into_parts();
+                let __status = match __status_override {
+                    Some(status) => status,
+                    None => http::StatusCode::from_u16(#default_status).unwrap(),
+                };
+                #success_status_guard
+                #success_encode
             }
         }
     }
@@ -417,20 +414,17 @@ impl Generator {
             false,
             Some((success_items, success_is_synth)),
         );
-        match kind {
-            OperationResponseKind::Synth(name) => {
-                let error_encode = self.synth_error_encoder(operation_id, name, items);
-                quote! {
-                    #error_status_guard
-                    #error_encode
-                }
+        if let OperationResponseKind::Synth(name) = kind {
+            let error_encode = self.synth_error_encoder(operation_id, name, items);
+            quote! {
+                #error_status_guard
+                #error_encode
             }
-            _ => {
-                let error_encode = self.error_encoder(kind, items);
-                quote! {
-                    #error_status_guard
-                    #error_encode
-                }
+        } else {
+            let error_encode = self.error_encoder(kind, items);
+            quote! {
+                #error_status_guard
+                #error_encode
             }
         }
     }
@@ -1188,11 +1182,10 @@ fn synth_variant_status_guard(
         OperationResponseStatus::Range(range) => {
             let min = range * 100;
             let max = min + 99;
-            match earlier_match {
-                Some(earlier_match) => {
-                    quote! { !matches!(__code, #min..=#max) || #earlier_match }
-                }
-                None => quote! { !matches!(__code, #min..=#max) },
+            if let Some(earlier_match) = earlier_match {
+                quote! { !matches!(__code, #min..=#max) || #earlier_match }
+            } else {
+                quote! { !matches!(__code, #min..=#max) }
             }
         }
         OperationResponseStatus::Default => match earlier_match {

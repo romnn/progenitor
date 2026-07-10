@@ -1,6 +1,6 @@
-# unwrap/expect/panic are denied in production code (workspace lints), but
-# they are the idiomatic failure mode inside tests — a failing test SHOULD
-# panic. These flags scope the denies to non-test code.
+# Runtime and tool crates deny unwrap/expect/panic through the workspace lint
+# policy. progenitor-impl keeps an explicit, documented exception list for
+# validated generation invariants. Tests may use these failure modes directly.
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true

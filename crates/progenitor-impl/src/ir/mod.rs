@@ -1,8 +1,8 @@
 // Copyright 2026 Oxide Computer Company
 
-//! Version-agnostic internal model of an OpenAPI document.
+//! Version-agnostic internal model of an `OpenAPI` document.
 //!
-//! A tolerant frontend parses supported OpenAPI documents and lowers them
+//! A tolerant frontend parses supported `OpenAPI` documents and lowers them
 //! into this model. Everything downstream — type generation, method
 //! generation, the CLI and httpmock emitters — consumes only this model, so
 //! supporting schema-dialect differences never touches generator code.
@@ -20,7 +20,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use crate::{Error, Result};
 
-/// A parsed and validated OpenAPI document, ready for code generation.
+/// A parsed and validated `OpenAPI` document, ready for code generation.
 ///
 /// Obtain one from [`crate::parse_openapi_str`] / [`crate::parse_openapi_value`],
 /// which accept any supported spec version. Callers holding an
@@ -181,10 +181,9 @@ pub(crate) fn validate(doc: &Document) -> Result<()> {
     let mut opids = HashSet::new();
     for operation in &doc.operations {
         if let Some(oid) = operation.operation_id.as_ref() {
-            if !opids.insert(oid.to_string()) {
+            if !opids.insert(oid.clone()) {
                 return Err(Error::UnexpectedFormat(format!(
-                    "duplicate operation ID: {}",
-                    oid,
+                    "duplicate operation ID: {oid}",
                 )));
             }
         } else {

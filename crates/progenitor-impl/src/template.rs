@@ -22,7 +22,7 @@ impl PathTemplate {
     pub fn compile(&self, rename: HashMap<&String, &String>, client: TokenStream) -> TokenStream {
         let mut fmt = String::new();
         fmt.push_str("{}");
-        for c in self.components.iter() {
+        for c in &self.components {
             match c {
                 Component::Constant(n) => fmt.push_str(n),
                 Component::Parameter(_) => fmt.push_str("{}"),
@@ -35,7 +35,7 @@ impl PathTemplate {
                     "{}",
                     rename
                         .get(&n)
-                        .unwrap_or_else(|| panic!("missing path name mapping {}", n)),
+                        .unwrap_or_else(|| panic!("missing path name mapping {n}")),
                 );
                 Some(quote! {
                     encode_path(&#param.to_string())
@@ -54,7 +54,7 @@ impl PathTemplate {
         self.components
             .iter()
             .filter_map(|c| match c {
-                Component::Parameter(name) => Some(name.to_string()),
+                Component::Parameter(name) => Some(name.clone()),
                 Component::Constant(_) => None,
             })
             .collect()
@@ -69,7 +69,7 @@ impl PathTemplate {
                 Component::Parameter(_) => "[^/]*".to_string(),
             })
             .collect::<String>();
-        format!("^{}$", inner)
+        format!("^{inner}$")
     }
 
     pub fn as_wildcard_param(&self, param: &str) -> String {
@@ -82,17 +82,17 @@ impl PathTemplate {
                 Component::Parameter(_) => ".*".to_string(),
             })
             .collect::<String>();
-        format!("^{}$", inner)
+        format!("^{inner}$")
     }
 
     /// Render the path for axum 0.8 routing.
     ///
-    /// OpenAPI path templates use `{name}` for parameters, and axum 0.8 uses the
+    /// `OpenAPI` path templates use `{name}` for parameters, and axum 0.8 uses the
     /// same `{name}` brace syntax (it dropped the 0.7 `:name` form), so this is
     /// nearly an identity transform: constants are emitted verbatim and each
     /// parameter is rendered as `{wire_name}`. The parser already normalises
     /// adjacent slashes into the constant components, so no rewriting is needed
-    /// here. There is no catch-all (`{*rest}`) form in the OpenAPI grammar we
+    /// here. There is no catch-all (`{*rest}`) form in the `OpenAPI` grammar we
     /// accept, so we never emit one.
     pub fn as_axum_path(&self) -> String {
         self.to_string()
@@ -146,10 +146,7 @@ pub fn parse(t: &str) -> Result<PathTemplate> {
             State::Parameter => {
                 if c == '}' {
                     if a.contains('/') || a.contains('{') {
-                        return Err(Error::InvalidPath(format!(
-                            "invalid parameter name {:?}",
-                            a,
-                        )));
+                        return Err(Error::InvalidPath(format!("invalid parameter name {a:?}")));
                     }
                     components.push(Component::Parameter(a));
                     a = String::new();
@@ -176,7 +173,7 @@ impl fmt::Display for PathTemplate {
         for component in &self.components {
             match component {
                 Component::Constant(s) => f.write_str(s)?,
-                Component::Parameter(s) => write!(f, "{{{}}}", s)?,
+                Component::Parameter(s) => write!(f, "{{{s}}}")?,
             }
         }
         Ok(())
@@ -271,13 +268,13 @@ mod tests {
             ),
         ];
 
-        for (path, expect_string, want) in trials.iter() {
+        for (path, expect_string, want) in &trials {
             match parse(path) {
                 Ok(t) => {
                     assert_eq!(&t, want);
                     assert_eq!(t.to_string().as_str(), *expect_string);
                 }
-                Err(e) => panic!("path {} {}", path, e),
+                Err(e) => panic!("path {path} {e}"),
             }
         }
     }
@@ -293,10 +290,10 @@ mod tests {
             ),
         ];
 
-        for (path, want) in trials.iter() {
+        for (path, want) in &trials {
             match parse(path) {
                 Ok(t) => assert_eq!(&t.names(), want),
-                Err(e) => panic!("path {} {}", path, e),
+                Err(e) => panic!("path {path} {e}"),
             }
         }
     }
@@ -357,10 +354,10 @@ mod tests {
             ),
         ];
 
-        for (path, want) in trials.iter() {
+        for (path, want) in &trials {
             match parse(path) {
                 Ok(t) => assert_eq!(t.as_axum_path().as_str(), *want),
-                Err(e) => panic!("path {} {}", path, e),
+                Err(e) => panic!("path {path} {e}"),
             }
         }
     }

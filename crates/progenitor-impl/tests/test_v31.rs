@@ -1,7 +1,7 @@
 // Copyright 2026 Oxide Computer Company
 
-//! Twin-spec equivalence: the same API authored as OpenAPI 3.0 and as
-//! OpenAPI 3.1 must generate byte-identical clients. This is the
+//! Twin-spec equivalence: the same API authored as `OpenAPI` 3.0 and as
+//! `OpenAPI` 3.1 must generate byte-identical clients. This is the
 //! acceptance bar for the 3.1 frontend — typify embeds schema values in
 //! doc comments, so anything short of byte-equal lowering shows up here.
 

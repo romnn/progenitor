@@ -4,7 +4,7 @@
 //!
 //! Two classes of wild-spec damage are handled here:
 //!
-//! - components filed under the wrong `components` kind (PagerDuty stores
+//! - components filed under the wrong `components` kind (`PagerDuty` stores
 //!   a response-shaped object under `components.requestBodies` and
 //!   references it from response positions);
 //! - JSON-pointer `$ref`s that reach *inside* a component body, such as

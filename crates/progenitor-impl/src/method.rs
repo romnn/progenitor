@@ -391,11 +391,10 @@ impl Generator {
                         })
                     }
                     ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
-                        "unsupported style of path parameter {:#?}",
-                        style,
+                        "unsupported style of path parameter {style:#?}",
                     ))),
                     ir::ParameterKind::Query { style, .. } => Err(Error::UnexpectedFormat(
-                        format!("unsupported style of query parameter {:#?}", style,),
+                        format!("unsupported style of query parameter {style:#?}"),
                     )),
                 }
             })
@@ -433,7 +432,7 @@ impl Generator {
                     ..Default::default()
                 }
                 .into();
-                let type_name = sanitize(&format!("{}-{}", operation_id, name), Case::Pascal);
+                let type_name = sanitize(&format!("{operation_id}-{name}"), Case::Pascal);
                 let type_id = self
                     .type_space
                     .add_type_with_name(&schema, Some(type_name))?;
@@ -520,7 +519,7 @@ impl Generator {
                         // a common `allOf` ancestor.
                         schema_name = schema_ref.ref_name.clone();
                         let name = sanitize(
-                            &format!("{}-response", operation.operation_id.as_ref().unwrap(),),
+                            &format!("{}-response", operation.operation_id.as_ref().unwrap()),
                             Case::Pascal,
                         );
                         let type_id = self
@@ -552,8 +551,7 @@ impl Generator {
                 if matches!(
                     status_code,
                     OperationResponseStatus::Default
-                        | OperationResponseStatus::Code(101)
-                        | OperationResponseStatus::Code(200..=299)
+                        | OperationResponseStatus::Code(101 | 200..=299)
                         | OperationResponseStatus::Range(2)
                 ) {
                     success = true;
@@ -593,8 +591,7 @@ impl Generator {
 
         if dropshot_websocket && dropshot_paginated.is_some() {
             return Err(Error::InvalidExtension(format!(
-                "conflicting extensions in {:?}",
-                operation_id
+                "conflicting extensions in {operation_id:?}"
             )));
         }
         if dropshot_websocket
@@ -604,8 +601,7 @@ impl Generator {
                 .is_none()
         {
             return Err(Error::InvalidExtension(format!(
-                "websocket endpoint {:?} must include an explicit 101 response code",
-                operation_id
+                "websocket endpoint {operation_id:?} must include an explicit 101 response code"
             )));
         }
 
@@ -660,8 +656,9 @@ impl Generator {
                         quote! { ::std::option::Option<#t> }
                     }
                     (OperationParameterType::RawBody, false) => match &param.kind {
-                        OperationParameterKind::Body(BodyContentType::OctetStream)
-                        | OperationParameterKind::Body(BodyContentType::Raw(_)) => {
+                        OperationParameterKind::Body(
+                            BodyContentType::OctetStream | BodyContentType::Raw(_),
+                        ) => {
                             quote! { B }
                         }
                         OperationParameterKind::Body(BodyContentType::Text(_)) => {
@@ -681,8 +678,9 @@ impl Generator {
             param.typ == OperationParameterType::RawBody
                 && matches!(
                     &param.kind,
-                    OperationParameterKind::Body(BodyContentType::OctetStream)
-                        | OperationParameterKind::Body(BodyContentType::Raw(_))
+                    OperationParameterKind::Body(
+                        BodyContentType::OctetStream | BodyContentType::Raw(_)
+                    )
                 )
         });
 
@@ -908,15 +906,7 @@ impl Generator {
                 OperationParameterKind::Cookie { .. } => {
                     let cookie_name = &param.api_name;
                     let cookie_ident = format_ident!("{}", &param.name);
-                    let cookie = if !param.optional {
-                        quote! {
-                            cookie_header_values.push(format!(
-                                "{}={}",
-                                #cookie_name,
-                                #cookie_ident,
-                            ));
-                        }
-                    } else {
+                    let cookie = if param.optional {
                         quote! {
                             if let Some(value) = #cookie_ident {
                                 cookie_header_values.push(format!(
@@ -925,6 +915,14 @@ impl Generator {
                                     value,
                                 ));
                             }
+                        }
+                    } else {
+                        quote! {
+                            cookie_header_values.push(format!(
+                                "{}={}",
+                                #cookie_name,
+                                #cookie_ident,
+                            ));
                         }
                     };
                     Some(cookie)
@@ -940,14 +938,7 @@ impl Generator {
                 OperationParameterKind::Header { .. } => {
                     let hn = &param.api_name;
                     let hn_ident = format_ident!("{}", &param.name);
-                    let res = if !param.optional {
-                        quote! {
-                            header_map.append(
-                                #hn,
-                                #hn_ident.to_string().try_into()?
-                            );
-                        }
-                    } else {
+                    let res = if param.optional {
                         quote! {
                             if let Some(value) = #hn_ident {
                                 header_map.append(
@@ -955,6 +946,13 @@ impl Generator {
                                     value.to_string().try_into()?
                                 );
                             }
+                        }
+                    } else {
+                        quote! {
+                            header_map.append(
+                                #hn,
+                                #hn_ident.to_string().try_into()?
+                            );
                         }
                     };
                     Some(res)
@@ -1042,11 +1040,9 @@ impl Generator {
                     .body(body)
                 }),
                 (
-                    OperationParameterKind::Body(BodyContentType::Text(mime_type)),
-                    OperationParameterType::RawBody,
-                )
-                | (
-                    OperationParameterKind::Body(BodyContentType::Raw(mime_type)),
+                    OperationParameterKind::Body(
+                        BodyContentType::Text(mime_type) | BodyContentType::Raw(mime_type),
+                    ),
                     OperationParameterType::RawBody,
                 ) => Some(quote! {
                     // Set the content type (this is handled by helper
@@ -1262,9 +1258,10 @@ impl Generator {
             quote! { _ => Err(Error::UnexpectedResponse(#response_ident)), }
         };
 
-        let inner = match has_inner {
-            true => quote! { &#client_value.inner, },
-            false => quote! {},
+        let inner = if has_inner {
+            quote! { &#client_value.inner, }
+        } else {
+            quote! {}
         };
         let pre_hook = self.settings.pre_hook.as_ref().map(|hook| {
             quote! {
@@ -1724,7 +1721,7 @@ impl Generator {
     /// }
     /// ```
     ///
-    /// The Client's operation_id method simply invokes the builder's new
+    /// The Client's `operation_id` method simply invokes the builder's new
     /// method, which assigns an error value to mandatory field and a
     /// `Ok(None)` value to optional ones:
     /// ```ignore
@@ -1975,10 +1972,11 @@ impl Generator {
                     }
 
                     OperationParameterType::RawBody => match &param.kind {
-                        OperationParameterKind::Body(BodyContentType::OctetStream)
-                        | OperationParameterKind::Body(BodyContentType::Raw(_)) => {
+                        OperationParameterKind::Body(
+                            BodyContentType::OctetStream | BodyContentType::Raw(_),
+                        ) => {
                             let err_msg =
-                                format!("conversion to `reqwest::Body` for {} failed", param.name,);
+                                format!("conversion to `reqwest::Body` for {} failed", param.name);
 
                             Ok(quote! {
                                 pub fn #param_name<B>(mut self, value: B) -> Self
@@ -1992,7 +1990,7 @@ impl Generator {
                         }
                         OperationParameterKind::Body(BodyContentType::Text(_)) => {
                             let err_msg =
-                                format!("conversion to `String` for {} failed", param.name,);
+                                format!("conversion to `String` for {} failed", param.name);
 
                             Ok(quote! {
                                 pub fn #param_name<V>(mut self, value: V) -> Self
@@ -2178,7 +2176,7 @@ impl Generator {
         let struct_doc = match (tag_style, method.tags.len(), method.tags.first()) {
             (TagStyle::Merged, _, _) | (TagStyle::Separate, 0, _) => {
                 let ty = format!("Client::{}", method.operation_id);
-                format!("Builder for [`{}`]\n\n[`{}`]: super::{}", ty, ty, ty,)
+                format!("Builder for [`{ty}`]\n\n[`{ty}`]: super::{ty}")
             }
             (TagStyle::Separate, 1, Some(tag)) => {
                 let ty = format!(
@@ -2186,7 +2184,7 @@ impl Generator {
                     sanitize(tag, Case::Pascal),
                     method.operation_id
                 );
-                format!("Builder for [`{}`]\n\n[`{}`]: super::{}", ty, ty, ty,)
+                format!("Builder for [`{ty}`]\n\n[`{ty}`]: super::{ty}")
             }
             (TagStyle::Separate, _, _) => {
                 format!(
@@ -2213,7 +2211,7 @@ impl Generator {
                                 sanitize(tag, Case::Pascal),
                                 method.operation_id,
                             );
-                            format!("[`{}`]: super::{}", ty, ty)
+                            format!("[`{ty}`]: super::{ty}")
                         })
                         .collect::<Vec<_>>()
                         .join("\n"),
@@ -2256,8 +2254,7 @@ impl Generator {
             .params
             .iter()
             .map(|param| format!("\n    .{}({})", param.name, param.name))
-            .collect::<Vec<_>>()
-            .join("");
+            .collect::<String>();
 
         let eg = format!(
             "\
@@ -2283,7 +2280,7 @@ impl Generator {
         BuilderImpl { doc, sig, body }
     }
 
-    /// Generates a pair of TokenStreams.
+    /// Generates a pair of `TokenStreams`.
     ///
     /// The first includes all the operation code; impl Client for operations
     /// with no tags and code of this form for each tag:
@@ -2495,7 +2492,7 @@ impl Generator {
                 // generation of the whole client, so encodings are
                 // intentionally ignored here.
                 let name = sanitize(
-                    &format!("{}-body", operation.operation_id.as_ref().unwrap(),),
+                    &format!("{}-body", operation.operation_id.as_ref().unwrap()),
                     Case::Pascal,
                 );
                 let typ = self

@@ -11,7 +11,7 @@ const TYPE_KEY: &str = "type";
 /// straight `serde_json::Value` target rejects:
 ///
 /// - integers beyond the i64/u64 range (JavaScript artifacts like
-///   `18446744073709552000`, u64::MAX rounded through a float) fold to
+///   `18446744073709552000`, `u64::MAX` rounded through a float) fold to
 ///   `f64`, matching how the JSON parser and the tools that produced them
 ///   treat such numbers;
 /// - non-string mapping keys (unquoted YAML response codes like `200:`)
@@ -134,7 +134,7 @@ mod tolerant {
     }
 }
 
-/// Errors returned while normalizing and decoding an OpenAPI document.
+/// Errors returned while normalizing and decoding an `OpenAPI` document.
 #[derive(Debug, Error)]
 pub enum ParseOpenApiError {
     /// Neither JSON nor YAML parsing succeeded for the source document.
@@ -159,7 +159,7 @@ pub enum ParseOpenApiError {
     Invalid(#[from] crate::Error),
 }
 
-/// Parse a JSON or YAML OpenAPI document of any supported spec version
+/// Parse a JSON or YAML `OpenAPI` document of any supported spec version
 /// into progenitor's internal model.
 pub fn parse_openapi_str(
     document: &str,
@@ -179,7 +179,7 @@ pub fn parse_openapi_str(
     parse_openapi_value(value)
 }
 
-/// Parse an already-decoded OpenAPI document of any supported spec version
+/// Parse an already-decoded `OpenAPI` document of any supported spec version
 /// into progenitor's internal model.
 pub fn parse_openapi_value(
     mut value: Value,

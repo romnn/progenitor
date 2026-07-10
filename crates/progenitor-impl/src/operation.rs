@@ -235,7 +235,7 @@ impl OperationResponseStatus {
     pub(crate) fn is_success_or_default(&self) -> bool {
         matches!(
             self,
-            Self::Default | Self::Code(101) | Self::Code(200..=299) | Self::Range(2)
+            Self::Default | Self::Code(101 | 200..=299) | Self::Range(2)
         )
     }
 
