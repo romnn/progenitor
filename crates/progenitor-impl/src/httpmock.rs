@@ -8,7 +8,7 @@ use quote::{ToTokens, format_ident, quote};
 use crate::{
     Generator, OpenApiDocument, Result,
     operation::{
-        BodyContentType, HttpMethod, OperationParameter, OperationParameterKind,
+        BodyContentType, OperationParameter, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseStatus,
     },
     util::{Case, sanitize},
@@ -106,16 +106,7 @@ impl Generator {
         let then_name = sanitize(&format!("{}-then", method.operation_id), Case::Pascal);
         let then = format_ident!("{}", then_name).to_token_stream();
 
-        let http_method = match &method.method {
-            HttpMethod::Get => quote! { ::httpmock::Method::GET },
-            HttpMethod::Put => quote! { ::httpmock::Method::PUT },
-            HttpMethod::Post => quote! { ::httpmock::Method::POST },
-            HttpMethod::Delete => quote! { ::httpmock::Method::DELETE },
-            HttpMethod::Options => quote! { ::httpmock::Method::OPTIONS },
-            HttpMethod::Head => quote! { ::httpmock::Method::HEAD },
-            HttpMethod::Patch => quote! { ::httpmock::Method::PATCH },
-            HttpMethod::Trace => quote! { ::httpmock::Method::TRACE },
-        };
+        let http_method = method.method.httpmock_tokens();
 
         let path_re = method.path.as_wildcard();
 

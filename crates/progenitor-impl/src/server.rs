@@ -24,9 +24,9 @@ use crate::{
     Generator, OpenApiDocument, Result,
     ir::Document,
     operation::{
-        BodyContentType, HttpMethod, OperationMethod, OperationParameterKind,
+        BodyContentType, OperationMethod, OperationParameterKind,
         OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
-        ResponseSide,
+        ResponseSide, synth_variant_name,
     },
     util::{Case, sanitize},
 };
@@ -175,7 +175,7 @@ impl Generator {
         let error_ident = format_ident!("{}Error", pascal);
 
         let axum_path = method.path.as_axum_path();
-        let routing_fn = http_routing_fn(&method.method);
+        let routing_fn = method.method.routing_ident();
 
         let (success_items, success_kind) = self.extract_responses(method, ResponseSide::Success);
         let (error_items, error_kind) = self.extract_responses(method, ResponseSide::Error);
@@ -382,7 +382,7 @@ impl Generator {
             }
             _ => {
                 let success_status_guard =
-                    response_status_guard(operation_id, items, StatusSide::Success, false, None);
+                    response_status_guard(operation_id, items, ResponseSide::Success, false, None);
                 let success_encode = self.success_encoder(kind, items);
                 quote! {
                     let (__status_override, __headers, __body) = response.into_parts();
@@ -408,7 +408,7 @@ impl Generator {
         let error_status_guard = response_status_guard(
             operation_id,
             items,
-            StatusSide::Error,
+            ResponseSide::Error,
             false,
             Some((success_items, success_is_synth)),
         );
@@ -530,7 +530,7 @@ impl Generator {
     }
 
     fn synth_variant_definition(&self, item: &OperationResponse) -> TokenStream {
-        let variant_ident = server_synth_variant_ident(&item.status_code);
+        let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
         let status_field = needs_explicit_synth_status(&item.status_code);
         match &item.typ {
             OperationResponseKind::Type(type_id) => {
@@ -575,7 +575,7 @@ impl Generator {
                 operation_id,
                 item,
                 &items[..index],
-                StatusSide::Success,
+                ResponseSide::Success,
                 quote! { __status },
             );
             let override_guard = synth_success_override_guard(operation_id);
@@ -611,7 +611,7 @@ impl Generator {
                 operation_id,
                 item,
                 &items[..index],
-                StatusSide::Error,
+                ResponseSide::Error,
                 quote! { __variant_status },
             );
             let status_match_guard = synth_error_status_match_guard(operation_id);
@@ -993,28 +993,8 @@ struct CollectedParams {
     field_inits: Vec<TokenStream>,
 }
 
-fn http_routing_fn(method: &HttpMethod) -> proc_macro2::Ident {
-    let name = match method {
-        HttpMethod::Get => "get",
-        HttpMethod::Put => "put",
-        HttpMethod::Post => "post",
-        HttpMethod::Delete => "delete",
-        HttpMethod::Options => "options",
-        HttpMethod::Head => "head",
-        HttpMethod::Patch => "patch",
-        HttpMethod::Trace => "trace",
-    };
-    format_ident!("{}", name)
-}
-
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum SynthSide {
-    Success,
-    Error,
-}
-
-#[derive(Copy, Clone)]
-enum StatusSide {
     Success,
     Error,
 }
@@ -1038,17 +1018,17 @@ impl StatusPredicate {
 fn response_status_guard(
     operation_id: &str,
     items: &[OperationResponse],
-    side: StatusSide,
+    side: ResponseSide,
     is_synth: bool,
     success_items: Option<(&[OperationResponse], bool)>,
 ) -> TokenStream {
     let invalid_condition = match side {
-        StatusSide::Success => response_status_predicate(items, side, is_synth).invalid_condition(),
-        StatusSide::Error => {
+        ResponseSide::Success => response_status_predicate(items, side, is_synth).invalid_condition(),
+        ResponseSide::Error => {
             let error_match = response_status_predicate(items, side, is_synth);
             let (success_items, success_is_synth) = success_items.unwrap_or((&[], false));
             let success_match =
-                response_status_predicate(success_items, StatusSide::Success, success_is_synth);
+                response_status_predicate(success_items, ResponseSide::Success, success_is_synth);
             match (error_match, success_match) {
                 (StatusPredicate::Never, _) => Some(quote! { true }),
                 (_, StatusPredicate::Always) => Some(quote! { true }),
@@ -1069,8 +1049,8 @@ fn response_status_guard(
         return quote! {};
     };
     let side_name = match side {
-        StatusSide::Success => "success",
-        StatusSide::Error => "error",
+        ResponseSide::Success => "success",
+        ResponseSide::Error => "error",
     };
     quote! {
         {
@@ -1096,7 +1076,7 @@ fn response_status_guard(
 /// client-side response classifier for a single response side.
 fn response_status_predicate(
     items: &[OperationResponse],
-    side: StatusSide,
+    side: ResponseSide,
     is_synth: bool,
 ) -> StatusPredicate {
     let mut clauses = Vec::new();
@@ -1107,7 +1087,7 @@ fn response_status_predicate(
                 let min = range * 100;
                 let max = min + 99;
                 match side {
-                    StatusSide::Success if !is_synth => quote! { matches!(__code, 200..=299) },
+                    ResponseSide::Success if !is_synth => quote! { matches!(__code, 200..=299) },
                     _ => quote! { matches!(__code, #min..=#max) },
                 }
             }
@@ -1116,9 +1096,9 @@ fn response_status_predicate(
                 // collapses to the normal 2xx success bucket. In a synthesized
                 // success enum, the client emits `_` for the default arm, so it
                 // classifies every otherwise-unmatched status as success.
-                StatusSide::Success if is_synth => return StatusPredicate::Always,
-                StatusSide::Success => quote! { matches!(__code, 200..=299) },
-                StatusSide::Error => return StatusPredicate::Always,
+                ResponseSide::Success if is_synth => return StatusPredicate::Always,
+                ResponseSide::Success => quote! { matches!(__code, 200..=299) },
+                ResponseSide::Error => return StatusPredicate::Always,
             },
         };
         clauses.push(clause);
@@ -1139,15 +1119,6 @@ fn server_synth_ident(name: &str, side: SynthSide) -> proc_macro2::Ident {
     }
 }
 
-fn server_synth_variant_ident(status: &OperationResponseStatus) -> proc_macro2::Ident {
-    let name = match status {
-        OperationResponseStatus::Code(code) => format!("Status{code}"),
-        OperationResponseStatus::Range(r) => format!("StatusRange{r}xx"),
-        OperationResponseStatus::Default => "Default".to_string(),
-    };
-    format_ident!("{}", name)
-}
-
 fn needs_explicit_synth_status(status: &OperationResponseStatus) -> bool {
     !matches!(status, OperationResponseStatus::Code(_))
 }
@@ -1156,7 +1127,7 @@ fn synth_variant_status_arm(
     enum_ident: &proc_macro2::Ident,
     item: &OperationResponse,
 ) -> TokenStream {
-    let variant_ident = server_synth_variant_ident(&item.status_code);
+    let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
     match item.status_code {
         OperationResponseStatus::Code(code) => {
             let pattern = if matches!(&item.typ, OperationResponseKind::None) {
@@ -1181,7 +1152,7 @@ fn synth_variant_pattern(
     item: &OperationResponse,
     status_ident: TokenStream,
 ) -> TokenStream {
-    let variant_ident = server_synth_variant_ident(&item.status_code);
+    let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
     let explicit_status = needs_explicit_synth_status(&item.status_code);
     match (&item.typ, explicit_status) {
         (OperationResponseKind::None, false) => quote! { #enum_ident::#variant_ident },
@@ -1206,7 +1177,7 @@ fn synth_variant_status_guard(
     operation_id: &str,
     item: &OperationResponse,
     earlier_items: &[OperationResponse],
-    side: StatusSide,
+    side: ResponseSide,
     status_ident: TokenStream,
 ) -> TokenStream {
     let earlier_match = status_predicate_for_items(earlier_items);
@@ -1237,8 +1208,8 @@ fn synth_variant_status_guard(
         },
     };
     let side_name = match side {
-        StatusSide::Success => "success",
-        StatusSide::Error => "error",
+        ResponseSide::Success => "success",
+        ResponseSide::Error => "error",
     };
     quote! {
         {

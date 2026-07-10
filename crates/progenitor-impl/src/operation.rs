@@ -66,6 +66,23 @@ impl HttpMethod {
             Self::Trace => "trace",
         }
     }
+
+    pub(crate) fn routing_ident(&self) -> proc_macro2::Ident {
+        format_ident!("{}", self.as_str())
+    }
+
+    pub(crate) fn httpmock_tokens(&self) -> TokenStream {
+        match self {
+            Self::Get => quote! { ::httpmock::Method::GET },
+            Self::Put => quote! { ::httpmock::Method::PUT },
+            Self::Post => quote! { ::httpmock::Method::POST },
+            Self::Delete => quote! { ::httpmock::Method::DELETE },
+            Self::Options => quote! { ::httpmock::Method::OPTIONS },
+            Self::Head => quote! { ::httpmock::Method::HEAD },
+            Self::Patch => quote! { ::httpmock::Method::PATCH },
+            Self::Trace => quote! { ::httpmock::Method::TRACE },
+        }
+    }
 }
 
 pub(crate) struct DropshotPagination {
