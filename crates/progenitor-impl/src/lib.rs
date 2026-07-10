@@ -66,6 +66,7 @@ pub struct Generator {
     /// Component schemas as schemars objects, retained after `generate_tokens`
     /// so callers can inspect metadata (e.g., examples) without a second parse.
     component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
+    diagnostics: Vec<String>,
 }
 
 /// The shared generation IR produced once per spec by [`Generator::prepare`].
@@ -299,6 +300,7 @@ impl Default for Generator {
             uses_websockets: Default::default(),
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
+            diagnostics: Default::default(),
         }
     }
 }
@@ -352,7 +354,13 @@ impl Generator {
             uses_websockets: false,
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
+            diagnostics: Default::default(),
         }
+    }
+
+    /// Generation diagnostics that could not be represented in generated code.
+    pub fn diagnostics(&self) -> &[String] {
+        &self.diagnostics
     }
 
     /// Resolve each `components.schemas` entry to its `TypeId` by handing

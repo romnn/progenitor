@@ -69,6 +69,7 @@ impl Generator {
         document: &Document,
         crate_path: &str,
     ) -> Result<TokenStream> {
+        self.diagnostics.clear();
         let crate_path = crate::util::parse_crate_path(crate_path)?;
 
         let title = {
@@ -161,7 +162,7 @@ impl Generator {
     }
 
     fn server_op(
-        &self,
+        &mut self,
         prepared: &PreparedIr,
         method: &OperationMethod,
         trait_ident: &proc_macro2::Ident,
@@ -214,11 +215,13 @@ impl Generator {
             // A skipped op still gets a 501 route so routing stays complete; it
             // gets no trait method. The skip is surfaced at generation time
             // (comments aren't tokens, so it can't ride along in the source).
-            eprintln!(
+            let diagnostic = format!(
                 "progenitor: server generation skipped operation `{}` ({reason}); \
                  emitting a 501 route stub",
                 method.operation_id
             );
+            eprintln!("{diagnostic}");
+            self.diagnostics.push(diagnostic);
             let handler = quote! {
                 || async { http::StatusCode::NOT_IMPLEMENTED }
             };
