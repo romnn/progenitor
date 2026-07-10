@@ -81,9 +81,6 @@ pub(crate) struct OperationParameter {
     pub description: Option<String>,
     pub typ: OperationParameterType,
     pub kind: OperationParameterKind,
-    /// Query parameter uses `style: deepObject` (`name[member]=value`
-    /// serialization) rather than the default form style.
-    pub deep_object_query: bool,
 }
 
 #[derive(Eq, PartialEq)]
@@ -95,9 +92,16 @@ pub(crate) enum OperationParameterType {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum OperationParameterKind {
     Path,
-    Query(bool),
-    Header(bool),
-    Cookie(bool),
+    Query {
+        required: bool,
+        deep_object: bool,
+    },
+    Header {
+        required: bool,
+    },
+    Cookie {
+        required: bool,
+    },
     // TODO bodies may be optional
     Body(BodyContentType),
 }
@@ -106,7 +110,9 @@ impl OperationParameterKind {
     pub(crate) fn is_required(&self) -> bool {
         match self {
             Self::Path => true,
-            Self::Query(required) | Self::Header(required) | Self::Cookie(required) => *required,
+            Self::Query { required, .. }
+            | Self::Header { required }
+            | Self::Cookie { required } => *required,
             // TODO may be optional
             Self::Body(_) => true,
         }

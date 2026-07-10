@@ -390,7 +390,13 @@ impl Generator {
             // deepObject query parameters are object-typed; there's no
             // sensible single clap argument for them, so the CLI omits
             // them (consumers can fall back to the generated client).
-            if param.deep_object_query {
+            if matches!(
+                param.kind,
+                OperationParameterKind::Query {
+                    deep_object: true,
+                    ..
+                }
+            ) {
                 continue;
             }
             let innately_required = match &param.kind {
@@ -398,9 +404,9 @@ impl Generator {
                 OperationParameterKind::Body(_) => continue,
 
                 OperationParameterKind::Path => true,
-                OperationParameterKind::Query(required) => *required,
-                OperationParameterKind::Header(required) => *required,
-                OperationParameterKind::Cookie(required) => *required,
+                OperationParameterKind::Query { required, .. }
+                | OperationParameterKind::Header { required }
+                | OperationParameterKind::Cookie { required } => *required,
             };
 
             // For paginated endpoints, we don't generate 'page_token' args.

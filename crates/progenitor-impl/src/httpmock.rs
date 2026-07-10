@@ -127,7 +127,15 @@ impl Generator {
             .filter(
                 // A deepObject matcher would need bracket-path expansion; mock
                 // authors can match those manually via `into_inner()`.
-                |param| !param.deep_object_query,
+                |param| {
+                    !matches!(
+                        param.kind,
+                        OperationParameterKind::Query {
+                            deep_object: true,
+                            ..
+                        }
+                    )
+                },
             )
             .map(
                 |OperationParameter {
@@ -136,7 +144,6 @@ impl Generator {
                      kind,
                      api_name,
                      description: _,
-                     deep_object_query: _,
                  }| {
                     let arg_type_name = match typ {
                         OperationParameterType::Type(arg_type_id) => {
@@ -201,26 +208,28 @@ impl Generator {
                                 },
                             )
                         }
-                        OperationParameterKind::Query(true) => (
+                        OperationParameterKind::Query { required: true, .. } => (
                             true,
                             quote! {
                                 Self(self.0.query_param(#api_name, #value_to_str))
                             },
                         ),
-                        OperationParameterKind::Header(true) => (
+                        OperationParameterKind::Header { required: true } => (
                             true,
                             quote! {
                                 Self(self.0.header(#api_name, #value_to_str))
                             },
                         ),
-                        OperationParameterKind::Cookie(true) => (
+                        OperationParameterKind::Cookie { required: true } => (
                             true,
                             quote! {
                                 Self(self.0.cookie(#api_name, #value_to_str))
                             },
                         ),
 
-                        OperationParameterKind::Query(false) => (
+                        OperationParameterKind::Query {
+                            required: false, ..
+                        } => (
                             false,
                             quote! {
                                 if let Some(value) = value.into() {
@@ -233,7 +242,7 @@ impl Generator {
                                 }
                             },
                         ),
-                        OperationParameterKind::Header(false) => (
+                        OperationParameterKind::Header { required: false } => (
                             false,
                             quote! {
                                 if let Some(value) = value.into() {
@@ -246,7 +255,7 @@ impl Generator {
                                 }
                             },
                         ),
-                        OperationParameterKind::Cookie(false) => (
+                        OperationParameterKind::Cookie { required: false } => (
                             false,
                             quote! {
                                 if let Some(value) = value.into() {

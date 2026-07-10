@@ -187,7 +187,15 @@ impl Generator {
         // response item that itself needs an HTTP upgrade.
         let unsupported_reason = if method.dropshot_websocket {
             Some("websocket/upgrade endpoint")
-        } else if method.params.iter().any(|param| param.deep_object_query) {
+        } else if method.params.iter().any(|param| {
+            matches!(
+                param.kind,
+                OperationParameterKind::Query {
+                    deep_object: true,
+                    ..
+                }
+            )
+        }) {
             Some("deepObject query parameter")
         } else if matches!(success_kind, OperationResponseKind::Upgrade)
             || success_items
@@ -726,14 +734,10 @@ impl Generator {
         for param in &method.params {
             match &param.kind {
                 OperationParameterKind::Path => {}
-                OperationParameterKind::Query(required) => {
-                    if param.deep_object_query {
-                        // server_op skips deepObject operations before this
-                        // point. Keep this defensive guard so a future call
-                        // path cannot silently expose a partially decoded
-                        // request.
-                        continue;
-                    }
+                OperationParameterKind::Query {
+                    required,
+                    deep_object: false,
+                } => {
                     has_query = true;
                     let ident = format_ident!("{}", param.name);
                     let (field_ty, _optional) = self.owned_field_type(param, *required);
@@ -757,7 +761,7 @@ impl Generator {
                     request_fields.extend(quote! { pub #ident: #field_ty, });
                     field_inits.push(quote! { #ident: __progenitor_query.#ident });
                 }
-                OperationParameterKind::Header(required) => {
+                OperationParameterKind::Header { required } => {
                     let ident = format_ident!("{}", param.name);
                     let api_name = &param.api_name;
                     // Headers are parsed via FromStr; if the typed header type
@@ -797,7 +801,7 @@ impl Generator {
                     header_lets.push(stmt);
                     field_inits.push(quote! { #ident });
                 }
-                OperationParameterKind::Cookie(required) => {
+                OperationParameterKind::Cookie { required } => {
                     let ident = format_ident!("{}", param.name);
                     let api_name = &param.api_name;
                     let (base, optional) = self.header_base_type(param, *required);
@@ -840,6 +844,9 @@ impl Generator {
                     body_extractor_arg = Some(extractor);
                     field_inits.push(quote! { body: __progenitor_body });
                 }
+                OperationParameterKind::Query {
+                    deep_object: true, ..
+                } => {}
             }
         }
 

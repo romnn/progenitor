@@ -248,7 +248,6 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             kind: OperationParameterKind::Path,
-                            deep_object_query: false,
                         })
                     }
                     ir::ParameterKind::Query {
@@ -284,8 +283,10 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
-                            kind: OperationParameterKind::Query(required),
-                            deep_object_query,
+                            kind: OperationParameterKind::Query {
+                                required,
+                                deep_object: deep_object_query,
+                            },
                         })
                     }
                     ir::ParameterKind::Header {
@@ -338,8 +339,7 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
-                            kind: OperationParameterKind::Header(required),
-                            deep_object_query: false,
+                            kind: OperationParameterKind::Header { required },
                         })
                     }
                     ir::ParameterKind::Cookie => {
@@ -380,8 +380,7 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
-                            kind: OperationParameterKind::Cookie(required),
-                            deep_object_query: false,
+                            kind: OperationParameterKind::Cookie { required },
                         })
                     }
                     ir::ParameterKind::Path { style } => Err(Error::UnexpectedFormat(format!(
@@ -437,7 +436,6 @@ impl Generator {
                     description: None,
                     typ: OperationParameterType::Type(type_id),
                     kind: OperationParameterKind::Path,
-                    deep_object_query: false,
                 });
             }
         }
@@ -746,7 +744,7 @@ impl Generator {
                 if param.api_name.as_str() == "page_token" {
                     quote! { state.as_deref() }
                 } else if param.api_name.as_str() != "limit"
-                    && matches!(param.kind, OperationParameterKind::Query(_))
+                    && matches!(param.kind, OperationParameterKind::Query { .. })
                 {
                     // Query parameters (other than "page_token" and "limit")
                     // are None; having page_token as Some(_) is mutually
@@ -869,10 +867,10 @@ impl Generator {
             .params
             .iter()
             .filter_map(|param| match &param.kind {
-                OperationParameterKind::Query(_) => {
+                OperationParameterKind::Query { deep_object, .. } => {
                     let qn = &param.api_name;
                     let qn_ident = format_ident!("{}", &param.name);
-                    Some(if param.deep_object_query {
+                    Some(if *deep_object {
                         quote! {
                             &progenitor_client::DeepObjectQuery::new(#qn, &#qn_ident)
                         }
@@ -890,7 +888,7 @@ impl Generator {
             .params
             .iter()
             .filter_map(|param| match &param.kind {
-                OperationParameterKind::Cookie(required) => {
+                OperationParameterKind::Cookie { required } => {
                     let cookie_name = &param.api_name;
                     let cookie_ident = format_ident!("{}", &param.name);
                     let cookie = if *required {
@@ -922,7 +920,7 @@ impl Generator {
             .params
             .iter()
             .filter_map(|param| match &param.kind {
-                OperationParameterKind::Header(required) => {
+                OperationParameterKind::Header { required } => {
                     let hn = &param.api_name;
                     let hn_ident = format_ident!("{}", &param.name);
                     let res = if *required {
@@ -1567,8 +1565,13 @@ impl Generator {
             .filter(|param| {
                 matches!(
                     (param.api_name.as_str(), &param.kind),
-                    ("page_token", OperationParameterKind::Query(false))
-                        | ("limit", OperationParameterKind::Query(false))
+                    (
+                        "page_token" | "limit",
+                        OperationParameterKind::Query {
+                            required: false,
+                            ..
+                        }
+                    )
                 )
             })
             .count()
@@ -1580,7 +1583,7 @@ impl Generator {
         // All query parameters must be optional since page_token may not be
         // specified in conjunction with other query parameters.
         if !parameters.iter().all(|param| match &param.kind {
-            OperationParameterKind::Query(required) => !required,
+            OperationParameterKind::Query { required, .. } => !required,
             _ => true,
         }) {
             return None;
@@ -2045,7 +2048,7 @@ impl Generator {
 
             let step_params = method.params.iter().filter_map(|param| {
                 if param.api_name.as_str() != "limit"
-                    && matches!(param.kind, OperationParameterKind::Query(_))
+                    && matches!(param.kind, OperationParameterKind::Query { .. })
                 {
                     // Query parameters (other than "limit") are None; having
                     // page_token as Some(_), as we will during the loop below,
@@ -2490,7 +2493,6 @@ impl Generator {
             description: body.description.clone(),
             typ,
             kind: OperationParameterKind::Body(content_type),
-            deep_object_query: false,
         }))
     }
 }
@@ -2702,25 +2704,25 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Resul
                         .get(a_name.as_str())
                         .cmp(&path_positions.get(b_name.as_str()))
                 }
-                (OperationParameterKind::Path, OperationParameterKind::Query(_)) => Ordering::Less,
+                (OperationParameterKind::Path, OperationParameterKind::Query { .. }) => Ordering::Less,
                 (OperationParameterKind::Path, OperationParameterKind::Body(_)) => Ordering::Less,
-                (OperationParameterKind::Path, OperationParameterKind::Header(_)) => Ordering::Less,
-                (OperationParameterKind::Path, OperationParameterKind::Cookie(_)) => Ordering::Less,
+                (OperationParameterKind::Path, OperationParameterKind::Header { .. }) => Ordering::Less,
+                (OperationParameterKind::Path, OperationParameterKind::Cookie { .. }) => Ordering::Less,
 
                 // Query params are in lexicographic order.
-                (OperationParameterKind::Query(_), OperationParameterKind::Body(_)) => {
+                (OperationParameterKind::Query { .. }, OperationParameterKind::Body(_)) => {
                     Ordering::Less
                 }
-                (OperationParameterKind::Query(_), OperationParameterKind::Query(_)) => {
+                (OperationParameterKind::Query { .. }, OperationParameterKind::Query { .. }) => {
                     a_name.cmp(b_name)
                 }
-                (OperationParameterKind::Query(_), OperationParameterKind::Path) => {
+                (OperationParameterKind::Query { .. }, OperationParameterKind::Path) => {
                     Ordering::Greater
                 }
-                (OperationParameterKind::Query(_), OperationParameterKind::Header(_)) => {
+                (OperationParameterKind::Query { .. }, OperationParameterKind::Header { .. }) => {
                     Ordering::Less
                 }
-                (OperationParameterKind::Query(_), OperationParameterKind::Cookie(_)) => {
+                (OperationParameterKind::Query { .. }, OperationParameterKind::Cookie { .. }) => {
                     Ordering::Less
                 }
 
@@ -2728,13 +2730,13 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Resul
                 (OperationParameterKind::Body(_), OperationParameterKind::Path) => {
                     Ordering::Greater
                 }
-                (OperationParameterKind::Body(_), OperationParameterKind::Query(_)) => {
+                (OperationParameterKind::Body(_), OperationParameterKind::Query { .. }) => {
                     Ordering::Greater
                 }
-                (OperationParameterKind::Body(_), OperationParameterKind::Header(_)) => {
+                (OperationParameterKind::Body(_), OperationParameterKind::Header { .. }) => {
                     Ordering::Greater
                 }
-                (OperationParameterKind::Body(_), OperationParameterKind::Cookie(_)) => {
+                (OperationParameterKind::Body(_), OperationParameterKind::Cookie { .. }) => {
                     Ordering::Greater
                 }
                 (OperationParameterKind::Body(_), OperationParameterKind::Body(_)) => {
@@ -2742,20 +2744,20 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Resul
                 }
 
                 // Header and cookie params are in lexicographic order.
-                (OperationParameterKind::Header(_), OperationParameterKind::Header(_)) => {
+                (OperationParameterKind::Header { .. }, OperationParameterKind::Header { .. }) => {
                     a_name.cmp(b_name)
                 }
-                (OperationParameterKind::Header(_), OperationParameterKind::Cookie(_)) => {
+                (OperationParameterKind::Header { .. }, OperationParameterKind::Cookie { .. }) => {
                     a_name.cmp(b_name)
                 }
-                (OperationParameterKind::Header(_), _) => Ordering::Greater,
-                (OperationParameterKind::Cookie(_), OperationParameterKind::Cookie(_)) => {
+                (OperationParameterKind::Header { .. }, _) => Ordering::Greater,
+                (OperationParameterKind::Cookie { .. }, OperationParameterKind::Cookie { .. }) => {
                     a_name.cmp(b_name)
                 }
-                (OperationParameterKind::Cookie(_), OperationParameterKind::Header(_)) => {
+                (OperationParameterKind::Cookie { .. }, OperationParameterKind::Header { .. }) => {
                     a_name.cmp(b_name)
                 }
-                (OperationParameterKind::Cookie(_), _) => Ordering::Greater,
+                (OperationParameterKind::Cookie { .. }, _) => Ordering::Greater,
             }
         },
     );
@@ -2786,7 +2788,6 @@ mod tests {
             description: None,
             typ: OperationParameterType::RawBody,
             kind,
-            deep_object_query: false,
         }
     }
 
