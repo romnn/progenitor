@@ -21,10 +21,10 @@ enum CargoCli {
     Progenitor(Args),
 }
 
-/// Generate a stand-alone crate from an OpenAPI document
+/// Generate a stand-alone crate from an `OpenAPI` document
 #[derive(Parser)]
 struct Args {
-    /// OpenAPI definition document (JSON or YAML)
+    /// `OpenAPI` definition document (JSON or YAML)
     #[clap(short = 'i', long)]
     input: String,
     /// Output directory for Rust crate
@@ -91,8 +91,8 @@ impl From<TagArg> for TagStyle {
 /// Format generated code with prettyplease: fast, in-process, and — unlike
 /// shelling out to rustfmt — incapable of panicking on a toolchain that
 /// lacks it.
-fn reformat_code(input: String) -> Result<String> {
-    let file = syn::parse_file(&input)?;
+fn reformat_code(input: &str) -> Result<String> {
+    let file = syn::parse_file(input)?;
     Ok(prettyplease::unparse(&file))
 }
 
@@ -133,7 +133,7 @@ fn main() -> Result<()> {
             println!("-----------------------------------------------------");
             for (idx, type_entry) in type_space.iter_types().enumerate() {
                 let n = type_entry.describe();
-                println!("{:>4}  {}", idx, n);
+                println!("{idx:>4}  {n}");
             }
             println!("-----------------------------------------------------");
             println!();
@@ -158,7 +158,7 @@ fn main() -> Result<()> {
                 name, version, &args.license_name,
             );
             if let Some(registry_name) = args.registry_name {
-                tomlout.extend(format!("publish = [\"{}\"]\n", registry_name).chars());
+                tomlout.extend(format!("publish = [\"{registry_name}\"]\n").chars());
             }
             tomlout.extend(
                 format!(
@@ -166,7 +166,7 @@ fn main() -> Result<()> {
                 [dependencies]\n\
                 {}\n\
                 \n",
-                    dependencies(builder, args.include_client, args.server).join("\n"),
+                    dependencies(&builder, args.include_client, args.server).join("\n"),
                 )
                 .chars(),
             );
@@ -182,7 +182,7 @@ fn main() -> Result<()> {
             let lib_code = if args.include_client {
                 // Prepend the vendored-client module declaration, then
                 // re-format so prettyplease places it correctly.
-                reformat_code(format!("mod progenitor_client;\n\n{}", api_text))?
+                reformat_code(&format!("mod progenitor_client;\n\n{api_text}"))?
             } else {
                 api_text
             };
@@ -201,7 +201,7 @@ fn main() -> Result<()> {
         }
 
         Err(e) => {
-            println!("gen fail: {:?}", e);
+            println!("gen fail: {e:?}");
             bail!("generation experienced errors");
         }
     }
@@ -244,7 +244,7 @@ static DEPENDENCIES: Dependencies = Dependencies {
     uuid: "1",
 };
 
-pub fn dependencies(builder: Generator, include_client: bool, server: bool) -> Vec<String> {
+fn dependencies(builder: &Generator, include_client: bool, server: bool) -> Vec<String> {
     let mut deps = vec![
         format!("bytes = \"{}\"", DEPENDENCIES.bytes),
         format!("futures-core = \"{}\"", DEPENDENCIES.futures),
@@ -276,7 +276,7 @@ pub fn dependencies(builder: Generator, include_client: bool, server: bool) -> V
             } else {
                 "*"
             };
-        let client_version_dep = format!("progenitor-client = \"{}\"", crate_version);
+        let client_version_dep = format!("progenitor-client = \"{crate_version}\"");
         deps.push(client_version_dep);
     }
 

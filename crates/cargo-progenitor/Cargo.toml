@@ -12,6 +12,9 @@ categories = ["api-bindings", "development-tools::cargo-plugins"]
 
 default-run = "cargo-progenitor"
 
+[lints]
+workspace = true
+
 [dependencies]
 progenitor = { workspace = true, default-features = false }
 progenitor-client = { workspace = true }
