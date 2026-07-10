@@ -1,6 +1,6 @@
 // Copyright 2026 Oxide Computer Company
 
-//! Macros for the progenitor OpenAPI client generator.
+//! Macros for the progenitor `OpenAPI` client generator.
 
 #![deny(missing_docs)]
 
@@ -22,13 +22,13 @@ mod token_utils;
 /// Where to resolve the spec path relative to.
 #[derive(Debug, Clone, Copy, Deserialize)]
 enum RelativeTo {
-    /// Resolve relative to CARGO_MANIFEST_DIR (the default).
+    /// Resolve relative to `CARGO_MANIFEST_DIR` (the default).
     ManifestDir,
-    /// Resolve relative to OUT_DIR.
+    /// Resolve relative to `OUT_DIR`.
     OutDir,
 }
 
-/// Specification of where to find the OpenAPI document.
+/// Specification of where to find the `OpenAPI` document.
 #[derive(Debug)]
 struct SpecSource {
     /// The path to the spec file.
@@ -39,7 +39,7 @@ struct SpecSource {
 
 impl syn::parse::Parse for SpecSource {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        /// Helper struct for deserializing the struct form of SpecSource.
+        /// Helper struct for deserializing the struct form of `SpecSource`.
         #[derive(Deserialize)]
         struct SpecSourceStruct {
             path: ParseWrapper<LitStr>,
@@ -71,10 +71,10 @@ impl syn::parse::Parse for SpecSource {
     }
 }
 
-/// Generates a client from the given OpenAPI document
+/// Generates a client from the given `OpenAPI` document
 ///
 /// `generate_api!` can be invoked in two ways. The simple form, takes a path
-/// to the OpenAPI document:
+/// to the `OpenAPI` document:
 /// ```ignore
 /// generate_api!("path/to/spec.json");
 /// ```
@@ -105,7 +105,7 @@ impl syn::parse::Parse for SpecSource {
 /// );
 /// ```
 ///
-/// The `spec` key is required; it is the OpenAPI document (JSON or YAML) from
+/// The `spec` key is required; it is the `OpenAPI` document (JSON or YAML) from
 /// which the client is derived. It can be specified as a simple string path, or
 /// as a struct with `path` and `relative_to` fields. The `relative_to`
 /// field controls where the path is resolved from:
@@ -326,6 +326,80 @@ fn is_crate(s: &str) -> bool {
     !s.contains(|cc: char| !cc.is_alphanumeric() && cc != '_' && cc != '-')
 }
 
+fn configure_generation(
+    macro_settings: MacroSettings,
+) -> Result<(SpecSource, GenerationSettings), syn::Error> {
+    let MacroSettings {
+        spec,
+        interface,
+        tags,
+        inner_type,
+        pre_hook,
+        pre_hook_async,
+        post_hook,
+        post_hook_async,
+        map_type,
+        unknown_crates,
+        crates,
+        derives,
+        patch,
+        replace,
+        convert,
+        timeout,
+        server,
+    } = macro_settings;
+
+    let mut settings = GenerationSettings::default();
+    settings.with_interface(interface);
+    settings.with_tag(tags);
+    inner_type.map(|value| settings.with_inner_type(value.to_token_stream()));
+    pre_hook.map(|value| settings.with_pre_hook(value.into_inner().0));
+    pre_hook_async.map(|value| settings.with_pre_hook_async(value.into_inner().0));
+    post_hook.map(|value| settings.with_post_hook(value.into_inner().0));
+    post_hook_async.map(|value| settings.with_post_hook_async(value.into_inner().0));
+    map_type.map(|value| settings.with_map_type(value.to_token_stream()));
+    settings.with_unknown_crates(unknown_crates);
+
+    for (CrateName(crate_name), MacroCrateSpec { original, version }) in crates {
+        if let Some(original_crate) = original {
+            settings.with_crate(original_crate, version, Some(&crate_name));
+        } else {
+            settings.with_crate(crate_name, version, None);
+        }
+    }
+    for derive in derives {
+        settings.with_derive(derive.to_token_stream());
+    }
+    for (type_name, patch) in patch {
+        settings.with_patch(type_name.to_token_stream().to_string(), &patch.into());
+    }
+    for (type_name, type_and_impls) in replace {
+        let type_name = type_name.to_token_stream();
+        let (replace_name, impls) = type_and_impls.into_inner().into_name_and_impls();
+        settings.with_replacement(type_name, replace_name, impls);
+    }
+    for (schema, type_and_impls) in convert {
+        let (type_name, impls) = type_and_impls.into_inner().into_name_and_impls();
+        settings.with_conversion(schema, type_name, impls);
+    }
+    if let Some(timeout) = timeout {
+        settings.with_timeout(timeout);
+    }
+    if server {
+        if cfg!(feature = "server") {
+            settings.with_server(true);
+        } else {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "`server = true` requires the `server` feature on the \
+                 `progenitor` crate",
+            ));
+        }
+    }
+
+    Ok((spec.into_inner(), settings))
+}
+
 fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
     let (spec_source, settings) = if let Ok(spec) = syn::parse::<LitStr>(item.clone()) {
         let spec_source = SpecSource {
@@ -334,87 +408,20 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
         };
         (spec_source, GenerationSettings::default())
     } else {
-        let MacroSettings {
-            spec,
-            interface,
-            tags,
-            inner_type,
-            pre_hook,
-            pre_hook_async,
-            post_hook,
-            post_hook_async,
-            map_type,
-            unknown_crates,
-            crates,
-            derives,
-            patch,
-            replace,
-            convert,
-            timeout,
-            server,
-        } = serde_tokenstream::from_tokenstream(&item.into())?;
-
-        let spec = spec.into_inner();
-
-        let mut settings = GenerationSettings::default();
-        settings.with_interface(interface);
-        settings.with_tag(tags);
-        inner_type.map(|inner_type| settings.with_inner_type(inner_type.to_token_stream()));
-        pre_hook.map(|pre_hook| settings.with_pre_hook(pre_hook.into_inner().0));
-        pre_hook_async
-            .map(|pre_hook_async| settings.with_pre_hook_async(pre_hook_async.into_inner().0));
-        post_hook.map(|post_hook| settings.with_post_hook(post_hook.into_inner().0));
-        post_hook_async
-            .map(|post_hook_async| settings.with_post_hook_async(post_hook_async.into_inner().0));
-        map_type.map(|map_type| settings.with_map_type(map_type.to_token_stream()));
-
-        settings.with_unknown_crates(unknown_crates);
-        crates.into_iter().for_each(
-            |(CrateName(crate_name), MacroCrateSpec { original, version })| {
-                if let Some(original_crate) = original {
-                    settings.with_crate(original_crate, version, Some(&crate_name));
-                } else {
-                    settings.with_crate(crate_name, version, None);
-                }
-            },
-        );
-
-        derives.into_iter().for_each(|derive| {
-            settings.with_derive(derive.to_token_stream());
-        });
-        patch.into_iter().for_each(|(type_name, patch)| {
-            settings.with_patch(type_name.to_token_stream().to_string(), &patch.into());
-        });
-        replace.into_iter().for_each(|(type_name, type_and_impls)| {
-            let type_name = type_name.to_token_stream();
-            let (replace_name, impls) = type_and_impls.into_inner().into_name_and_impls();
-            settings.with_replacement(type_name, replace_name, impls);
-        });
-        convert.into_iter().for_each(|(schema, type_and_impls)| {
-            let (type_name, impls) = type_and_impls.into_inner().into_name_and_impls();
-            settings.with_conversion(schema, type_name, impls);
-        });
-        if let Some(timeout) = timeout {
-            settings.with_timeout(timeout);
-        }
-        if server {
-            if cfg!(feature = "server") {
-                settings.with_server(true);
-            } else {
-                return Err(syn::Error::new(
-                    proc_macro2::Span::call_site(),
-                    "`server = true` requires the `server` feature on the \
-                     `progenitor` crate",
-                ));
-            }
-        }
-        (spec, settings)
+        configure_generation(serde_tokenstream::from_tokenstream(&item.into())?)?
     };
 
     let spec_path = spec_source.path;
     let base_dir = match spec_source.relative_to {
-        RelativeTo::ManifestDir => std::env::var("CARGO_MANIFEST_DIR")
-            .map_or_else(|_| std::env::current_dir().unwrap(), PathBuf::from),
+        RelativeTo::ManifestDir => match std::env::var("CARGO_MANIFEST_DIR") {
+            Ok(path) => PathBuf::from(path),
+            Err(_) => std::env::current_dir().map_err(|error| {
+                syn::Error::new(
+                    spec_path.span(),
+                    format!("cannot resolve the current directory: {error}"),
+                )
+            })?,
+        },
         RelativeTo::OutDir => {
             let out_dir = std::env::var("OUT_DIR").map_err(|_| {
                 syn::Error::new(
@@ -433,13 +440,13 @@ fn do_generate_api(item: TokenStream) -> Result<TokenStream, syn::Error> {
     let document = std::fs::read_to_string(path.clone()).map_err(|err| {
         syn::Error::new(
             spec_path.span(),
-            format!("failed to read {}: {}", path_str, err),
+            format!("failed to read {path_str}: {err}"),
         )
     })?;
     let oapi = progenitor_impl::parse_openapi_str(&document).map_err(|err| {
         syn::Error::new(
             spec_path.span(),
-            format!("failed to parse {}: {}", path_str, err),
+            format!("failed to parse {path_str}: {err}"),
         )
     })?;
 

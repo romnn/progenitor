@@ -8,6 +8,9 @@ description = "An OpenAPI client generator - macros"
 repository = "https://github.com/oxidecomputer/progenitor.git"
 readme = "../../README.md"
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 
