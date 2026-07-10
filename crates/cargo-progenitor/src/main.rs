@@ -21,10 +21,18 @@ enum CargoCli {
     Progenitor(Args),
 }
 
-/// Generate a stand-alone crate from an `OpenAPI` document
+#[expect(
+    clippy::doc_markdown,
+    reason = "clap renders this documentation verbatim in user-facing help"
+)]
+/// Generate a stand-alone crate from an OpenAPI document
 #[derive(Parser)]
 struct Args {
-    /// `OpenAPI` definition document (JSON or YAML)
+    #[expect(
+        clippy::doc_markdown,
+        reason = "clap renders this documentation verbatim in user-facing help"
+    )]
+    /// OpenAPI definition document (JSON or YAML)
     #[clap(short = 'i', long)]
     input: String,
     /// Output directory for Rust crate
