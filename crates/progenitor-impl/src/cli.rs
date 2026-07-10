@@ -8,7 +8,7 @@ use quote::{format_ident, quote};
 use typify::{Type, TypeEnumVariant, TypeSpaceImpl, TypeStructPropInfo};
 
 use crate::{
-    Error, Generator, OpenApiDocument, Result,
+    Error, Generator, OpenApiDocument, PreparedIr, Result,
     operation::{
         DROPSHOT_PAGE_TOKEN_PARAM, OperationParameterKind, OperationParameterType, ResponseSide,
     },
@@ -24,16 +24,16 @@ struct CliOperation {
 impl Generator {
     /// Generate a `clap`-based CLI.
     pub fn cli(&mut self, spec: &OpenApiDocument, crate_name: &str) -> Result<TokenStream> {
-        let raw_methods = self
-            .prepare(spec)?
+        let prepared = self.prepare(spec)?;
+        let raw_methods = prepared
             .raw_methods
-            .into_iter()
-            .filter(|method| self.cli_method_supported(method))
+            .iter()
+            .filter(|method| self.cli_method_supported(&prepared, method))
             .collect::<Vec<_>>();
 
         let methods = raw_methods
             .iter()
-            .map(|method| self.cli_method(method))
+            .map(|method| self.cli_method(&prepared, method))
             .collect::<Result<Vec<_>>>()?;
 
         let cli_ops = methods.iter().map(|op| &op.cli_fn);
@@ -163,14 +163,18 @@ impl Generator {
         Ok(code)
     }
 
-    fn cli_method_supported(&self, method: &crate::operation::OperationMethod) -> bool {
+    fn cli_method_supported(
+        &self,
+        prepared: &PreparedIr,
+        method: &crate::operation::OperationMethod,
+    ) -> bool {
         if method.dropshot_paginated.is_none() {
             return true;
         }
 
         [ResponseSide::Success, ResponseSide::Error]
             .into_iter()
-            .map(|side| self.extract_responses(method, side).1)
+            .map(|side| self.extract_responses(prepared, method, side).1)
             .all(|kind| {
                 !matches!(
                     kind,
@@ -180,7 +184,11 @@ impl Generator {
             })
     }
 
-    fn cli_method(&mut self, method: &crate::operation::OperationMethod) -> Result<CliOperation> {
+    fn cli_method(
+        &mut self,
+        prepared: &PreparedIr,
+        method: &crate::operation::OperationMethod,
+    ) -> Result<CliOperation> {
         let CliArg {
             parser: parser_args,
             consumer: consumer_args,
@@ -213,8 +221,9 @@ impl Generator {
         let fn_name = format_ident!("execute_{}", &method.operation_id);
         let op_name = format_ident!("{}", &method.operation_id);
 
-        let (_, success_kind) = self.extract_responses(method, ResponseSide::Success);
-        let (_, error_kind) = self.extract_responses(method, ResponseSide::Error);
+        let (_, success_kind) =
+            self.extract_responses(prepared, method, ResponseSide::Success);
+        let (_, error_kind) = self.extract_responses(prepared, method, ResponseSide::Error);
 
         let execute_and_output = match method.dropshot_paginated {
             // Normal, one-shot API calls.

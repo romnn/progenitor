@@ -58,14 +58,6 @@ pub struct Generator {
     settings: GenerationSettings,
     uses_futures: bool,
     uses_websockets: bool,
-    /// Maps each component schema that extends another via a top-level
-    /// `allOf: [{$ref: <parent>}, ...]` to its parent's component name.
-    /// Populated in `generate_tokens` after `add_ref_types`; used by
-    /// `extract_responses` to collapse sibling response types that share
-    /// a common ancestor (so the generated function signature gets a
-    /// single error/success type instead of crashing on the
-    /// multi-distinct-kind assert downstream).
-    schema_supertypes: BTreeMap<String, String>,
     /// Component-schema name → `TypeId` of the corresponding typify type
     /// after `add_ref_types`. Needed alongside `schema_supertypes` so
     /// `extract_responses` can resolve a common-ancestor schema name back
@@ -83,6 +75,13 @@ pub struct Generator {
 pub(crate) struct PreparedIr {
     /// Operation methods with operation IDs already deduped.
     pub raw_methods: Vec<operation::OperationMethod>,
+    pub schema_supertypes: BTreeMap<String, String>,
+    pub schema_type_ids: BTreeMap<String, TypeId>,
+    #[expect(
+        dead_code,
+        reason = "retained with the prepared schema maps for backend metadata consumers"
+    )]
+    pub component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
 }
 
 /// Settings for [Generator].
@@ -298,7 +297,6 @@ impl Default for Generator {
             settings: Default::default(),
             uses_futures: Default::default(),
             uses_websockets: Default::default(),
-            schema_supertypes: Default::default(),
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
         }
@@ -352,7 +350,6 @@ impl Generator {
             settings: settings.clone(),
             uses_futures: false,
             uses_websockets: false,
-            schema_supertypes: Default::default(),
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
         }
@@ -443,9 +440,11 @@ impl Generator {
                 .map(|(name, schema)| (name.clone(), schema.clone())),
         )?;
 
-        self.schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
-        self.schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
-        self.component_schemas = document.schemas.clone();
+        let schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
+        let schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
+        let component_schemas = document.schemas.clone();
+        self.schema_type_ids = schema_type_ids.clone();
+        self.component_schemas = component_schemas.clone();
 
         let mut raw_methods = document
             .operations
@@ -476,18 +475,25 @@ impl Generator {
             }
         }
 
-        Ok(PreparedIr { raw_methods })
+        Ok(PreparedIr {
+            raw_methods,
+            schema_supertypes,
+            schema_type_ids,
+            component_schemas,
+        })
     }
 
     /// Emit a [TokenStream] containing the generated client code.
     pub fn generate_tokens(&mut self, spec: &OpenApiDocument) -> Result<TokenStream> {
         let document = &spec.0;
 
-        let raw_methods = self.prepare(spec)?.raw_methods;
+        let prepared = self.prepare(spec)?;
+        let raw_methods = &prepared.raw_methods;
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
             (InterfaceStyle::Positional, TagStyle::Merged) => self
                 .generate_tokens_positional_merged(
+                    &prepared,
                     &raw_methods,
                     self.settings.inner_type.is_some(),
                 ),
@@ -495,7 +501,11 @@ impl Generator {
                 unimplemented!("positional arguments with separate tags are currently unsupported")
             }
             (InterfaceStyle::Builder, TagStyle::Merged) => self
-                .generate_tokens_builder_merged(&raw_methods, self.settings.inner_type.is_some()),
+                .generate_tokens_builder_merged(
+                    &prepared,
+                    &raw_methods,
+                    self.settings.inner_type.is_some(),
+                ),
             (InterfaceStyle::Builder, TagStyle::Separate) => {
                 let tag_info = document
                     .tags
@@ -503,6 +513,7 @@ impl Generator {
                     .map(|tag| (&tag.name, tag))
                     .collect::<BTreeMap<_, _>>();
                 self.generate_tokens_builder_separate(
+                    &prepared,
                     &raw_methods,
                     tag_info,
                     self.settings.inner_type.is_some(),
@@ -562,7 +573,7 @@ impl Generator {
         // byte-identical to the flag-off case. The body references the SDK's own
         // types via `crate::types` (this is the in-crate path).
         let server_module = if self.settings.generate_server {
-            let server_body = self.server_body(&raw_methods, document, "crate")?;
+            let server_body = self.server_body(&prepared, document, "crate")?;
             quote! {
                 /// Server-stub module: the service trait and its axum adapter.
                 ///
@@ -687,12 +698,13 @@ impl Generator {
 
     fn generate_tokens_positional_merged(
         &mut self,
+        prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
             .iter()
-            .map(|method| self.positional_method(method, has_inner))
+            .map(|method| self.positional_method(prepared, method, has_inner))
             .collect::<Result<Vec<_>>>()?;
         let (extra_types, methods): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();
@@ -723,12 +735,13 @@ impl Generator {
 
     fn generate_tokens_builder_merged(
         &mut self,
+        prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
             .iter()
-            .map(|method| self.builder_struct(method, TagStyle::Merged, has_inner))
+            .map(|method| self.builder_struct(prepared, method, TagStyle::Merged, has_inner))
             .collect::<Result<Vec<_>>>()?;
         let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();
@@ -778,13 +791,14 @@ impl Generator {
 
     fn generate_tokens_builder_separate(
         &mut self,
+        prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
         tag_info: BTreeMap<&String, &ir::Tag>,
         has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
             .iter()
-            .map(|method| self.builder_struct(method, TagStyle::Separate, has_inner))
+            .map(|method| self.builder_struct(prepared, method, TagStyle::Separate, has_inner))
             .collect::<Result<Vec<_>>>()?;
         let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();

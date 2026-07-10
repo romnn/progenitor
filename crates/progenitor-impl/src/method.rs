@@ -11,7 +11,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 
 use crate::{
-    Error, Generator, Result, TagStyle, ir,
+    Error, Generator, PreparedIr, Result, TagStyle, ir,
     operation::{
         BodyContentType, DropshotPagination, HttpMethod, OperationMethod, OperationParameter,
         OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
@@ -625,6 +625,7 @@ impl Generator {
     /// the impl.
     pub(crate) fn positional_method(
         &mut self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         has_inner: bool,
     ) -> Result<(TokenStream, TokenStream)> {
@@ -690,7 +691,7 @@ impl Generator {
             error: error_type,
             body,
             extra_types,
-        } = self.method_sig_body(method, quote! { Self }, quote! { self }, has_inner)?;
+        } = self.method_sig_body(prepared, method, quote! { Self }, quote! { self }, has_inner)?;
 
         let method_impl = quote! {
             #[doc = #doc_comment]
@@ -846,6 +847,7 @@ impl Generator {
     /// implementation that marshals arguments and executes the request.
     fn method_sig_body(
         &self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         client_type: TokenStream,
         client_value: TokenStream,
@@ -1066,7 +1068,7 @@ impl Generator {
         assert!(body_func.clone().count() <= 1);
 
         let (success_response_items, response_type) =
-            self.extract_responses(method, ResponseSide::Success);
+            self.extract_responses(prepared, method, ResponseSide::Success);
 
         let success_synth_name = match &response_type {
             OperationResponseKind::Synth(name) => Some(name.clone()),
@@ -1123,7 +1125,7 @@ impl Generator {
 
         // Errors...
         let (error_response_items, error_type) =
-            self.extract_responses(method, ResponseSide::Error);
+            self.extract_responses(prepared, method, ResponseSide::Error);
 
         if let Some(response) = error_response_items.iter().find(|response| {
             matches!(response.typ, OperationResponseKind::Upgrade)
@@ -1433,6 +1435,7 @@ impl Generator {
     /// multi-kind sum-type synthesis paths below.
     pub(crate) fn extract_responses(
         &self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         side: ResponseSide,
     ) -> (Vec<OperationResponse>, OperationResponseKind) {
@@ -1440,11 +1443,12 @@ impl Generator {
             ResponseSide::Success => OperationResponseStatus::is_success_or_default,
             ResponseSide::Error => OperationResponseStatus::is_error_or_default,
         };
-        self.extract_responses_inner(method, filter, side)
+        self.extract_responses_inner(prepared, method, filter, side)
     }
 
     fn extract_responses_inner(
         &self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         filter: fn(&OperationResponseStatus) -> bool,
         side: ResponseSide,
@@ -1496,8 +1500,8 @@ impl Generator {
             .collect();
         if let Some(names) = typed_schema_names
             && names.len() > 1
-            && let Some(ancestor) = find_common_supertype(&names, &self.schema_supertypes)
-            && let Some(type_id) = self.schema_type_ids.get(&ancestor)
+            && let Some(ancestor) = find_common_supertype(&names, &prepared.schema_supertypes)
+            && let Some(type_id) = prepared.schema_type_ids.get(&ancestor)
         {
             for item in &mut response_items {
                 if matches!(item.typ, OperationResponseKind::Type(_)) {
@@ -1759,6 +1763,7 @@ impl Generator {
     /// `impl` block.
     pub(crate) fn builder_struct(
         &mut self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         tag_style: TagStyle,
         has_inner: bool,
@@ -2002,6 +2007,7 @@ impl Generator {
             body,
             extra_types,
         } = self.method_sig_body(
+            prepared,
             method,
             quote! { super::Client },
             quote! { #client_ident },
@@ -2773,7 +2779,7 @@ mod tests {
 
     use quote::quote;
 
-    use crate::{Error, Generator};
+    use crate::{Error, Generator, PreparedIr};
 
     use super::{
         BodyContentType, HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
@@ -2849,7 +2855,14 @@ mod tests {
             dropshot_websocket: true,
         };
 
+        let prepared = PreparedIr {
+            raw_methods: Vec::new(),
+            schema_supertypes: BTreeMap::new(),
+            schema_type_ids: BTreeMap::new(),
+            component_schemas: indexmap::IndexMap::new(),
+        };
         let result = Generator::default().method_sig_body(
+            &prepared,
             &method,
             quote! { Self },
             quote! { self },

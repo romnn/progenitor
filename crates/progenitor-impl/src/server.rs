@@ -21,7 +21,7 @@ use quote::{format_ident, quote};
 use typify::TypeDetails;
 
 use crate::{
-    Generator, OpenApiDocument, Result,
+    Generator, OpenApiDocument, PreparedIr, Result,
     ir::Document,
     operation::{
         BodyContentType, OperationMethod, OperationParameterKind,
@@ -58,15 +58,14 @@ impl Generator {
     pub fn server(&mut self, spec: &OpenApiDocument, crate_path: &str) -> Result<TokenStream> {
         let prepared = self.prepare(spec)?;
         let document = &spec.0;
-        self.server_body(&prepared.raw_methods, document, crate_path)
+        self.server_body(&prepared, document, crate_path)
     }
 
-    /// Shared core used by both [`Generator::server`] (after `prepare`) and
-    /// `generate_tokens` (after its inline prepare). Callers MUST have run
-    /// `prepare` first so `extract_responses` sees the supertype maps.
+    /// Shared core used by both [`Generator::server`] and `generate_tokens`.
+    /// The prepared document carries the response-analysis maps explicitly.
     pub(crate) fn server_body(
         &mut self,
-        raw_methods: &[OperationMethod],
+        prepared: &PreparedIr,
         document: &Document,
         crate_path: &str,
     ) -> Result<TokenStream> {
@@ -83,9 +82,10 @@ impl Generator {
         let trait_ident = format_ident!("{}", title);
         let server_ident = format_ident!("{}Server", title);
 
-        let ops = raw_methods
+        let ops = prepared
+            .raw_methods
             .iter()
-            .map(|method| self.server_op(method, &trait_ident))
+            .map(|method| self.server_op(prepared, method, &trait_ident))
             .collect::<Result<Vec<_>>>()?;
 
         let module_items = ops.iter().map(|o| &o.module_items);
@@ -162,6 +162,7 @@ impl Generator {
 
     fn server_op(
         &self,
+        prepared: &PreparedIr,
         method: &OperationMethod,
         trait_ident: &proc_macro2::Ident,
     ) -> Result<ServerOp> {
@@ -176,8 +177,10 @@ impl Generator {
         let axum_path = method.path.as_axum_path();
         let routing_fn = method.method.routing_ident();
 
-        let (success_items, success_kind) = self.extract_responses(method, ResponseSide::Success);
-        let (error_items, error_kind) = self.extract_responses(method, ResponseSide::Error);
+        let (success_items, success_kind) =
+            self.extract_responses(prepared, method, ResponseSide::Success);
+        let (error_items, error_kind) =
+            self.extract_responses(prepared, method, ResponseSide::Error);
 
         // Decide whether this operation is supported. Websocket/upgrade and
         // deepObject query parameters get a 501 stub instead of a trait method
