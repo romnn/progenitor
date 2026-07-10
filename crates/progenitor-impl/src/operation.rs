@@ -100,6 +100,8 @@ pub(crate) struct OperationParameter {
     pub api_name: String,
     pub description: Option<String>,
     pub typ: OperationParameterType,
+    pub optional: bool,
+    pub inner_type_id: Option<TypeId>,
     pub kind: OperationParameterKind,
 }
 
@@ -124,23 +126,6 @@ pub(crate) enum OperationParameterKind {
     },
     // TODO bodies may be optional
     Body(BodyContentType),
-}
-
-impl OperationParameterKind {
-    pub(crate) fn is_required(&self) -> bool {
-        match self {
-            Self::Path => true,
-            Self::Query { required, .. }
-            | Self::Header { required }
-            | Self::Cookie { required } => *required,
-            // TODO may be optional
-            Self::Body(_) => true,
-        }
-    }
-
-    pub(crate) fn is_optional(&self) -> bool {
-        !self.is_required()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

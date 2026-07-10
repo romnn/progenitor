@@ -133,6 +133,8 @@ impl Generator {
                      typ,
                      kind,
                      api_name,
+                     optional,
+                     inner_type_id,
                      description: _,
                  }| {
                     let arg_type_name = match typ {
@@ -142,9 +144,9 @@ impl Generator {
                             // not Option<&T>. Unwrap any Optional wrapper so the function
                             // signature and call site are consistent.
                             if matches!(kind, OperationParameterKind::Body(_)) {
-                                if let TypeDetails::Option(inner_id) = arg_type.details() {
+                                if let Some(inner_id) = inner_type_id {
                                     self.type_space
-                                        .get_type(&inner_id)
+                                        .get_type(inner_id)
                                         .unwrap()
                                         .parameter_ident()
                                 } else {
@@ -198,66 +200,57 @@ impl Generator {
                                 },
                             )
                         }
-                        OperationParameterKind::Query { required: true, .. } => (
-                            true,
-                            quote! {
-                                Self(self.0.query_param(#api_name, #value_to_str))
-                            },
-                        ),
-                        OperationParameterKind::Header { required: true } => (
-                            true,
-                            quote! {
-                                Self(self.0.header(#api_name, #value_to_str))
-                            },
-                        ),
-                        OperationParameterKind::Cookie { required: true } => (
-                            true,
-                            quote! {
-                                Self(self.0.cookie(#api_name, #value_to_str))
-                            },
-                        ),
-
-                        OperationParameterKind::Query {
-                            required: false, ..
-                        } => (
-                            false,
-                            quote! {
-                                if let Some(value) = value.into() {
-                                    Self(self.0.query_param(
-                                        #api_name,
-                                        #value_to_str,
-                                    ))
-                                } else {
-                                    Self(self.0.query_param_missing(#api_name))
-                                }
-                            },
-                        ),
-                        OperationParameterKind::Header { required: false } => (
-                            false,
-                            quote! {
-                                if let Some(value) = value.into() {
-                                    Self(self.0.header(
-                                        #api_name,
-                                        #value_to_str
-                                    ))
-                                } else {
-                                    Self(self.0.header_missing(#api_name))
-                                }
-                            },
-                        ),
-                        OperationParameterKind::Cookie { required: false } => (
-                            false,
-                            quote! {
-                                if let Some(value) = value.into() {
-                                    Self(self.0.cookie(
-                                        #api_name,
-                                        #value_to_str,
-                                    ))
-                                } else {
-                                    Self(self.0.cookie_missing(#api_name))
-                                }
-                            },
-                        ),
+                        OperationParameterKind::Query { .. } => if *optional {
+                            (
+                                false,
+                                quote! {
+                                    if let Some(value) = value.into() {
+                                        Self(self.0.query_param(#api_name, #value_to_str))
+                                    } else {
+                                        Self(self.0.query_param_missing(#api_name))
+                                    }
+                                },
+                            )
+                        } else {
+                            (
+                                true,
+                                quote! { Self(self.0.query_param(#api_name, #value_to_str)) },
+                            )
+                        },
+                        OperationParameterKind::Header { .. } => if *optional {
+                            (
+                                false,
+                                quote! {
+                                    if let Some(value) = value.into() {
+                                        Self(self.0.header(#api_name, #value_to_str))
+                                    } else {
+                                        Self(self.0.header_missing(#api_name))
+                                    }
+                                },
+                            )
+                        } else {
+                            (
+                                true,
+                                quote! { Self(self.0.header(#api_name, #value_to_str)) },
+                            )
+                        },
+                        OperationParameterKind::Cookie { .. } => if *optional {
+                            (
+                                false,
+                                quote! {
+                                    if let Some(value) = value.into() {
+                                        Self(self.0.cookie(#api_name, #value_to_str))
+                                    } else {
+                                        Self(self.0.cookie_missing(#api_name))
+                                    }
+                                },
+                            )
+                        } else {
+                            (
+                                true,
+                                quote! { Self(self.0.cookie(#api_name, #value_to_str)) },
+                            )
+                        },
                         OperationParameterKind::Body(body_content_type) => match typ {
                             OperationParameterType::Type(_) => (
                                 true,

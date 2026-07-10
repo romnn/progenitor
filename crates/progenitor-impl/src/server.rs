@@ -737,12 +737,12 @@ impl Generator {
             match &param.kind {
                 OperationParameterKind::Path => {}
                 OperationParameterKind::Query {
-                    required,
                     deep_object: false,
+                    ..
                 } => {
                     has_query = true;
                     let ident = format_ident!("{}", param.name);
-                    let (field_ty, _optional) = self.owned_field_type(param, *required);
+                    let (field_ty, _optional) = self.owned_field_type(param);
                     let rename = &param.api_name;
                     // The generated client encodes an empty array query param as
                     // *no* key (repeated-key encoding). serde_html_form then sees
@@ -763,13 +763,13 @@ impl Generator {
                     request_fields.extend(quote! { pub #ident: #field_ty, });
                     field_inits.push(quote! { #ident: __progenitor_query.#ident });
                 }
-                OperationParameterKind::Header { required } => {
+                OperationParameterKind::Header { .. } => {
                     let ident = format_ident!("{}", param.name);
                     let api_name = &param.api_name;
                     // Headers are parsed via FromStr; if the typed header type
                     // doesn't implement it, degrade to the raw `String` value so
                     // the generated route always compiles.
-                    let (base, optional) = self.header_base_type(param, *required);
+                    let (base, optional) = self.header_base_type(param);
                     let (field_ty, stmt) = if optional {
                         (
                             quote! { Option<#base> },
@@ -803,10 +803,10 @@ impl Generator {
                     header_lets.push(stmt);
                     field_inits.push(quote! { #ident });
                 }
-                OperationParameterKind::Cookie { required } => {
+                OperationParameterKind::Cookie { .. } => {
                     let ident = format_ident!("{}", param.name);
                     let api_name = &param.api_name;
-                    let (base, optional) = self.header_base_type(param, *required);
+                    let (base, optional) = self.header_base_type(param);
                     let (field_ty, stmt) = if optional {
                         (
                             quote! { Option<#base> },
@@ -885,14 +885,9 @@ impl Generator {
         let OperationParameterType::Type(type_id) = &param.typ else {
             return false;
         };
+        let type_id = param.inner_type_id.as_ref().unwrap_or(type_id);
         let ty = self.type_space.get_type(type_id).unwrap();
-        let inner_ty;
-        let details = if let TypeDetails::Option(inner) = ty.details() {
-            inner_ty = self.type_space.get_type(&inner).unwrap();
-            inner_ty.details()
-        } else {
-            ty.details()
-        };
+        let details = ty.details();
         matches!(
             details,
             TypeDetails::Vec(_) | TypeDetails::Array(_, _) | TypeDetails::Set(_)
@@ -906,15 +901,12 @@ impl Generator {
     fn owned_field_type(
         &self,
         param: &crate::operation::OperationParameter,
-        kind_required: bool,
     ) -> (TokenStream, bool) {
         match &param.typ {
             OperationParameterType::Type(type_id) => {
-                let ty = self.type_space.get_type(type_id).unwrap();
-                if let TypeDetails::Option(inner) = ty.details() {
-                    let inner = self.type_space.get_type(&inner).unwrap().ident();
-                    (quote! { Option<#inner> }, true)
-                } else if !kind_required {
+                let effective_id = param.inner_type_id.as_ref().unwrap_or(type_id);
+                let ty = self.type_space.get_type(effective_id).unwrap();
+                if param.optional {
                     let ident = ty.ident();
                     (quote! { Option<#ident> }, true)
                 } else {
@@ -932,24 +924,19 @@ impl Generator {
     fn header_base_type(
         &self,
         param: &crate::operation::OperationParameter,
-        kind_required: bool,
     ) -> (TokenStream, bool) {
         match &param.typ {
             OperationParameterType::Type(type_id) => {
-                let ty = self.type_space.get_type(type_id).unwrap();
-                let (base, optional) = if let TypeDetails::Option(inner) = ty.details() {
-                    (self.type_space.get_type(&inner).unwrap(), true)
-                } else {
-                    (ty, !kind_required)
-                };
+                let effective_id = param.inner_type_id.as_ref().unwrap_or(type_id);
+                let base = self.type_space.get_type(effective_id).unwrap();
                 let effective = if base.has_impl(typify::TypeSpaceImpl::FromStr) {
                     base.ident()
                 } else {
                     quote! { String }
                 };
-                (effective, optional)
+                (effective, param.optional)
             }
-            OperationParameterType::RawBody => (quote! { String }, !kind_required),
+            OperationParameterType::RawBody => (quote! { String }, param.optional),
         }
     }
 

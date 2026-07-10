@@ -413,11 +413,7 @@ impl Generator {
             let innately_required = match &param.kind {
                 // We're not interetested in the body parameter yet.
                 OperationParameterKind::Body(_) => continue,
-
-                OperationParameterKind::Path => true,
-                OperationParameterKind::Query { required, .. }
-                | OperationParameterKind::Header { required }
-                | OperationParameterKind::Cookie { required } => *required,
+                _ => !param.optional,
             };
 
             // For paginated endpoints, we don't generate 'page_token' args.

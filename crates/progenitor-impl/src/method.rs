@@ -217,11 +217,11 @@ impl Generator {
                         // use the inner type so the generated path encoding
                         // operates on a concrete value.
                         let ty = self.type_space.get_type(&type_id).unwrap();
-                        let type_id =
-                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
-                                inner_type_id
+                        let (type_id, inner_type_id) =
+                            if let typify::TypeDetails::Option(inner) = ty.details() {
+                                (inner.clone(), Some(inner))
                             } else {
-                                type_id
+                                (type_id, None)
                             };
 
                         // The generated path encoding renders the value
@@ -248,6 +248,8 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
+                            optional: false,
+                            inner_type_id,
                             kind: OperationParameterKind::Path,
                         })
                     }
@@ -272,11 +274,11 @@ impl Generator {
                         // as optional (irrespective of the `required` field on
                         // the parameter) and use the "inner" type.
                         let details = ty.details();
-                        let (type_id, required) =
-                            if let typify::TypeDetails::Option(inner_type_id) = details {
-                                (inner_type_id, false)
+                        let (type_id, required, inner_type_id) =
+                            if let typify::TypeDetails::Option(inner) = details {
+                                (inner.clone(), false, Some(inner))
                             } else {
-                                (type_id, parameter.required)
+                                (type_id, parameter.required, None)
                             };
 
                         Ok(OperationParameter {
@@ -284,6 +286,8 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
+                            optional: !required,
+                            inner_type_id,
                             kind: OperationParameterKind::Query {
                                 required,
                                 deep_object: deep_object_query,
@@ -306,12 +310,12 @@ impl Generator {
                         // the generated header encoding needs the inner
                         // type (calling `.to_string()` on an `Option` does
                         // not compile).
-                        let (type_id, required) = {
+                        let (type_id, required, inner_type_id) = {
                             let ty = self.type_space.get_type(&type_id).unwrap();
-                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
-                                (inner_type_id, false)
+                            if let typify::TypeDetails::Option(inner) = ty.details() {
+                                (inner.clone(), false, Some(inner))
                             } else {
-                                (type_id, parameter.required)
+                                (type_id, parameter.required, None)
                             }
                         };
 
@@ -340,6 +344,8 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
+                            optional: !required,
+                            inner_type_id,
                             kind: OperationParameterKind::Header { required },
                         })
                     }
@@ -352,12 +358,12 @@ impl Generator {
 
                         let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
 
-                        let (type_id, required) = {
+                        let (type_id, required, inner_type_id) = {
                             let ty = self.type_space.get_type(&type_id).unwrap();
-                            if let typify::TypeDetails::Option(inner_type_id) = ty.details() {
-                                (inner_type_id, false)
+                            if let typify::TypeDetails::Option(inner) = ty.details() {
+                                (inner.clone(), false, Some(inner))
                             } else {
-                                (type_id, parameter.required)
+                                (type_id, parameter.required, None)
                             }
                         };
 
@@ -381,6 +387,8 @@ impl Generator {
                             api_name: parameter.name.clone(),
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
+                            optional: !required,
+                            inner_type_id,
                             kind: OperationParameterKind::Cookie { required },
                         })
                     }
@@ -436,6 +444,8 @@ impl Generator {
                     api_name: name.clone(),
                     description: None,
                     typ: OperationParameterType::Type(type_id),
+                    optional: false,
+                    inner_type_id: None,
                     kind: OperationParameterKind::Path,
                 });
             }
@@ -637,7 +647,7 @@ impl Generator {
             .iter()
             .map(|param| {
                 let name = format_ident!("{}", param.name);
-                let typ = match (&param.typ, param.kind.is_optional()) {
+                let typ = match (&param.typ, param.optional) {
                     (OperationParameterType::Type(type_id), false) => self
                         .type_space
                         .get_type(type_id)
@@ -891,10 +901,10 @@ impl Generator {
             .params
             .iter()
             .filter_map(|param| match &param.kind {
-                OperationParameterKind::Cookie { required } => {
+                OperationParameterKind::Cookie { .. } => {
                     let cookie_name = &param.api_name;
                     let cookie_ident = format_ident!("{}", &param.name);
-                    let cookie = if *required {
+                    let cookie = if !param.optional {
                         quote! {
                             cookie_header_values.push(format!(
                                 "{}={}",
@@ -923,10 +933,10 @@ impl Generator {
             .params
             .iter()
             .filter_map(|param| match &param.kind {
-                OperationParameterKind::Header { required } => {
+                OperationParameterKind::Header { .. } => {
                     let hn = &param.api_name;
                     let hn_ident = format_ident!("{}", &param.name);
-                    let res = if *required {
+                    let res = if !param.optional {
                         quote! {
                             header_map.append(
                                 #hn,
@@ -1572,12 +1582,9 @@ impl Generator {
                     (param.api_name.as_str(), &param.kind),
                     (
                         DROPSHOT_PAGE_TOKEN_PARAM | DROPSHOT_LIMIT_PARAM,
-                        OperationParameterKind::Query {
-                            required: false,
-                            ..
-                        }
+                        OperationParameterKind::Query { .. }
                     )
-                )
+                ) && param.optional
             })
             .count()
             != 2
@@ -1588,7 +1595,7 @@ impl Generator {
         // All query parameters must be optional since page_token may not be
         // specified in conjunction with other query parameters.
         if !parameters.iter().all(|param| match &param.kind {
-            OperationParameterKind::Query { required, .. } => !required,
+            OperationParameterKind::Query { .. } => param.optional,
             _ => true,
         }) {
             return None;
@@ -1796,7 +1803,7 @@ impl Generator {
                         (&param.kind, ty.builder())
                     {
                         Ok(quote! { ::std::result::Result<#builder_name, ::std::string::String> })
-                    } else if param.kind.is_required() {
+                    } else if !param.optional {
                         let t = ty.ident();
                         Ok(quote! { ::std::result::Result<#t, ::std::string::String> })
                     } else {
@@ -1828,7 +1835,7 @@ impl Generator {
                     if let (OperationParameterKind::Body(_), Some(_)) = (&param.kind, ty.builder())
                     {
                         Ok(quote! { Ok(::std::default::Default::default()) })
-                    } else if param.kind.is_required() {
+                    } else if !param.optional {
                         let err_msg = format!("{} was not initialized", param.name);
                         Ok(quote! { Err(#err_msg.to_string()) })
                     } else {
@@ -1876,7 +1883,7 @@ impl Generator {
                 match &param.typ {
                     OperationParameterType::Type(type_id) => {
                         let ty = self.type_space.get_type(type_id)?;
-                        match (ty.builder(), param.kind.is_optional()) {
+                        match (ty.builder(), param.optional) {
                             // TODO right now optional body parameters are not
                             // addressed
                             (Some(_), true) => {
@@ -2499,6 +2506,8 @@ impl Generator {
             api_name: "body".to_string(),
             description: body.description.clone(),
             typ,
+            optional: false,
+            inner_type_id: None,
             kind: OperationParameterKind::Body(content_type),
         }))
     }
@@ -2794,6 +2803,8 @@ mod tests {
             api_name: api_name.to_string(),
             description: None,
             typ: OperationParameterType::RawBody,
+            optional: false,
+            inner_type_id: None,
             kind,
         }
     }
