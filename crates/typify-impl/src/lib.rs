@@ -22,6 +22,21 @@ use crate::util::{sanitize, Case};
 
 pub use crate::util::accept_as_ident;
 
+/// Extension key used to carry an OpenAPI discriminator through JSON Schema.
+pub const DISCRIMINATOR_EXTENSION_KEY: &str = "x-discriminator";
+
+/// JSON payload stored under [`DISCRIMINATOR_EXTENSION_KEY`].
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscriminatorExtension {
+    /// Property whose value selects the concrete schema.
+    #[serde(default)]
+    pub property_name: String,
+    /// Discriminator value to schema-reference mapping.
+    #[serde(default, skip_serializing_if = "indexmap::IndexMap::is_empty")]
+    pub mapping: indexmap::IndexMap<String, String>,
+}
+
 #[cfg(test)]
 mod test_util;
 
@@ -1199,8 +1214,10 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
             };
             let discriminator = obj
                 .extensions
-                .get("x-discriminator")
+                .get(DISCRIMINATOR_EXTENSION_KEY)
                 .or_else(|| obj.extensions.get("discriminator"))?;
+            let discriminator: DiscriminatorExtension =
+                serde_json::from_value(discriminator.clone()).ok()?;
             // OpenAPI has two discriminator styles, and wild specs mix
             // them, so the base's own shape decides what the prepass may
             // touch.
@@ -1238,31 +1255,24 @@ fn discriminator_to_oneof_prepass(definitions: &mut [(RefKey, Schema)]) {
                         .filter_map(strip_ref)
                         .collect()
                 });
-            let property_name = discriminator
-                .get("propertyName")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or("@type")
-                .to_string();
+            let property_name = if discriminator.property_name.is_empty() {
+                "@type".to_string()
+            } else {
+                discriminator.property_name
+            };
             // Invert the mapping. OpenAPI's `discriminator.mapping` is
             // `{ discriminator_value: ref_path }` — flip to `subtype_name
             // → discriminator_value` for lookup below. If no explicit
             // mapping, fall back to using the subtype name itself as the
             // discriminator value.
             let mut mapped: Vec<(String, String)> = Vec::new();
-            if let Some(mapping) = discriminator
-                .get("mapping")
-                .and_then(serde_json::Value::as_object)
-            {
-                for (disc_value, ref_path) in mapping {
-                    if let Some(ref_str) = ref_path.as_str() {
-                        if let Some(subtype_name) = ref_str
-                            .strip_prefix("#/components/schemas/")
-                            .or_else(|| ref_str.strip_prefix("#/definitions/"))
-                            .or_else(|| ref_str.strip_prefix("#/"))
-                        {
-                            mapped.push((subtype_name.to_string(), disc_value.clone()));
-                        }
-                    }
+            for (disc_value, ref_path) in discriminator.mapping {
+                if let Some(subtype_name) = ref_path
+                    .strip_prefix("#/components/schemas/")
+                    .or_else(|| ref_path.strip_prefix("#/definitions/"))
+                    .or_else(|| ref_path.strip_prefix("#/"))
+                {
+                    mapped.push((subtype_name.to_string(), disc_value));
                 }
             }
             let mut candidate_subtypes = subtypes_of.get(base_name).cloned().unwrap_or_default();

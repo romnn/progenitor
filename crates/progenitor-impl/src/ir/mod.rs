@@ -2,11 +2,10 @@
 
 //! Version-agnostic internal model of an OpenAPI document.
 //!
-//! Each supported OpenAPI version gets its own frontend that parses the
-//! source document with a version-appropriate AST and lowers it into this
-//! model. Everything downstream — type generation, method generation, the
-//! CLI and httpmock emitters — consumes only this model, so adding support
-//! for a new spec version never touches generator code.
+//! A tolerant frontend parses supported OpenAPI documents and lowers them
+//! into this model. Everything downstream — type generation, method
+//! generation, the CLI and httpmock emitters — consumes only this model, so
+//! supporting schema-dialect differences never touches generator code.
 //!
 //! Schemas are represented as JSON Schema draft-07 [`schemars`] values
 //! because that is the input format `typify` consumes. Schema `$ref`s are
@@ -14,8 +13,7 @@
 //! all other references (parameters, request bodies, responses) are
 //! resolved during lowering.
 
-pub(crate) mod v30;
-pub(crate) mod v31;
+pub(crate) mod frontend;
 
 use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashSet};
@@ -132,10 +130,7 @@ pub(crate) struct RequestBody {
     pub description: Option<String>,
     /// Carried for future use; the generator currently treats every body
     /// as required (long-standing upstream TODO).
-    #[expect(
-        dead_code,
-        reason = "request-body optionality is not implemented yet"
-    )]
+    #[expect(dead_code, reason = "request-body optionality is not implemented yet")]
     pub required: bool,
     /// Media type → content, in document order. Order is semantic: the
     /// generator prefers a JSON variant and otherwise takes the first.
@@ -367,7 +362,7 @@ pub(crate) fn build_schema_supertype_map(
 }
 
 /// Get a schema's top-level `allOf` members, looking through the
-/// `oneOf: [null, …]` wrapper that the 3.0 frontend produces for
+/// `oneOf: [null, …]` wrapper that the 3.0 dialect produces for
 /// `nullable: true` composite schemas.
 ///
 /// Only *pure* composition qualifies: schemas that also carry
@@ -430,17 +425,20 @@ fn is_null_schema(schema: &schemars::schema::Schema) -> bool {
 mod tests {
     use indexmap::IndexMap;
     use indoc::indoc;
+    use serde_json::json;
 
     use super::build_schema_supertype_map;
-    use crate::to_schema::ToSchema;
 
     fn schemas_from_yaml(yaml: &str) -> IndexMap<String, schemars::schema::Schema> {
-        let components: openapiv3::Components = serde_yaml::from_str(yaml).unwrap();
-        components
-            .schemas
-            .iter()
-            .map(|(name, schema)| (name.clone(), schema.to_schema()))
-            .collect()
+        let components: serde_json::Value = serde_yaml::from_str(yaml).unwrap();
+        crate::ir::frontend::parse(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "test", "version": "1.0.0" },
+            "paths": {},
+            "components": components,
+        }))
+        .unwrap()
+        .schemas
     }
 
     #[test]
@@ -488,7 +486,8 @@ mod tests {
     #[test]
     fn build_schema_supertype_map_requires_pure_composition() {
         // An allOf that also carries type-forming keywords (here:
-        // `type: object` + `properties`, openapiv3's `SchemaKind::Any`)
+        // `type: object` + `properties`, historically represented as an
+        // unconstrained schema kind by the typed 3.0 frontend)
         // is not a plain "extends parent" pattern and must be excluded —
         // matching the historical SchemaKind::AllOf-only behavior.
         let schemas = schemas_from_yaml(indoc! {"
@@ -511,7 +510,7 @@ mod tests {
 
     #[test]
     fn build_schema_supertype_map_sees_through_nullable_wrapper() {
-        // `nullable: true` on an allOf schema makes the 3.0 frontend wrap
+        // `nullable: true` on an allOf schema makes the frontend wrap
         // it in oneOf [null, allOf]; the supertype scan must look through.
         let schemas = schemas_from_yaml(indoc! {"
             schemas:

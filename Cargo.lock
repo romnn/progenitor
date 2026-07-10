@@ -3192,6 +3192,7 @@ dependencies = [
  "env_logger",
  "expectorate",
  "heck",
+ "indexmap",
  "log",
  "paste",
  "proc-macro2",

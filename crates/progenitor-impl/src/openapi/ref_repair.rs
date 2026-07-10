@@ -1,6 +1,6 @@
 //! Raw-value repairs for malformed `$ref`s, applied to the decoded
-//! `serde_json::Value` before version dispatch so both the 3.0 and 3.1
-//! frontends benefit.
+//! `serde_json::Value` before frontend lowering so both supported dialects
+//! benefit.
 //!
 //! Two classes of wild-spec damage are handled here:
 //!
@@ -9,7 +9,7 @@
 //!   references it from response positions);
 //! - JSON-pointer `$ref`s that reach *inside* a component body, such as
 //!   `#/components/schemas/Account/definitions/accountPrototype`. Both
-//!   resolvers only support whole-component references, so the targeted
+//!   component resolvers support whole-component references, so the targeted
 //!   subtrees are hoisted into `components.schemas` and every ref to them
 //!   rewritten. Hoisting (rather than inlining) keeps self-referential
 //!   targets finite and guarantees one shared definition per pointer no
@@ -181,7 +181,8 @@ fn copy_misfiled_component(doc: &mut Value, position: RefPosition, name: &str) -
     if let Some(object) = copy.as_object_mut() {
         match position {
             RefPosition::Response => {
-                // openapiv3::Response requires a description.
+                // Keep relocated response shapes canonical even when the
+                // misfiled source omitted its description.
                 if !object.contains_key("description") {
                     object.insert("description".to_string(), Value::String(String::new()));
                 }
@@ -195,11 +196,9 @@ fn copy_misfiled_component(doc: &mut Value, position: RefPosition, name: &str) -
     }
 
     if matches!(position, RefPosition::RequestBody) {
-        // The misfiled original stays behind under `components.responses`,
-        // where openapiv3::Response still demands a description even if
-        // nothing references the entry anymore. A request-body-shaped
-        // object naturally lacks one, which would fail the whole 3.0
-        // parse, so patch the original in place.
+        // The misfiled original stays behind under `components.responses`.
+        // A request-body-shaped object naturally lacks a description, so
+        // canonicalize the leftover in the same way as the relocated copy.
         if let Some(original) = components
             .get_mut(position.misfiled_kind())
             .and_then(|kind| kind.get_mut(name))
@@ -602,7 +601,7 @@ mod tests {
         assert_eq!(
             copied.get("description").and_then(Value::as_str),
             Some(""),
-            "openapiv3 requires a response description",
+            "the relocated response gets a canonical description",
         );
         assert!(
             copied
@@ -668,10 +667,8 @@ mod tests {
 
     #[test]
     fn request_body_relocation_leaves_a_parseable_response_original() {
-        // The original stays under `components.responses`, where
-        // openapiv3::Response requires a description the request-body
-        // shaped object lacks; without patching it the whole 3.0 parse
-        // fails even though nothing references the leftover anymore.
+        // The original stays under `components.responses`; canonicalize its
+        // response shape even though nothing references the leftover.
         let fixture = indoc! {r##"
             {
                 "openapi": "3.0.3",
@@ -710,7 +707,7 @@ mod tests {
             doc.pointer("/components/responses/ThingPostRequest/description")
                 .and_then(Value::as_str),
             Some(""),
-            "the leftover original must satisfy openapiv3::Response",
+            "the leftover original keeps a canonical response shape",
         );
         assert_eq!(
             doc.pointer("/paths/~1things/post/requestBody/$ref")

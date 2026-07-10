@@ -25,11 +25,10 @@ mod cli;
 mod httpmock;
 mod ir;
 mod method;
-mod operation;
 mod openapi;
+mod operation;
 mod server;
 mod template;
-mod to_schema;
 mod util;
 
 #[allow(missing_docs)]
@@ -508,12 +507,11 @@ impl Generator {
             (InterfaceStyle::Positional, TagStyle::Separate) => {
                 unimplemented!("positional arguments with separate tags are currently unsupported")
             }
-            (InterfaceStyle::Builder, TagStyle::Merged) => self
-                .generate_tokens_builder_merged(
-                    &prepared,
-                    &raw_methods,
-                    self.settings.inner_type.is_some(),
-                ),
+            (InterfaceStyle::Builder, TagStyle::Merged) => self.generate_tokens_builder_merged(
+                &prepared,
+                &raw_methods,
+                self.settings.inner_type.is_some(),
+            ),
             (InterfaceStyle::Builder, TagStyle::Separate) => {
                 let tag_info = document
                     .tags

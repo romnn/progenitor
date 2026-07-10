@@ -1,14 +1,13 @@
 // Copyright 2026 Oxide Computer Company
 
-//! OpenAPI 3.1.x frontend: parses a 3.1 document with a tolerant serde
-//! skeleton and lowers it into the version-agnostic [`super`] model.
+//! Tolerant OpenAPI 3.0/3.1 frontend that lowers documents into the
+//! version-agnostic [`super`] model.
 //!
 //! The document structure (paths, operations, parameters, bodies,
 //! responses) is typed; schemas stay raw [`serde_json::Value`]s until the
-//! dialect rewriter in [`schema`] lowers them from JSON Schema 2020-12 to
-//! the draft-07 model typify consumes. Existing typed 3.1 parsers were
-//! rejected because they silently drop the 2020-12 keywords wild specs
-//! actually use (`$defs`, `patternProperties`, `contentMediaType`, …).
+//! dialect rewriter in [`schema`] lowers them to the draft-07 model typify
+//! consumes. A raw-value schema boundary preserves modern keywords wild
+//! specs actually use (`$defs`, `patternProperties`, `contentMediaType`, …).
 
 mod schema;
 
@@ -20,7 +19,7 @@ use std::collections::BTreeMap;
 use crate::openapi::ParseOpenApiError;
 use crate::{Error, Result, ir};
 
-use schema::SchemaLowering;
+use schema::{Dialect, SchemaLowering};
 
 /// Dialect URIs whose keyword semantics match what the schema rewriter
 /// assumes. Anything else would silently change keyword meaning.
@@ -48,7 +47,12 @@ fn lower(document: Document31) -> Result<ir::Document> {
         )));
     }
 
-    let mut lowering = SchemaLowering::new(document.components.schemas.keys().cloned());
+    let dialect = if document.openapi.trim().starts_with("3.0") {
+        Dialect::V30
+    } else {
+        Dialect::V31
+    };
+    let mut lowering = SchemaLowering::new(dialect, document.components.schemas.keys().cloned());
     let mut schemas = lowering.lower_components(document.components.schemas.clone())?;
 
     let mut operations = Vec::new();
@@ -68,6 +72,7 @@ fn lower(document: Document31) -> Result<ir::Document> {
                 &item.parameters,
                 path,
                 method,
+                dialect,
                 &document.components,
                 &mut lowering,
                 &mut schemas,
@@ -117,6 +122,7 @@ fn lower_operation(
     path_parameters: &[Value],
     path: &str,
     method: &str,
+    dialect: Dialect,
     components: &Components31,
     lowering: &mut SchemaLowering,
     schemas: &mut IndexMap<String, schemars::schema::Schema>,
@@ -125,7 +131,7 @@ fn lower_operation(
 
     // Merge path-item and operation parameters; operation parameters
     // override path-item parameters with the same identity, and the result
-    // is name-ordered — the same contract the 3.0 frontend honors. A
+    // is name-ordered, preserving the generator's historical contract. A
     // parameter's identity is (name, location): Elasticsearch declares
     // `scroll_id` as BOTH a path and a query parameter of one operation,
     // and keying by name alone collapses them into one.
@@ -170,7 +176,11 @@ fn lower_operation(
         .partition(|(status, _)| *status == "default");
     for (status_key, response_value) in default_entries.into_iter().chain(coded_entries) {
         let status = parse_status(status_key, &context)?;
-        let resolved = resolve_component(response_value, &components.responses, "response")?;
+        let resolved = match resolve_component(response_value, &components.responses, "response") {
+            Ok(response) => response,
+            Err(_) if dialect == Dialect::V30 => continue,
+            Err(error) => return Err(error),
+        };
         let response: Response31 = from_value(
             resolved.clone(),
             &format!("response {status_key} of {context}"),
@@ -250,7 +260,7 @@ fn lower_parameter(
 
     let schema = match (parameter.schema, parameter.content.is_some()) {
         // `content`-style parameters are unsupported; `None` makes the
-        // generator report that, matching the 3.0 frontend.
+        // generator report that through the shared operation lowering path.
         (_, true) => None,
         (Some(schema_value), false) => Some(lower_schema(
             schema_value,
@@ -345,8 +355,7 @@ fn parse_status(status: &str, context: &str) -> Result<ir::ResponseStatus> {
     )))
 }
 
-/// Follow `$ref` chains through a components section by final path
-/// segment, mirroring the 3.0 frontend's resolution semantics.
+/// Follow `$ref` chains through a components section by final path segment.
 fn resolve_component<'a>(
     value: &'a Value,
     section: &'a IndexMap<String, Value>,
@@ -461,8 +470,8 @@ struct PathItem31 {
 }
 
 impl PathItem31 {
-    /// Operations in the same fixed order the 3.0 frontend walks
-    /// (`openapiv3::PathItem::iter`) — never JSON key order.
+    /// Operations in the generator's historical fixed method order, never
+    /// JSON key order.
     fn operations(&self) -> impl Iterator<Item = (&'static str, &Value)> {
         [
             ("get", &self.get),

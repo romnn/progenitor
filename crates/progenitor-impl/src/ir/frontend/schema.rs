@@ -1,19 +1,15 @@
 // Copyright 2026 Oxide Computer Company
 
-//! JSON Schema 2020-12 → draft-07 lowering for the OpenAPI 3.1 frontend.
+//! OpenAPI schema dialect → JSON Schema draft-07 lowering.
 //!
-//! OpenAPI 3.1 schemas are full JSON Schema 2020-12, while typify consumes
-//! the schemars 0.8 draft-07 model. This module rewrites schema values
-//! between the dialects as a pure `Value → Value` transformation;
+//! OpenAPI 3.1 schemas are full JSON Schema 2020-12 and OpenAPI 3.0 has its
+//! own schema dialect, while typify consumes the schemars 0.8 draft-07 model.
+//! This module rewrites schema values as a pure `Value → Value` transformation;
 //! deserialization into `schemars` happens as a separate final step
 //! ([`into_schemars`]) so the rewrite logic survives any future change of
 //! the generator's schema representation.
-//!
-//! Where a 2020-12 construct has a 3.0 equivalent, the rewrite targets the
-//! exact shapes `to_schema.rs` produces for that equivalent — typify embeds
-//! the schemars value in generated doc comments, so a 3.0 document and its
-//! 3.1 twin only generate identical code if their lowered schemas are
-//! byte-equal.
+//! Equivalent constructs in both dialects target byte-identical schemars
+//! values because typify embeds those values in generated doc comments.
 
 use indexmap::IndexMap;
 use serde_json::{Map, Value, json};
@@ -21,10 +17,17 @@ use std::collections::BTreeMap;
 
 use crate::{Error, Result};
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(super) enum Dialect {
+    V30,
+    V31,
+}
+
 /// Document-wide schema lowering state: the set of claimed component
 /// names, schemas hoisted out of `$defs`, and the `$ref` rewrites those
 /// hoists imply.
 pub(super) struct SchemaLowering {
+    dialect: Dialect,
     /// Every claimed component name (original components + hoisted defs);
     /// used both for unique-name synthesis and `$ref` validation. typify
     /// resolves references by their final path segment, so names must be
@@ -43,8 +46,9 @@ pub(super) struct SchemaLowering {
 }
 
 impl SchemaLowering {
-    pub(super) fn new(component_names: impl IntoIterator<Item = String>) -> Self {
+    pub(super) fn new(dialect: Dialect, component_names: impl IntoIterator<Item = String>) -> Self {
         Self {
+            dialect,
             known: component_names.into_iter().collect(),
             hoisted: Vec::new(),
             full_renames: BTreeMap::new(),
@@ -149,6 +153,117 @@ impl SchemaLowering {
             return Ok(());
         };
 
+        if matches!(self.dialect, Dialect::V30)
+            && let Some(reference) = map.get("$ref").cloned()
+        {
+            // OpenAPI 3.0 Reference Objects ignore every sibling of `$ref`.
+            // Preserve that dialect-specific behavior so the unified value
+            // frontend remains byte-identical to the typed legacy frontend.
+            map.clear();
+            map.insert("$ref".to_string(), reference);
+        }
+        if matches!(self.dialect, Dialect::V30) {
+            const V30_KEYWORDS: &[&str] = &[
+                "$ref",
+                "title",
+                "description",
+                "default",
+                "deprecated",
+                "readOnly",
+                "writeOnly",
+                "example",
+                "nullable",
+                "discriminator",
+                "type",
+                "format",
+                "pattern",
+                "multipleOf",
+                "exclusiveMinimum",
+                "exclusiveMaximum",
+                "minimum",
+                "maximum",
+                "properties",
+                "required",
+                "additionalProperties",
+                "minProperties",
+                "maxProperties",
+                "items",
+                "minItems",
+                "maxItems",
+                "uniqueItems",
+                "enum",
+                "minLength",
+                "maxLength",
+                "oneOf",
+                "allOf",
+                "anyOf",
+                "not",
+            ];
+            map.retain(|key, _| key.starts_with("x-") || V30_KEYWORDS.contains(&key.as_str()));
+            for optional_metadata in ["title", "description", "default", "example"] {
+                if matches!(map.get(optional_metadata), Some(Value::Null)) {
+                    map.shift_remove(optional_metadata);
+                }
+            }
+            if matches!(map.get("enum"), Some(Value::Array(values)) if values.is_empty()) {
+                map.shift_remove("enum");
+            }
+            if matches!(map.get("type"), Some(Value::String(kind)) if kind == "null") {
+                map.shift_remove("type");
+            }
+            if matches!(map.get("type"), Some(Value::String(kind)) if kind == "number")
+                && let Some(Value::Array(values)) = map.get_mut("enum")
+            {
+                for value in values {
+                    if let Value::Number(number) = value
+                        && let Some(number) = number.as_f64().and_then(serde_json::Number::from_f64)
+                    {
+                        *value = Value::Number(number);
+                    }
+                }
+            }
+            if matches!(map.get("type"), Some(Value::String(kind)) if kind == "array")
+                && matches!(map.get("uniqueItems"), Some(Value::Bool(false)))
+            {
+                map.shift_remove("uniqueItems");
+            }
+            let null_only_enum = matches!(
+                map.get("enum"),
+                Some(Value::Array(values)) if values.as_slice() == [Value::Null]
+            );
+            let has_other_validation = [
+                "type",
+                "pattern",
+                "multipleOf",
+                "exclusiveMinimum",
+                "exclusiveMaximum",
+                "minimum",
+                "maximum",
+                "properties",
+                "required",
+                "additionalProperties",
+                "minProperties",
+                "maxProperties",
+                "items",
+                "minItems",
+                "maxItems",
+                "uniqueItems",
+                "format",
+                "minLength",
+                "maxLength",
+                "oneOf",
+                "allOf",
+                "anyOf",
+                "not",
+            ]
+            .iter()
+            .any(|key| map.contains_key(*key));
+            if null_only_enum && !has_other_validation {
+                map.shift_remove("enum");
+                map.insert("type".to_string(), Value::String("null".to_string()));
+            }
+        }
+
         if let Some(defs) = map.shift_remove("$defs") {
             let Value::Object(defs) = defs else {
                 return Err(Error::UnexpectedFormat(format!(
@@ -224,15 +339,28 @@ impl SchemaLowering {
         map.shift_remove("$anchor");
 
         // OpenAPI's `discriminator` is not a JSON Schema keyword; carry it
-        // as the `x-discriminator` extension exactly like the 3.0 frontend
-        // so typify's discriminator prepass sees one spelling.
-        if let Some(discriminator) = map.shift_remove("discriminator") {
-            map.entry("x-discriminator").or_insert(discriminator);
+        // as the `x-discriminator` extension for both dialects so typify's
+        // discriminator prepass sees one spelling.
+        if let Some(mut discriminator) = map.shift_remove("discriminator") {
+            if matches!(self.dialect, Dialect::V30)
+                && let Value::Object(fields) = &mut discriminator
+            {
+                let mut canonical = Map::new();
+                if let Some(property_name) = fields.shift_remove("propertyName") {
+                    canonical.insert("propertyName".to_string(), property_name);
+                }
+                if let Some(mapping) = fields.shift_remove("mapping") {
+                    canonical.insert("mapping".to_string(), mapping);
+                }
+                discriminator = Value::Object(canonical);
+            }
+            map.entry(typify::DISCRIMINATOR_EXTENSION_KEY)
+                .or_insert(discriminator);
         }
 
         // `example` (singular) is the deprecated 3.0 spelling; schemars
         // models the draft-07 `examples` array, which is also what the
-        // 3.0 frontend produces.
+        // 3.0 dialect produces.
         if let Some(example) = map.shift_remove("example")
             && !map.contains_key("examples")
         {
@@ -254,7 +382,6 @@ impl SchemaLowering {
         if matches!(map.get("properties"), Some(Value::Null)) {
             map.shift_remove("properties");
         }
-
         // typify ignores `const` entirely; a single-value `enum` is
         // equivalent and matches what 3.0 documents express.
         if let Some(constant) = map.shift_remove("const") {
@@ -264,7 +391,7 @@ impl SchemaLowering {
 
         // Draft-4-style boolean exclusive bounds appear in mechanically
         // converted 3.1 documents; fold them into the numeric draft-07
-        // form the same way the 3.0 frontend does.
+        // form the same way the 3.0 dialect does.
         for (exclusive_key, bound_key) in [
             ("exclusiveMinimum", "minimum"),
             ("exclusiveMaximum", "maximum"),
@@ -301,6 +428,53 @@ impl SchemaLowering {
             if let Some(Value::String(single)) = map.get("type") {
                 let single = single.clone();
                 map.insert("type".to_string(), json!([single, "null"]));
+            } else if self.dialect == Dialect::V30
+                && !map.contains_key("type")
+                && !["oneOf", "anyOf", "allOf", "not"]
+                    .iter()
+                    .any(|key| map.contains_key(*key))
+            {
+                let mut inferred = Vec::new();
+                if matches!(map.get("properties"), Some(Value::Object(properties)) if !properties.is_empty())
+                    || matches!(map.get("required"), Some(Value::Array(required)) if !required.is_empty())
+                    || ["additionalProperties", "minProperties", "maxProperties"]
+                        .iter()
+                        .any(|key| map.contains_key(*key))
+                {
+                    inferred.push("object");
+                }
+                if ["items", "minItems", "maxItems", "uniqueItems"]
+                    .iter()
+                    .any(|key| map.contains_key(*key))
+                {
+                    inferred.push("array");
+                }
+                // Preserve the legacy AnySchema conversion, including its
+                // historical Array inference for numeric/string validation.
+                if [
+                    "multipleOf",
+                    "exclusiveMinimum",
+                    "exclusiveMaximum",
+                    "minimum",
+                    "maximum",
+                ]
+                .iter()
+                .any(|key| map.contains_key(*key))
+                {
+                    inferred.push("array");
+                }
+                if ["pattern", "minLength", "maxLength"]
+                    .iter()
+                    .any(|key| map.contains_key(*key))
+                {
+                    inferred.push("array");
+                }
+                let non_permissive_without_inferred_type = matches!(map.get("enum"), Some(Value::Array(values)) if !values.is_empty())
+                    || map.contains_key("format");
+                if !inferred.is_empty() || non_permissive_without_inferred_type {
+                    inferred.push("null");
+                    map.insert("type".to_string(), json!(inferred));
+                }
             } else if !has_type_array_with_null(map)
                 && ["oneOf", "anyOf", "allOf", "not"]
                     .iter()
@@ -315,7 +489,7 @@ impl SchemaLowering {
         // to a `$ref` trips an assertion — and it is redundant with the
         // referenced schema anyway. A `["T", "null"]` type sibling carries
         // real information (the ref target is nullable here); express it
-        // with the same oneOf wrapper the 3.0 frontend uses for nullable
+        // with the same oneOf wrapper the 3.0 dialect uses for nullable
         // refs.
         if map.contains_key("$ref") {
             let had_null = has_type_array_with_null(map) || nullable;
@@ -326,7 +500,9 @@ impl SchemaLowering {
         }
 
         self.canonicalize_type(map);
-        self.rewrite_nullable_unions(map);
+        if self.dialect == Dialect::V31 {
+            self.rewrite_nullable_unions(map);
+        }
 
         if let Some(Value::String(reference)) = map.get("$ref") {
             let rewritten = self.rewrite_ref(reference, local)?;
@@ -413,7 +589,7 @@ impl SchemaLowering {
 
     /// Normalize `type` arrays: drop duplicates, unwrap single-element
     /// arrays, and order `"null"` last so the lowered value matches the
-    /// `[T, Null]` shape the 3.0 frontend produces for `nullable: true`.
+    /// `[T, Null]` shape the 3.0 dialect produces for `nullable: true`.
     fn canonicalize_type(&self, map: &mut Map<String, Value>) {
         let Some(Value::Array(types)) = map.get("type") else {
             return;
@@ -447,7 +623,7 @@ impl SchemaLowering {
     /// typify only collapses a union to `Option<T>` when it has exactly
     /// one non-null branch. A `oneOf`/`anyOf` with two or more non-null
     /// branches plus a null branch must be restructured into the nested
-    /// `oneOf: [null, <union>]` wrapper that the 3.0 frontend emits for
+    /// `oneOf: [null, <union>]` wrapper that the 3.0 dialect emits for
     /// `nullable: true` unions.
     fn rewrite_nullable_unions(&self, map: &mut Map<String, Value>) {
         for key in ["oneOf", "anyOf"] {
@@ -517,9 +693,9 @@ pub(super) fn into_schemars(value: &Value, context: &str) -> Result<schemars::sc
     })
 }
 
-/// Replicate `to_schema.rs`'s `oneof_nullable_wrapper`: descriptive
-/// metadata and extensions stay on the outer schema; every structural
-/// keyword moves into the non-null branch of `oneOf: [null, inner]`.
+/// Wrap a composite schema as nullable: descriptive metadata and extensions
+/// stay on the outer schema while structural keywords move into the non-null
+/// branch of `oneOf: [null, inner]`.
 fn wrap_nullable(map: &mut Map<String, Value>) {
     const METADATA_KEYS: [&str; 7] = [
         "title",
@@ -602,16 +778,22 @@ mod tests {
     use indexmap::IndexMap;
     use serde_json::{Value, json};
 
-    use super::SchemaLowering;
-    use crate::to_schema::ToSchema;
+    use super::{Dialect, SchemaLowering};
 
-    fn lower_components(schemas: Vec<(&str, Value)>) -> IndexMap<String, schemars::schema::Schema> {
+    fn lower_components_for(
+        dialect: Dialect,
+        schemas: Vec<(&str, Value)>,
+    ) -> IndexMap<String, schemars::schema::Schema> {
         let schemas: IndexMap<String, Value> = schemas
             .into_iter()
             .map(|(name, value)| (name.to_string(), value))
             .collect();
-        let mut lowering = SchemaLowering::new(schemas.keys().cloned());
+        let mut lowering = SchemaLowering::new(dialect, schemas.keys().cloned());
         lowering.lower_components(schemas).unwrap()
+    }
+
+    fn lower_components(schemas: Vec<(&str, Value)>) -> IndexMap<String, schemars::schema::Schema> {
+        lower_components_for(Dialect::V31, schemas)
     }
 
     fn lower_one(value: Value) -> schemars::schema::Schema {
@@ -620,12 +802,10 @@ mod tests {
             .unwrap()
     }
 
-    /// Lower a 3.0-dialect schema value through the v30 path
-    /// (openapiv3 + to_schema), for twin-equality assertions.
     fn lower_v30(value: Value) -> schemars::schema::Schema {
-        serde_json::from_value::<openapiv3::Schema>(value)
+        lower_components_for(Dialect::V30, vec![("Test", value)])
+            .shift_remove("Test")
             .unwrap()
-            .to_schema()
     }
 
     #[test]
@@ -947,7 +1127,7 @@ mod tests {
         let attempt = |schema: Value| -> crate::Result<_> {
             let schemas: IndexMap<String, Value> =
                 [("Test".to_string(), schema)].into_iter().collect();
-            let mut lowering = SchemaLowering::new(schemas.keys().cloned());
+            let mut lowering = SchemaLowering::new(Dialect::V31, schemas.keys().cloned());
             lowering.lower_components(schemas)
         };
 

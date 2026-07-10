@@ -150,6 +150,7 @@
 
 pub use typify_impl::accept_as_ident;
 pub use typify_impl::CrateVers;
+pub use typify_impl::DiscriminatorExtension;
 pub use typify_impl::Error;
 pub use typify_impl::Type;
 pub use typify_impl::TypeDetails;
@@ -164,5 +165,6 @@ pub use typify_impl::TypeSpaceSettings;
 pub use typify_impl::TypeStruct;
 pub use typify_impl::TypeStructPropInfo;
 pub use typify_impl::UnknownPolicy;
+pub use typify_impl::DISCRIMINATOR_EXTENSION_KEY;
 #[cfg(feature = "macro")]
 pub use typify_macro::import_types;

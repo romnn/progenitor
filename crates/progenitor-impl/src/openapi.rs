@@ -1,15 +1,11 @@
-use openapiv3::OpenAPI;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use thiserror::Error;
 
 use crate::ir::OpenApiDocument;
 
 mod ref_repair;
 
-const OPENAPI_VERSION_KEY: &str = "openapi";
-const NULL_TYPE_NAME: &str = "null";
 const TYPE_KEY: &str = "type";
-const NULLABLE_KEY: &str = "nullable";
 
 /// YAML deserialization tolerant of real-world spec sloppiness that the
 /// straight `serde_json::Value` target rejects:
@@ -149,13 +145,7 @@ pub enum ParseOpenApiError {
         /// The YAML parser failure message.
         yaml_message: String,
     },
-    /// Serializing the normalized serde value failed unexpectedly.
-    #[error("serialize normalized openapi document: {message}")]
-    Serialize {
-        /// The underlying serialization error message.
-        message: String,
-    },
-    /// Deserializing into the version-specific AST failed at a specific path.
+    /// Deserializing into the tolerant document skeleton failed at a specific path.
     #[error("decode openapi at {path}: {message}")]
     Deserialize {
         /// The serde path within the normalized document.
@@ -202,38 +192,8 @@ pub fn parse_openapi_value(
     ref_repair::hoist_deep_pointer_refs(&mut value);
     normalize_real_world_sloppiness(&mut value);
 
-    let version = value
-        .get(OPENAPI_VERSION_KEY)
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    if version.trim().starts_with("3.1") {
-        let document = crate::ir::v31::parse(value)?;
-        Ok(OpenApiDocument(document))
-    } else {
-        let spec = normalized_openapiv3(value)?;
-        let document = crate::ir::v30::lower(&spec)?;
-        Ok(OpenApiDocument(document))
-    }
-}
-
-/// Normalize a serde value into the shape `openapiv3` represents directly,
-/// then deserialize it. The nullable-union normalization is kept on the
-/// 3.0 path as tolerance for hybrid documents that mix 3.1 idioms into a
-/// 3.0 version stamp.
-fn normalized_openapiv3(mut value: Value) -> std::result::Result<OpenAPI, ParseOpenApiError> {
-    strip_null_path_entries(&mut value);
-    normalize_nullable_type_unions(&mut value);
-
-    let json = serde_json::to_vec(&value).map_err(|err| ParseOpenApiError::Serialize {
-        message: err.to_string(),
-    })?;
-    let mut deserializer = serde_json::Deserializer::from_slice(&json);
-    serde_path_to_error::deserialize(&mut deserializer).map_err(|err| {
-        ParseOpenApiError::Deserialize {
-            path: err.path().to_string(),
-            message: err.inner().to_string(),
-        }
-    })
+    let document = crate::ir::frontend::parse(value)?;
+    Ok(OpenApiDocument(document))
 }
 
 fn normalize_real_world_sloppiness(value: &mut Value) {
@@ -333,234 +293,10 @@ fn normalize_non_query_deep_object_parameters(value: &mut Value) {
     }
 }
 
-fn normalize_nullable_type_unions(value: &mut Value) {
-    match value {
-        Value::Object(map) => {
-            for entry in map.values_mut() {
-                normalize_nullable_type_unions(entry);
-            }
-            normalize_object_type_union(map);
-            normalize_draft4_exclusive_bounds(map);
-        }
-        Value::Array(items) => {
-            for item in items {
-                normalize_nullable_type_unions(item);
-            }
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
-    }
-}
-
-/// 3.0 documents are supposed to spell exclusive bounds as booleans
-/// modifying `minimum`/`maximum`, but generators that think in JSON
-/// Schema 2020-12 emit the numeric form into 3.0 documents anyway.
-/// Fold the numeric form back into the boolean spelling `openapiv3`
-/// expects.
-fn normalize_draft4_exclusive_bounds(map: &mut Map<String, Value>) {
-    for (exclusive_key, bound_key) in [
-        ("exclusiveMinimum", "minimum"),
-        ("exclusiveMaximum", "maximum"),
-    ] {
-        if let Some(Value::Number(bound)) = map.get(exclusive_key) {
-            let bound = Value::Number(bound.clone());
-            map.insert(bound_key.to_string(), bound);
-            map.insert(exclusive_key.to_string(), Value::Bool(true));
-        }
-    }
-}
-
-/// Drop `null` path entries, `null` members inside path items
-/// (`"delete": null`, `"parameters": null`), and `null` members inside
-/// operations; generators emit them and `openapiv3` rejects them, which
-/// used to fail the whole document.
-fn strip_null_path_entries(value: &mut Value) {
-    let Some(paths) = value.get_mut("paths").and_then(Value::as_object_mut) else {
-        return;
-    };
-    paths.retain(|_, item| !item.is_null());
-    for item in paths.values_mut() {
-        let Some(item) = item.as_object_mut() else {
-            continue;
-        };
-        item.retain(|_, member| !member.is_null());
-        for operation in item.values_mut() {
-            let Some(operation) = operation.as_object_mut() else {
-                continue;
-            };
-            operation.retain(|_, member| !member.is_null());
-            // A security requirement maps scheme name → scopes array; a
-            // null scopes value means "no scopes" in the wild.
-            if let Some(Value::Array(requirements)) = operation.get_mut("security") {
-                for requirement in requirements {
-                    if let Some(requirement) = requirement.as_object_mut() {
-                        for scopes in requirement.values_mut() {
-                            if scopes.is_null() {
-                                *scopes = Value::Array(Vec::new());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn normalize_object_type_union(map: &mut Map<String, Value>) {
-    let Some(Value::Array(type_values)) = map.get(TYPE_KEY) else {
-        return;
-    };
-
-    let mut non_null_types = Vec::new();
-    let mut saw_null = false;
-    for type_value in type_values {
-        let Some(type_name) = type_value.as_str() else {
-            return;
-        };
-        if type_name == NULL_TYPE_NAME {
-            saw_null = true;
-        } else {
-            non_null_types.push(type_name.to_string());
-        }
-    }
-
-    match non_null_types.as_slice() {
-        [single_type] if saw_null => {
-            map.insert(TYPE_KEY.to_string(), Value::String(single_type.clone()));
-            map.insert(NULLABLE_KEY.to_string(), Value::Bool(true));
-        }
-        [single_type] => {
-            map.insert(TYPE_KEY.to_string(), Value::String(single_type.clone()));
-        }
-        _ => {}
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        normalize_real_world_sloppiness, normalized_openapiv3, parse_openapi_value, ref_repair,
-    };
-    use crate::{Generator, OpenApiDocument};
-    use openapiv3::{ReferenceOr, SchemaKind, Type};
+    use super::parse_openapi_value;
     use serde_json::json;
-
-    #[test]
-    fn sample_v30_frontends_generate_identical_output() {
-        let sample_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../sample_openapi");
-        let mut samples = schema_files(&sample_dir);
-        samples.sort();
-
-        for path in samples {
-            assert_v30_frontends_match(&path);
-        }
-    }
-
-    #[test]
-    fn corpus_v30_frontends_generate_identical_output() {
-        if std::env::var_os("PROGENITOR_FRONTEND_CONVERGENCE_CORPUS").is_none() {
-            return;
-        }
-
-        let corpus_dir =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.cache");
-        let mut samples = schema_files(&corpus_dir);
-        samples.sort();
-
-        for path in samples {
-            assert_v30_frontends_match(&path);
-        }
-    }
-
-    fn schema_files(directory: &std::path::Path) -> Vec<std::path::PathBuf> {
-        std::fs::read_dir(directory)
-            .unwrap()
-            .map(|entry| entry.unwrap().path())
-            .filter(|path| {
-                matches!(
-                    path.extension().and_then(std::ffi::OsStr::to_str),
-                    Some("json" | "yaml")
-                )
-            })
-            .collect()
-    }
-
-    fn assert_v30_frontends_match(path: &std::path::Path) {
-        let source = std::fs::read_to_string(path).unwrap();
-        let mut value: serde_json::Value =
-            if path.extension().and_then(std::ffi::OsStr::to_str) == Some("json") {
-                serde_json::from_str(&source).unwrap()
-            } else {
-                serde_yaml::from_str(&source).unwrap()
-            };
-        if !value
-            .get("openapi")
-            .and_then(serde_json::Value::as_str)
-            .is_some_and(|version| version.trim().starts_with("3.0"))
-        {
-            return;
-        }
-
-        ref_repair::relocate_kind_mismatched_component_refs(&mut value);
-        ref_repair::hoist_deep_pointer_refs(&mut value);
-        normalize_real_world_sloppiness(&mut value);
-
-        let legacy = normalized_openapiv3(value.clone()).unwrap();
-        let legacy = OpenApiDocument(crate::ir::v30::lower(&legacy).unwrap());
-        let unified = OpenApiDocument(crate::ir::v31::parse(value).unwrap());
-
-        let legacy_output = Generator::default().generate_text(&legacy).unwrap();
-        let unified_output = Generator::default().generate_text(&unified).unwrap();
-        assert_eq!(
-            legacy_output,
-            unified_output,
-            "frontend output differs for {}",
-            path.display()
-        );
-    }
-
-    #[test]
-    fn parses_nullable_type_unions_from_openapi_3_1() {
-        let openapi = normalized_openapiv3(json!({
-            "openapi": "3.1.0",
-            "info": {
-                "title": "example",
-                "version": "1.0.0"
-            },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Link": {
-                        "type": "object",
-                        "properties": {
-                            "deprecation": {
-                                "type": ["string", "null"]
-                            }
-                        }
-                    }
-                }
-            }
-        }))
-        .expect("parse openapi");
-
-        let components = openapi.components.expect("components");
-        let ReferenceOr::Item(link_schema) = components.schemas["Link"].clone() else {
-            panic!("expected inline Link schema");
-        };
-        let SchemaKind::Type(Type::Object(link_type)) = link_schema.schema_kind else {
-            panic!("expected Link to be an object schema");
-        };
-        let ReferenceOr::Item(deprecation_schema) = link_type.properties["deprecation"].clone()
-        else {
-            panic!("expected inline deprecation schema");
-        };
-
-        assert!(deprecation_schema.schema_data.nullable);
-        assert!(matches!(
-            deprecation_schema.schema_kind,
-            SchemaKind::Type(Type::String(_))
-        ));
-    }
 
     #[test]
     fn fills_missing_info_version() {
