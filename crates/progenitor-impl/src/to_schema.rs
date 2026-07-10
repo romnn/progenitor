@@ -578,7 +578,11 @@ impl Convert<schemars::schema::Schema> for openapiv3::Schema {
                         // constraint — effectively a value-less schema.
                     }
 
-                    (Some(typ), _) => todo!("invalid type: {}", typ),
+                    (Some(_), _) => {
+                        // Unknown type names occur in wild specifications.
+                        // Treat them as unconstrained rather than aborting
+                        // generation for the whole document.
+                    }
 
                     // No types
                     (None, false) => (),
@@ -853,6 +857,16 @@ mod tests {
                 schemars::schema::InstanceType::Null
             )))
         );
+    }
+
+    #[test]
+    fn test_unknown_type_is_unconstrained() {
+        let oa_schema =
+            serde_json::from_value::<openapiv3::Schema>(json!({ "type": "mystery" })).unwrap();
+
+        let schema = oa_schema.convert();
+
+        assert_eq!(schema.into_object().instance_type, None);
     }
 
     #[test]
