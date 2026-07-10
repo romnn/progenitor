@@ -102,7 +102,7 @@ fn lower(document: Document31) -> Result<ir::Document> {
 }
 
 fn validate_version(version: &str) -> Result<()> {
-    if version.trim().starts_with("3.1") {
+    if version.trim().starts_with("3.0") || version.trim().starts_with("3.1") {
         Ok(())
     } else {
         Err(Error::UnexpectedFormat(format!(

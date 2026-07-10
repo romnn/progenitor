@@ -437,9 +437,87 @@ fn normalize_object_type_union(map: &mut Map<String, Value>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalized_openapiv3, parse_openapi_value};
+    use super::{
+        normalize_real_world_sloppiness, normalized_openapiv3, parse_openapi_value, ref_repair,
+    };
+    use crate::{Generator, OpenApiDocument};
     use openapiv3::{ReferenceOr, SchemaKind, Type};
     use serde_json::json;
+
+    #[test]
+    fn sample_v30_frontends_generate_identical_output() {
+        let sample_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../sample_openapi");
+        let mut samples = schema_files(&sample_dir);
+        samples.sort();
+
+        for path in samples {
+            assert_v30_frontends_match(&path);
+        }
+    }
+
+    #[test]
+    fn corpus_v30_frontends_generate_identical_output() {
+        if std::env::var_os("PROGENITOR_FRONTEND_CONVERGENCE_CORPUS").is_none() {
+            return;
+        }
+
+        let corpus_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.cache");
+        let mut samples = schema_files(&corpus_dir);
+        samples.sort();
+
+        for path in samples {
+            assert_v30_frontends_match(&path);
+        }
+    }
+
+    fn schema_files(directory: &std::path::Path) -> Vec<std::path::PathBuf> {
+        std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| {
+                matches!(
+                    path.extension().and_then(std::ffi::OsStr::to_str),
+                    Some("json" | "yaml")
+                )
+            })
+            .collect()
+    }
+
+    fn assert_v30_frontends_match(path: &std::path::Path) {
+        let source = std::fs::read_to_string(path).unwrap();
+        let mut value: serde_json::Value =
+            if path.extension().and_then(std::ffi::OsStr::to_str) == Some("json") {
+                serde_json::from_str(&source).unwrap()
+            } else {
+                serde_yaml::from_str(&source).unwrap()
+            };
+        if !value
+            .get("openapi")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|version| version.trim().starts_with("3.0"))
+        {
+            return;
+        }
+
+        ref_repair::relocate_kind_mismatched_component_refs(&mut value);
+        ref_repair::hoist_deep_pointer_refs(&mut value);
+        normalize_real_world_sloppiness(&mut value);
+
+        let legacy = normalized_openapiv3(value.clone()).unwrap();
+        let legacy = OpenApiDocument(crate::ir::v30::lower(&legacy).unwrap());
+        let unified = OpenApiDocument(crate::ir::v31::parse(value).unwrap());
+
+        let legacy_output = Generator::default().generate_text(&legacy).unwrap();
+        let unified_output = Generator::default().generate_text(&unified).unwrap();
+        assert_eq!(
+            legacy_output,
+            unified_output,
+            "frontend output differs for {}",
+            path.display()
+        );
+    }
 
     #[test]
     fn parses_nullable_type_unions_from_openapi_3_1() {
