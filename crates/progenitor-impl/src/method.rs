@@ -1447,6 +1447,16 @@ impl Generator {
         let (error_response_items, error_type) =
             self.extract_responses(method, ResponseSide::Error);
 
+        if let Some(response) = error_response_items.iter().find(|response| {
+            matches!(response.typ, OperationResponseKind::Upgrade)
+                && response.status_code != OperationResponseStatus::Default
+        }) {
+            return Err(Error::UnexpectedFormat(format!(
+                "upgrade operations with non-default error responses are not supported: {:?}",
+                response.status_code
+            )));
+        }
+
         let error_synth_name = match &error_type {
             OperationResponseKind::Synth(name) => Some(name.clone()),
             _ => None,
@@ -1508,14 +1518,7 @@ impl Generator {
                         }
                     }
                     OperationResponseKind::Upgrade => {
-                        if response.status_code == OperationResponseStatus::Default {
-                            return quote! {}; // catch-all handled below
-                        } else {
-                            todo!(
-                                "non-default error response handling for \
-                                    upgrade requests is not yet implemented"
-                            );
-                        }
+                        quote! {} // catch-all handled below
                     }
                     OperationResponseKind::Synth(_) => {
                         unreachable!("Synth never appears in per-item typ")
@@ -3055,10 +3058,57 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::str::FromStr;
 
+    use quote::quote;
+
+    use crate::{Error, Generator};
+
     use super::{
-        BodyContentType, OperationResponseKind, OperationResponseStatus,
+        BodyContentType, HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
+        OperationResponseStatus,
         collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
     };
+
+    #[test]
+    fn non_default_upgrade_error_returns_generation_error() {
+        let method = OperationMethod {
+            operation_id: "upgrade".to_string(),
+            tags: Vec::new(),
+            method: HttpMethod::Get,
+            path: crate::template::parse("/").unwrap(),
+            summary: None,
+            description: None,
+            params: Vec::new(),
+            responses: vec![
+                OperationResponse {
+                    status_code: OperationResponseStatus::Code(200),
+                    typ: OperationResponseKind::None,
+                    schema_name: None,
+                    media_type: None,
+                    description: None,
+                },
+                OperationResponse {
+                    status_code: OperationResponseStatus::Code(400),
+                    typ: OperationResponseKind::Upgrade,
+                    schema_name: None,
+                    media_type: None,
+                    description: None,
+                },
+            ],
+            dropshot_paginated: None,
+            dropshot_websocket: true,
+        };
+
+        let result = Generator::default().method_sig_body(
+            &method,
+            quote! { Self },
+            quote! { self },
+            false,
+        );
+        let Err(Error::UnexpectedFormat(message)) = result else {
+            panic!("expected unsupported upgrade response error");
+        };
+        assert!(message.contains("non-default error responses"));
+    }
 
     fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
         items.into_iter().collect()
