@@ -780,7 +780,7 @@ impl Generator {
             }
         }
 
-        sort_params(&mut params, &names);
+        sort_params(&mut params, &names)?;
 
         let mut success = false;
 
@@ -2968,7 +2968,43 @@ fn make_stream_doc_comment(method: &OperationMethod) -> String {
     crate::util::neutralize_doc_fences(&buf)
 }
 
-fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
+fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Result<()> {
+    for param in raw_params
+        .iter()
+        .filter(|param| matches!(param.kind, OperationParameterKind::Path))
+    {
+        if !names.contains(&param.api_name) {
+            return Err(Error::InvalidPath(format!(
+                "parameter {} is missing from the path template",
+                param.api_name
+            )));
+        }
+    }
+    for name in names {
+        if !raw_params.iter().any(|param| {
+            matches!(param.kind, OperationParameterKind::Path) && param.api_name == *name
+        }) {
+            return Err(Error::InvalidPath(format!(
+                "path template parameter {name} is not declared"
+            )));
+        }
+    }
+    if raw_params
+        .iter()
+        .filter(|param| matches!(param.kind, OperationParameterKind::Body(_)))
+        .count()
+        > 1
+    {
+        return Err(Error::UnexpectedFormat(
+            "operation declares more than one request body".to_string(),
+        ));
+    }
+
+    let path_positions = names
+        .iter()
+        .enumerate()
+        .map(|(index, name)| (name.as_str(), index))
+        .collect::<BTreeMap<_, _>>();
     raw_params.sort_by(
         |OperationParameter {
              kind: a_kind,
@@ -2983,15 +3019,9 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
             match (a_kind, b_kind) {
                 // Path params are first and are in positional order.
                 (OperationParameterKind::Path, OperationParameterKind::Path) => {
-                    let a_index = names
-                        .iter()
-                        .position(|x| x == a_name)
-                        .unwrap_or_else(|| panic!("{} missing from path", a_name));
-                    let b_index = names
-                        .iter()
-                        .position(|x| x == b_name)
-                        .unwrap_or_else(|| panic!("{} missing from path", b_name));
-                    a_index.cmp(&b_index)
+                    path_positions
+                        .get(a_name.as_str())
+                        .cmp(&path_positions.get(b_name.as_str()))
                 }
                 (OperationParameterKind::Path, OperationParameterKind::Query(_)) => Ordering::Less,
                 (OperationParameterKind::Path, OperationParameterKind::Body(_)) => Ordering::Less,
@@ -3029,7 +3059,7 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
                     Ordering::Greater
                 }
                 (OperationParameterKind::Body(_), OperationParameterKind::Body(_)) => {
-                    panic!("should only be one body")
+                    Ordering::Equal
                 }
 
                 // Header and cookie params are in lexicographic order.
@@ -3050,6 +3080,7 @@ fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) {
             }
         },
     );
+    Ok(())
 }
 
 #[cfg(test)]
@@ -3063,10 +3094,49 @@ mod tests {
     use crate::{Error, Generator};
 
     use super::{
-        BodyContentType, HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
-        OperationResponseStatus,
+        BodyContentType, HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
+        OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
         collapse_bodyless_with_typed, find_common_supertype, is_json_content_type,
+        sort_params,
     };
+
+    fn raw_parameter(api_name: &str, kind: OperationParameterKind) -> OperationParameter {
+        OperationParameter {
+            name: api_name.to_string(),
+            api_name: api_name.to_string(),
+            description: None,
+            typ: OperationParameterType::RawBody,
+            kind,
+            deep_object_query: false,
+        }
+    }
+
+    #[test]
+    fn sort_params_rejects_path_parameter_missing_from_template() {
+        let mut params = [raw_parameter("missing", OperationParameterKind::Path)];
+
+        let result = sort_params(&mut params, &[]);
+
+        assert!(matches!(result, Err(Error::InvalidPath(_))));
+    }
+
+    #[test]
+    fn sort_params_rejects_duplicate_bodies() {
+        let mut params = [
+            raw_parameter(
+                "first",
+                OperationParameterKind::Body(BodyContentType::Json),
+            ),
+            raw_parameter(
+                "second",
+                OperationParameterKind::Body(BodyContentType::Json),
+            ),
+        ];
+
+        let result = sort_params(&mut params, &[]);
+
+        assert!(matches!(result, Err(Error::UnexpectedFormat(_))));
+    }
 
     #[test]
     fn non_default_upgrade_error_returns_generation_error() {
