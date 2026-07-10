@@ -54,7 +54,7 @@ impl Generator {
 
         let crate_path = syn::TypePath {
             qself: None,
-            path: syn::parse_str(crate_name).unwrap(),
+            path: crate::util::parse_crate_path(crate_name)?,
         };
 
         let cli_bounds = self

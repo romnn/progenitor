@@ -102,6 +102,12 @@ impl ComponentLookup for Schema {
     }
 }
 
+pub(crate) fn parse_crate_path(path: &str) -> Result<syn::Path> {
+    syn::parse_str(path).map_err(|error| {
+        crate::Error::UnexpectedFormat(format!("invalid Rust crate path {path:?}: {error}"))
+    })
+}
+
 pub(crate) enum Case {
     Pascal,
     Snake,

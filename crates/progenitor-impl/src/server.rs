@@ -70,8 +70,7 @@ impl Generator {
         document: &Document,
         crate_path: &str,
     ) -> Result<TokenStream> {
-        let crate_path = syn::parse_str::<syn::Path>(crate_path)
-            .unwrap_or_else(|_| panic!("{crate_path} is not a valid path"));
+        let crate_path = crate::util::parse_crate_path(crate_path)?;
 
         let title = {
             let raw = sanitize(&document.info.title, Case::Pascal);
