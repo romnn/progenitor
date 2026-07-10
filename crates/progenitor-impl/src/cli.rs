@@ -9,7 +9,9 @@ use typify::{Type, TypeEnumVariant, TypeSpaceImpl, TypeStructPropInfo};
 
 use crate::{
     Error, Generator, OpenApiDocument, Result,
-    operation::{OperationParameterKind, OperationParameterType, ResponseSide},
+    operation::{
+        DROPSHOT_PAGE_TOKEN_PARAM, OperationParameterKind, OperationParameterType, ResponseSide,
+    },
     util::{Case, sanitize},
 };
 
@@ -410,7 +412,7 @@ impl Generator {
             };
 
             // For paginated endpoints, we don't generate 'page_token' args.
-            if method.dropshot_paginated.is_some() && param.name.as_str() == "page_token" {
+            if method.dropshot_paginated.is_some() && param.name == DROPSHOT_PAGE_TOKEN_PARAM {
                 continue;
             }
 

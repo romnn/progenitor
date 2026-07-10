@@ -90,6 +90,9 @@ pub(crate) struct DropshotPagination {
     pub first_page_params: Vec<String>,
 }
 
+pub(crate) const DROPSHOT_PAGE_TOKEN_PARAM: &str = "page_token";
+pub(crate) const DROPSHOT_LIMIT_PARAM: &str = "limit";
+
 pub(crate) struct OperationParameter {
     /// Sanitized parameter name.
     pub name: String,

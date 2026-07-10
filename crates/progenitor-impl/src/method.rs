@@ -15,7 +15,8 @@ use crate::{
     operation::{
         BodyContentType, DropshotPagination, HttpMethod, OperationMethod, OperationParameter,
         OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
-        OperationResponseStatus, ResponseSide, is_json_content_type, synth_variant_name,
+        OperationResponseStatus, ResponseSide, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM,
+        is_json_content_type, synth_variant_name,
     },
     util::{Case, sanitize, unique_ident_from},
 };
@@ -717,7 +718,7 @@ impl Generator {
                 .iter()
                 .zip(params)
                 .filter_map(|(param, stream)| {
-                    if param.name.as_str() == "page_token" {
+                    if param.name == DROPSHOT_PAGE_TOKEN_PARAM {
                         None
                     } else {
                         Some(stream)
@@ -727,7 +728,7 @@ impl Generator {
             // The values passed to get the first page are the inputs to the
             // stream method with "None" for the page_token.
             let first_params = method.params.iter().map(|param| {
-                if param.api_name.as_str() == "page_token" {
+                if param.api_name == DROPSHOT_PAGE_TOKEN_PARAM {
                     // The page_token is None when getting the first page.
                     quote! { None }
                 } else {
@@ -741,9 +742,9 @@ impl Generator {
             // - None for all other query parameters
             // - The initial inputs for non-query parameters
             let step_params = method.params.iter().map(|param| {
-                if param.api_name.as_str() == "page_token" {
+                if param.api_name == DROPSHOT_PAGE_TOKEN_PARAM {
                     quote! { state.as_deref() }
-                } else if param.api_name.as_str() != "limit"
+                } else if param.api_name != DROPSHOT_LIMIT_PARAM
                     && matches!(param.kind, OperationParameterKind::Query { .. })
                 {
                     // Query parameters (other than "page_token" and "limit")
@@ -1566,7 +1567,7 @@ impl Generator {
                 matches!(
                     (param.api_name.as_str(), &param.kind),
                     (
-                        "page_token" | "limit",
+                        DROPSHOT_PAGE_TOKEN_PARAM | DROPSHOT_LIMIT_PARAM,
                         OperationParameterKind::Query {
                             required: false,
                             ..
@@ -2047,7 +2048,7 @@ impl Generator {
             self.uses_futures = true;
 
             let step_params = method.params.iter().filter_map(|param| {
-                if param.api_name.as_str() != "limit"
+                if param.api_name != DROPSHOT_LIMIT_PARAM
                     && matches!(param.kind, OperationParameterKind::Query { .. })
                 {
                     // Query parameters (other than "limit") are None; having
@@ -2626,14 +2627,14 @@ fn make_stream_doc_comment(method: &OperationMethod) -> String {
     if method
         .params
         .iter()
-        .filter(|param| param.api_name.as_str() != "page_token")
+        .filter(|param| param.api_name != DROPSHOT_PAGE_TOKEN_PARAM)
         .filter(|param| param.description.is_some())
         .count()
         > 0
     {
         buf.push_str("Arguments:\n");
         for param in &method.params {
-            if param.api_name.as_str() == "page_token" {
+            if param.api_name == DROPSHOT_PAGE_TOKEN_PARAM {
                 continue;
             }
 
