@@ -39,19 +39,24 @@ pub(crate) fn parse(value: Value) -> std::result::Result<ir::Document, ParseOpen
 
 fn lower(document: Document31) -> Result<ir::Document> {
     validate_version(&document.openapi)?;
-    if let Some(dialect) = &document.json_schema_dialect
-        && !SUPPORTED_DIALECTS.contains(&dialect.as_str())
-    {
-        return Err(Error::UnexpectedFormat(format!(
-            "unsupported jsonSchemaDialect: {dialect}"
-        )));
-    }
 
     let dialect = if document.openapi.trim().starts_with("3.0") {
         Dialect::V30
     } else {
         Dialect::V31
     };
+
+    // `jsonSchemaDialect` is a 3.1 field; 3.0 documents that carry one (some
+    // generators stamp a draft-07 URI) get their schemas interpreted with 3.0
+    // semantics regardless, so only 3.1 documents are held to the allowlist.
+    if dialect == Dialect::V31
+        && let Some(dialect_uri) = &document.json_schema_dialect
+        && !SUPPORTED_DIALECTS.contains(&dialect_uri.as_str())
+    {
+        return Err(Error::UnexpectedFormat(format!(
+            "unsupported jsonSchemaDialect: {dialect_uri}"
+        )));
+    }
     let mut lowering = SchemaLowering::new(dialect, document.components.schemas.keys().cloned());
     let mut schemas = lowering.lower_components(document.components.schemas.clone())?;
 
@@ -116,7 +121,10 @@ fn validate_version(version: &str) -> Result<()> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one-caller lowering helper; a context struct would only rename the arguments"
+)]
 fn lower_operation(
     operation: Operation31,
     path_parameters: &[Value],
@@ -386,6 +394,20 @@ fn resolve_path_item<'a>(value: &'a Value, components: &'a Components31) -> Resu
     resolve_component(value, &components.path_items, "path item")
 }
 
+/// Wild generators spell absent members as explicit `null`
+/// (`"parameters": null`, `"tags": null`) — the same sloppiness as the
+/// `null` path entries skipped in [`lower`]. `#[serde(default)]` alone
+/// doesn't cover an explicit `null`, so these fields decode through this
+/// null-to-default adapter.
+fn null_to_default<'de, D, T>(deserializer: D) -> std::result::Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    let value = Option::<T>::deserialize(deserializer)?;
+    Ok(value.unwrap_or_default())
+}
+
 fn from_value<T: serde::de::DeserializeOwned>(value: Value, context: &str) -> Result<T> {
     serde_path_to_error::deserialize(value).map_err(|err| {
         Error::UnexpectedFormat(format!(
@@ -449,7 +471,7 @@ struct Tag31 {
 
 #[derive(Deserialize)]
 struct PathItem31 {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     parameters: Vec<Value>,
     #[serde(default)]
     get: Option<Value>,
@@ -495,7 +517,7 @@ impl PathItem31 {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Operation31 {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     tags: Vec<String>,
     #[serde(default)]
     summary: Option<String>,
@@ -503,11 +525,11 @@ struct Operation31 {
     description: Option<String>,
     #[serde(default)]
     operation_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     parameters: Vec<Value>,
     #[serde(default)]
     request_body: Option<Value>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     responses: IndexMap<String, Value>,
     #[serde(flatten)]
     rest: IndexMap<String, Value>,

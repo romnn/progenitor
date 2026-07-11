@@ -29,9 +29,8 @@ pub(super) enum Dialect {
 pub(super) struct SchemaLowering {
     dialect: Dialect,
     /// Every claimed component name (original components + hoisted defs);
-    /// used both for unique-name synthesis and `$ref` validation. typify
-    /// resolves references by their final path segment, so names must be
-    /// unique in that segment.
+    /// used for unique-name synthesis. typify resolves references by their
+    /// final path segment, so names must be unique in that segment.
     known: indexmap::IndexSet<String>,
     /// Hoisted `$defs` members in discovery order: (name, schema value,
     /// the tree-local `$defs` name map for resolving its own short-form
@@ -89,6 +88,12 @@ impl SchemaLowering {
             out.insert(name.clone(), into_schemars(&value, &name)?);
             index += 1;
         }
+        // Everything hoisted so far is now part of `out`; clear the list so
+        // the first `lower_inline` call doesn't re-lower and re-emit the
+        // component hoists as its own pending hoists. (`full_renames` and
+        // `known` deliberately persist — inline schemas still resolve refs
+        // into hoisted defs through them.)
+        self.hoisted.clear();
         Ok(out)
     }
 
@@ -165,6 +170,10 @@ impl SchemaLowering {
         if matches!(self.dialect, Dialect::V30) {
             const V30_KEYWORDS: &[&str] = &[
                 "$ref",
+                // Not a 3.0 keyword, but hybrid documents nest `$defs`
+                // anyway; keeping it lets the hoisting pass resolve their
+                // refs instead of degrading them to permissive schemas.
+                "$defs",
                 "title",
                 "description",
                 "default",
@@ -273,16 +282,17 @@ impl SchemaLowering {
             let owner_hint = pointer.rsplit('/').next().unwrap_or_default().to_string();
             for (key, mut def) in defs {
                 let name = self.unique_name(&key, &owner_hint);
-                self.full_renames.insert(
-                    format!("{pointer}/$defs/{key}"),
-                    format!("#/components/schemas/{name}"),
-                );
+                // Escape the def key like property segments: a `/` or `~` in
+                // the key otherwise never matches the escaped form document
+                // refs use.
+                let def_pointer = format!("{pointer}/$defs/{}", escape_pointer(&key));
+                self.full_renames
+                    .insert(def_pointer.clone(), format!("#/components/schemas/{name}"));
                 local.insert(key.clone(), name.clone());
 
                 // The def's own subtree resolves shorthand refs against
                 // its own defs first, then the enclosing tree's.
                 let mut def_local = local.clone();
-                let def_pointer = format!("{pointer}/$defs/{key}");
                 self.hoist_defs(&mut def, &def_pointer, &mut def_local)?;
                 self.hoisted.push((name, def, def_local));
             }
@@ -340,7 +350,10 @@ impl SchemaLowering {
 
         // OpenAPI's `discriminator` is not a JSON Schema keyword; carry it
         // as the `x-discriminator` extension for both dialects so typify's
-        // discriminator prepass sees one spelling.
+        // discriminator prepass sees one spelling. The value stays a raw
+        // `Value` (not the typed `typify::DiscriminatorExtension`) so
+        // unknown vendor keys survive the trip; the consumer parses it
+        // tolerantly on its side.
         if let Some(mut discriminator) = map.shift_remove("discriminator") {
             if matches!(self.dialect, Dialect::V30)
                 && let Value::Object(fields) = &mut discriminator
@@ -349,8 +362,21 @@ impl SchemaLowering {
                 if let Some(property_name) = fields.shift_remove("propertyName") {
                     canonical.insert("propertyName".to_string(), property_name);
                 }
-                if let Some(mapping) = fields.shift_remove("mapping") {
-                    canonical.insert("mapping".to_string(), mapping);
+                // An empty mapping carries no information; the legacy typed
+                // conversion (openapiv3::Discriminator) omitted it too.
+                match fields.shift_remove("mapping") {
+                    Some(Value::Object(mapping)) if mapping.is_empty() => {}
+                    Some(mapping) => {
+                        canonical.insert("mapping".to_string(), mapping);
+                    }
+                    None => {}
+                }
+                // Specification extensions on the discriminator object
+                // survived the legacy typed conversion; keep them.
+                for (key, value) in fields.iter() {
+                    if key.starts_with("x-") {
+                        canonical.insert(key.clone(), value.clone());
+                    }
                 }
                 discriminator = Value::Object(canonical);
             }
@@ -419,9 +445,14 @@ impl SchemaLowering {
 
         self.rewrite_prefix_items(map);
         self.rewrite_items_array(map);
-        self.coalesce_string_enum_branches(map);
-        self.promote_object_any_of_to_one_of(map);
-        self.partition_string_or_object_any_of(map);
+        // The `anyOf` union heuristics are corpus-fitted policy for wild 3.1
+        // documents. The legacy 3.0 converter never rewrote `anyOf`, so 3.0
+        // documents skip them to keep generated client shapes stable.
+        if self.dialect == Dialect::V31 {
+            self.coalesce_string_enum_branches(map);
+            self.promote_object_any_of_to_one_of(map);
+            self.partition_string_or_object_any_of(map);
+        }
         self.canonicalize_type(map);
 
         // Fold the hybrid `nullable: true` (3.0 spelling appearing in
@@ -477,7 +508,15 @@ impl SchemaLowering {
                     || map.contains_key("format");
                 if !inferred.is_empty() || non_permissive_without_inferred_type {
                     inferred.push("null");
-                    map.insert("type".to_string(), json!(inferred));
+                    // A lone inferred `null` stays scalar, matching the
+                    // legacy converter's `type: "null"` spelling (the
+                    // difference is visible in typify's doc comments).
+                    let type_value = if let ["null"] = inferred.as_slice() {
+                        json!("null")
+                    } else {
+                        json!(inferred)
+                    };
+                    map.insert("type".to_string(), type_value);
                 }
             } else if !has_type_array_with_null(map)
                 && ["oneOf", "anyOf", "allOf", "not"]

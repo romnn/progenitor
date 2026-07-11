@@ -182,10 +182,10 @@ pub fn parse_openapi_str(
 pub fn parse_openapi_value(
     mut value: Value,
 ) -> std::result::Result<OpenApiDocument, ParseOpenApiError> {
-    // Repair malformed `$ref`s on the raw value so both version frontends
-    // benefit. Kind mismatches first: a misfiled component's body may
-    // contain deep pointers that the hoisting pass must then see in its
-    // relocated copy as well.
+    // Repair malformed `$ref`s on the raw value before the frontend sees
+    // it. Kind mismatches first: a misfiled component's body may contain
+    // deep pointers that the hoisting pass must then see in its relocated
+    // copy as well.
     ref_repair::relocate_kind_mismatched_component_refs(&mut value);
     ref_repair::hoist_deep_pointer_refs(&mut value);
     normalize_real_world_sloppiness(&mut value);
@@ -447,5 +447,194 @@ mod tests {
         .expect("parse openapi");
 
         assert_eq!(document.0.operations[0].parameters[0].name, "session");
+    }
+
+    #[test]
+    fn tolerates_explicit_null_members_in_path_items_and_operations() {
+        // Wild generators spell absent members as explicit `null`; the old
+        // 3.0 path stripped them and the tolerant skeleton must too.
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.0",
+            "info": { "title": "example", "version": "1.0.0" },
+            "paths": {
+                "/things": {
+                    "parameters": null,
+                    "get": {
+                        "operationId": "listThings",
+                        "tags": null,
+                        "parameters": null,
+                        "responses": null
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        let operation = &document.0.operations[0];
+        assert_eq!(operation.operation_id.as_deref(), Some("listThings"));
+        assert!(operation.parameters.is_empty());
+        assert!(operation.tags.is_empty());
+        assert!(operation.responses.is_empty());
+    }
+
+    #[test]
+    fn ignores_json_schema_dialect_on_3_0_documents() {
+        // `jsonSchemaDialect` is a 3.1 field; some generators stamp a
+        // draft-07 URI into 3.0 documents. 3.0 schemas are interpreted with
+        // 3.0 semantics regardless, so the allowlist must not apply.
+        parse_openapi_value(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "example", "version": "1.0.0" },
+            "jsonSchemaDialect": "http://json-schema.org/draft-07/schema#",
+            "paths": {}
+        }))
+        .expect("parse openapi");
+    }
+
+    #[test]
+    fn keeps_any_of_unions_verbatim_in_3_0_documents() {
+        // The anyOf promotion/partition heuristics are 3.1 policy; the
+        // legacy 3.0 converter never rewrote anyOf and generated client
+        // shapes must stay stable.
+        let branches = json!([
+            { "type": "object", "properties": { "a": { "type": "string" } } },
+            { "type": "object", "properties": { "b": { "type": "string" } } },
+            { "type": "object", "properties": { "c": { "type": "string" } } },
+        ]);
+        let doc = |version: &str| {
+            json!({
+                "openapi": version,
+                "info": { "title": "example", "version": "1.0.0" },
+                "paths": {},
+                "components": { "schemas": { "Union": { "anyOf": branches } } }
+            })
+        };
+
+        let v30 = parse_openapi_value(doc("3.0.3")).expect("parse 3.0");
+        let schemars::schema::Schema::Object(schema) = &v30.0.schemas["Union"] else {
+            panic!("expected object schema");
+        };
+        let subschemas = schema.subschemas.as_ref().expect("subschemas");
+        assert!(subschemas.any_of.is_some(), "3.0 anyOf must stay anyOf");
+        assert!(subschemas.one_of.is_none());
+
+        let v31 = parse_openapi_value(doc("3.1.0")).expect("parse 3.1");
+        let schemars::schema::Schema::Object(schema) = &v31.0.schemas["Union"] else {
+            panic!("expected object schema");
+        };
+        let subschemas = schema.subschemas.as_ref().expect("subschemas");
+        assert!(
+            subschemas.one_of.is_some(),
+            "3.1 all-object anyOf is promoted to oneOf"
+        );
+    }
+
+    #[test]
+    fn canonicalized_3_0_discriminator_skips_empty_mapping_and_keeps_extensions() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "example", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Pet": {
+                        "type": "object",
+                        "required": ["petType"],
+                        "properties": { "petType": { "type": "string" } },
+                        "discriminator": {
+                            "propertyName": "petType",
+                            "mapping": {},
+                            "x-custom": 1
+                        }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        let schemars::schema::Schema::Object(schema) = &document.0.schemas["Pet"] else {
+            panic!("expected object schema");
+        };
+        let discriminator = schema
+            .extensions
+            .get(typify::DISCRIMINATOR_EXTENSION_KEY)
+            .expect("x-discriminator");
+        assert_eq!(discriminator["propertyName"], json!("petType"));
+        assert_eq!(discriminator["x-custom"], json!(1));
+        assert!(
+            discriminator.get("mapping").is_none(),
+            "empty mapping carries no information and the legacy conversion omitted it"
+        );
+    }
+
+    #[test]
+    fn lone_inferred_null_type_stays_scalar() {
+        // `nullable: true` with only a `format` has no inferable base type;
+        // the legacy converter spelled that `type: "null"` (scalar), which
+        // is visible in typify's schema doc comments.
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "example", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "MaybeNothing": { "nullable": true, "format": "int32" }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        let schemars::schema::Schema::Object(schema) = &document.0.schemas["MaybeNothing"] else {
+            panic!("expected object schema");
+        };
+        assert!(
+            matches!(
+                &schema.instance_type,
+                Some(schemars::schema::SingleOrVec::Single(single))
+                    if **single == schemars::schema::InstanceType::Null
+            ),
+            "expected scalar null type, got {:?}",
+            schema.instance_type
+        );
+    }
+
+    #[test]
+    fn hoists_defs_from_hybrid_3_0_schemas() {
+        // `$defs` is not a 3.0 keyword, but hybrid documents nest it anyway;
+        // the hoisting pass turns each def into a component so refs resolve
+        // instead of degrading to permissive schemas.
+        let document = parse_openapi_value(json!({
+            "openapi": "3.0.3",
+            "info": { "title": "example", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Outer": {
+                        "type": "object",
+                        "properties": {
+                            "inner": { "$ref": "#/components/schemas/Outer/$defs/Inner" }
+                        },
+                        "$defs": {
+                            "Inner": { "type": "string" }
+                        }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+
+        assert!(
+            document.0.schemas.contains_key("Inner"),
+            "hoisted def missing: {:?}",
+            document.0.schemas.keys().collect::<Vec<_>>()
+        );
+        let schemars::schema::Schema::Object(inner) = &document.0.schemas["Inner"] else {
+            panic!("expected object schema");
+        };
+        assert!(matches!(
+            &inner.instance_type,
+            Some(schemars::schema::SingleOrVec::Single(single))
+                if **single == schemars::schema::InstanceType::String
+        ));
     }
 }
