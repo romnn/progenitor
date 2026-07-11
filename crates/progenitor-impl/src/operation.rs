@@ -99,9 +99,17 @@ pub(crate) struct OperationParameter {
     /// Original parameter name provided by the API.
     pub api_name: String,
     pub description: Option<String>,
+    /// The parameter's Rust type. For path/query/header/cookie parameters,
+    /// lowering has already unwrapped an `Option<T>` schema type to `T`
+    /// (optionality lives in `optional`) and degraded non-`Display` types
+    /// to a plain string. Body parameters keep their type verbatim —
+    /// including any `Option` wrapper — and are always `optional: false`;
+    /// backends that need the unwrapped body type inspect
+    /// `TypeDetails::Option` themselves.
     pub typ: OperationParameterType,
+    /// Whether the caller may omit this parameter, folding together the
+    /// spec's `required` flag and a nullable (`Option`-typed) schema.
     pub optional: bool,
-    pub inner_type_id: Option<TypeId>,
     pub kind: OperationParameterKind,
 }
 
@@ -136,7 +144,10 @@ pub(crate) enum BodyContentType {
 }
 
 /// Returns true for the canonical JSON media type, its parameterized forms
-/// and media types using the RFC 6839 `+json` structured syntax suffix.
+/// (`application/json;charset=utf-8`, `application/json;version=1.0`, ...),
+/// and any media type using the RFC 6839 §3.1 `+json` structured syntax
+/// suffix (`application/problem+json`, `application/vnd.foo.v1+json`,
+/// `application/scim+json`, ...).
 pub(crate) fn is_json_content_type(content_type: &str) -> bool {
     let base = content_type
         .split(';')
@@ -180,9 +191,17 @@ pub(crate) struct OperationResponse {
     pub status_code: OperationResponseStatus,
     pub typ: OperationResponseKind,
     /// Source `components.schemas.<name>` of this response body, when the
-    /// response references a named component schema.
+    /// response references a named component schema. `None` for inline
+    /// schemas and for bodyless / raw / upgrade responses. Used by
+    /// `extract_responses` to detect sibling response types that share a
+    /// common `allOf` ancestor and can be collapsed to that ancestor.
     pub schema_name: Option<String>,
-    /// The selected wire media type, when the response has content.
+    /// The wire media type that produced this response's `typ`, when one was
+    /// selected from the response content map. `None` for bodyless / upgrade
+    /// responses and the synthesized success fallback. Captured from the same
+    /// content entry that set `typ` (not a re-scan) so kind and media type can't
+    /// disagree; used by server generation to set the `content-type` of a raw
+    /// passthrough response.
     pub media_type: Option<String>,
     // TODO this isn't currently used because dropshot doesn't give us a
     // particularly useful message here.
@@ -221,6 +240,8 @@ pub(crate) enum OperationResponseStatus {
 }
 
 impl OperationResponseStatus {
+    // Keep the ordering total and aligned with generated match-arm precedence:
+    // exact statuses in a bucket first, then that bucket's range, then default.
     fn sort_key(&self) -> (u16, u8) {
         match self {
             Self::Code(code) => {
@@ -272,8 +293,14 @@ pub(crate) enum OperationResponseKind {
     None,
     Raw,
     Upgrade,
-    /// Per-operation synthesized sum type used for response sets with multiple
-    /// body-bearing kinds that cannot be collapsed.
+    /// Per-operation synthesized sum type, used when the response set
+    /// contains multiple distinct kinds (e.g. some statuses return a
+    /// typed JSON body and others return a streamed non-JSON body) that
+    /// don't collapse to a single kind via the bodyless or `allOf`
+    /// passes. The string is the synthesized enum's Rust identifier; the
+    /// enum definition itself is emitted alongside the operation function
+    /// by `method_sig_body`, deriving variants from the response items'
+    /// status codes and original payload kinds.
     Synth(String),
 }
 
@@ -309,4 +336,84 @@ pub(crate) fn synth_variant_name(status: &OperationResponseStatus) -> String {
 pub(crate) enum ResponseSide {
     Success,
     Error,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cmp::Ordering;
+    use std::str::FromStr;
+
+    use super::{BodyContentType, OperationResponseStatus, is_json_content_type};
+
+    #[test]
+    fn response_status_order_is_total_and_specific_before_range() {
+        let mut statuses = vec![
+            OperationResponseStatus::Default,
+            OperationResponseStatus::Range(4),
+            OperationResponseStatus::Code(500),
+            OperationResponseStatus::Code(401),
+            OperationResponseStatus::Code(400),
+            OperationResponseStatus::Range(5),
+        ];
+        statuses.sort();
+
+        assert_eq!(
+            statuses,
+            vec![
+                OperationResponseStatus::Code(400),
+                OperationResponseStatus::Code(401),
+                OperationResponseStatus::Range(4),
+                OperationResponseStatus::Code(500),
+                OperationResponseStatus::Range(5),
+                OperationResponseStatus::Default,
+            ],
+        );
+        assert_ne!(
+            OperationResponseStatus::Code(400).cmp(&OperationResponseStatus::Range(4)),
+            Ordering::Equal,
+        );
+    }
+
+    #[test]
+    fn json_content_type_matches_canonical_and_parameterized() {
+        assert!(is_json_content_type("application/json"));
+        assert!(is_json_content_type("application/json;charset=utf-8"));
+        assert!(is_json_content_type("application/json; charset=utf-8"));
+        assert!(is_json_content_type("application/json;version=1.0"));
+    }
+
+    #[test]
+    fn json_content_type_matches_rfc6839_structured_syntax_suffix() {
+        // RFC 6839 §3.1 — the `+json` structured syntax suffix.
+        assert!(is_json_content_type("application/problem+json"));
+        assert!(is_json_content_type("application/vnd.github.v3.star+json"));
+        assert!(is_json_content_type("application/scim+json"));
+        assert!(is_json_content_type("application/ld+json"));
+        // Parameters after the suffix still parse correctly.
+        assert!(is_json_content_type(
+            "application/problem+json; charset=utf-8"
+        ));
+    }
+
+    #[test]
+    fn json_content_type_rejects_non_json() {
+        assert!(!is_json_content_type("application/octet-stream"));
+        assert!(!is_json_content_type("application/xml"));
+        assert!(!is_json_content_type("text/plain"));
+        assert!(!is_json_content_type("application/x-www-form-urlencoded"));
+        // `+jsonish` is not a structured syntax suffix.
+        assert!(!is_json_content_type("application/foo+jsonish"));
+    }
+
+    #[test]
+    fn body_content_type_parses_rfc6839_suffix_as_json() {
+        assert!(matches!(
+            BodyContentType::from_str("application/problem+json").unwrap(),
+            BodyContentType::Json,
+        ));
+        assert!(matches!(
+            BodyContentType::from_str("application/vnd.api+json; charset=utf-8").unwrap(),
+            BodyContentType::Json,
+        ));
+    }
 }

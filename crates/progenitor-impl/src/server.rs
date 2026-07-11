@@ -70,7 +70,7 @@ impl Generator {
         crate_path: &str,
     ) -> Result<TokenStream> {
         self.diagnostics.clear();
-        let crate_path = crate::util::parse_crate_path(crate_path)?;
+        let crate_path = crate::util::parse_rust_path(crate_path, "crate path")?;
 
         let title = {
             let raw = sanitize(&document.info.title, Case::Pascal);
@@ -881,7 +881,6 @@ impl Generator {
         let OperationParameterType::Type(type_id) = &param.typ else {
             return false;
         };
-        let type_id = param.inner_type_id.as_ref().unwrap_or(type_id);
         let ty = self.type_space.get_type(type_id).unwrap();
         let details = ty.details();
         matches!(
@@ -900,8 +899,7 @@ impl Generator {
     ) -> (TokenStream, bool) {
         match &param.typ {
             OperationParameterType::Type(type_id) => {
-                let effective_id = param.inner_type_id.as_ref().unwrap_or(type_id);
-                let ty = self.type_space.get_type(effective_id).unwrap();
+                let ty = self.type_space.get_type(type_id).unwrap();
                 if param.optional {
                     let ident = ty.ident();
                     (quote! { Option<#ident> }, true)
@@ -923,8 +921,9 @@ impl Generator {
     ) -> (TokenStream, bool) {
         match &param.typ {
             OperationParameterType::Type(type_id) => {
-                let effective_id = param.inner_type_id.as_ref().unwrap_or(type_id);
-                let base = self.type_space.get_type(effective_id).unwrap();
+                // `typ` is already `Option`-unwrapped (and, for non-`Display`
+                // types, string-degraded) by lowering, so it is the base type.
+                let base = self.type_space.get_type(type_id).unwrap();
                 let effective = if base.has_impl(typify::TypeSpaceImpl::FromStr) {
                     base.ident()
                 } else {

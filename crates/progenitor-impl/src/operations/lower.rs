@@ -1,10 +1,16 @@
-use super::{
-    BodyContentType, Case, Error, Generator, HttpMethod, IndexMap, OperationMethod,
-    OperationParameter, OperationParameterKind, OperationParameterType, OperationResponse,
-    OperationResponseKind, OperationResponseStatus, Ordering, Result, ir, is_json_content_type,
-    sanitize,
+use std::{cmp::Ordering, collections::BTreeMap, str::FromStr};
+
+use indexmap::IndexMap;
+
+use crate::{
+    Error, Generator, Result, ir,
+    operation::{
+        BodyContentType, HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
+        OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
+        is_json_content_type,
+    },
+    util::{Case, sanitize},
 };
-use std::{collections::BTreeMap, str::FromStr};
 
 impl Generator {
     pub(crate) fn process_operation(
@@ -37,12 +43,11 @@ impl Generator {
                         // use the inner type so the generated path encoding
                         // operates on a concrete value.
                         let ty = self.type_space.get_type(&type_id).unwrap();
-                        let (type_id, inner_type_id) =
-                            if let typify::TypeDetails::Option(inner) = ty.details() {
-                                (inner.clone(), Some(inner))
-                            } else {
-                                (type_id, None)
-                            };
+                        let type_id = if let typify::TypeDetails::Option(inner) = ty.details() {
+                            inner
+                        } else {
+                            type_id
+                        };
 
                         // The generated path encoding renders the value
                         // with `Display`. Wild specs declare path
@@ -69,7 +74,6 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             optional: false,
-                            inner_type_id,
                             kind: OperationParameterKind::Path,
                         })
                     }
@@ -94,11 +98,11 @@ impl Generator {
                         // as optional (irrespective of the `required` field on
                         // the parameter) and use the "inner" type.
                         let details = ty.details();
-                        let (type_id, required, inner_type_id) =
+                        let (type_id, required) =
                             if let typify::TypeDetails::Option(inner) = details {
-                                (inner.clone(), false, Some(inner))
+                                (inner, false)
                             } else {
-                                (type_id, parameter.required, None)
+                                (type_id, parameter.required)
                             };
 
                         Ok(OperationParameter {
@@ -107,7 +111,6 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             optional: !required,
-                            inner_type_id,
                             kind: OperationParameterKind::Query {
                                 required,
                                 deep_object: deep_object_query,
@@ -130,12 +133,12 @@ impl Generator {
                         // the generated header encoding needs the inner
                         // type (calling `.to_string()` on an `Option` does
                         // not compile).
-                        let (type_id, required, inner_type_id) = {
+                        let (type_id, required) = {
                             let ty = self.type_space.get_type(&type_id).unwrap();
                             if let typify::TypeDetails::Option(inner) = ty.details() {
-                                (inner.clone(), false, Some(inner))
+                                (inner, false)
                             } else {
-                                (type_id, parameter.required, None)
+                                (type_id, parameter.required)
                             }
                         };
 
@@ -165,7 +168,6 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             optional: !required,
-                            inner_type_id,
                             kind: OperationParameterKind::Header { required },
                         })
                     }
@@ -178,12 +180,12 @@ impl Generator {
 
                         let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
 
-                        let (type_id, required, inner_type_id) = {
+                        let (type_id, required) = {
                             let ty = self.type_space.get_type(&type_id).unwrap();
                             if let typify::TypeDetails::Option(inner) = ty.details() {
-                                (inner.clone(), false, Some(inner))
+                                (inner, false)
                             } else {
-                                (type_id, parameter.required, None)
+                                (type_id, parameter.required)
                             }
                         };
 
@@ -208,7 +210,6 @@ impl Generator {
                             description: parameter.description.clone(),
                             typ: OperationParameterType::Type(type_id),
                             optional: !required,
-                            inner_type_id,
                             kind: OperationParameterKind::Cookie { required },
                         })
                     }
@@ -264,7 +265,6 @@ impl Generator {
                     description: None,
                     typ: OperationParameterType::Type(type_id),
                     optional: false,
-                    inner_type_id: None,
                     kind: OperationParameterKind::Path,
                 });
             }
@@ -552,7 +552,6 @@ impl Generator {
             description: body.description.clone(),
             typ,
             optional: false,
-            inner_type_id: None,
             kind: OperationParameterKind::Body(content_type),
         }))
     }
@@ -619,7 +618,9 @@ fn is_plain_string_schema(schema: &schemars::schema::Schema, format: Option<&str
         .metadata
         .as_ref()
         .is_none_or(|metadata| metadata.default.is_none())
-        && !object.extensions.contains_key("x-discriminator");
+        && !object
+            .extensions
+            .contains_key(typify::DISCRIMINATOR_EXTENSION_KEY);
     type_is_string
         && format_matches
         && no_string_constraints
@@ -744,4 +745,57 @@ pub(super) fn sort_params(raw_params: &mut [OperationParameter], names: &[String
         },
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sort_params;
+    use crate::Error;
+    use crate::operation::{
+        BodyContentType, OperationParameter, OperationParameterKind, OperationParameterType,
+    };
+
+    fn raw_parameter(api_name: &str, kind: OperationParameterKind) -> OperationParameter {
+        OperationParameter {
+            name: api_name.to_string(),
+            api_name: api_name.to_string(),
+            description: None,
+            typ: OperationParameterType::RawBody,
+            optional: false,
+            kind,
+        }
+    }
+
+    #[test]
+    fn sort_params_rejects_path_parameter_missing_from_template() {
+        let mut params = [raw_parameter("missing", OperationParameterKind::Path)];
+
+        let result = sort_params(&mut params, &[]);
+
+        assert!(matches!(result, Err(Error::InvalidPath(_))));
+    }
+
+    #[test]
+    fn sort_params_rejects_undeclared_template_parameter() {
+        let mut params = [];
+
+        let result = sort_params(&mut params, &["id".to_string()]);
+
+        assert!(matches!(result, Err(Error::InvalidPath(_))));
+    }
+
+    #[test]
+    fn sort_params_rejects_duplicate_bodies() {
+        let mut params = [
+            raw_parameter("first", OperationParameterKind::Body(BodyContentType::Json)),
+            raw_parameter(
+                "second",
+                OperationParameterKind::Body(BodyContentType::Json),
+            ),
+        ];
+
+        let result = sort_params(&mut params, &[]);
+
+        assert!(matches!(result, Err(Error::UnexpectedFormat(_))));
+    }
 }

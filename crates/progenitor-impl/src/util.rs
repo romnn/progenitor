@@ -4,9 +4,11 @@ use unicode_ident::{is_xid_continue, is_xid_start};
 
 use crate::Result;
 
-pub(crate) fn parse_crate_path(path: &str) -> Result<syn::Path> {
+/// Parse a caller-supplied Rust path, naming `what` it was supposed to be
+/// (a crate path, a trait bound, …) in the error.
+pub(crate) fn parse_rust_path(path: &str, what: &str) -> Result<syn::Path> {
     syn::parse_str(path).map_err(|error| {
-        crate::Error::UnexpectedFormat(format!("invalid Rust crate path {path:?}: {error}"))
+        crate::Error::UnexpectedFormat(format!("invalid {what} {path:?}: {error}"))
     })
 }
 

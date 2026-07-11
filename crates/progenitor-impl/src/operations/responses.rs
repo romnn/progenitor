@@ -1,10 +1,14 @@
-use super::{
-    Case, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM, DropshotPagination, Generator,
-    OperationMethod, OperationParameter, OperationParameterKind, OperationParameterType,
-    OperationResponse, OperationResponseKind, OperationResponseStatus, PreparedIr, ResponseSide,
-    TokenStream, format_ident, ir, quote, sanitize, synth_variant_name,
-};
 use std::collections::{BTreeMap, BTreeSet};
+
+use crate::{
+    Generator, PreparedIr, ir,
+    operation::{
+        DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM, DropshotPagination, OperationMethod,
+        OperationParameter, OperationParameterKind, OperationParameterType, OperationResponse,
+        OperationResponseKind, OperationResponseStatus, ResponseSide,
+    },
+    util::{Case, sanitize},
+};
 
 /// Find the lowest common ancestor of `names` in the inheritance graph
 /// described by `supertype_map`. Returns the deepest ancestor present in
@@ -59,98 +63,6 @@ pub(super) fn collapse_bodyless_with_typed(
         .cloned()
 }
 
-/// Pattern to emit in the success-arm `match` for a given status code.
-/// In the regular (single-kind) case all 2xx statuses collapse into the
-/// catch-all `200 ..= 299` arm; in the synth (multi-kind) case each
-/// status gets its own specific arm so we dispatch to the right variant
-/// constructor.
-pub(super) fn success_arm_pattern(is_synth: bool, status: &OperationResponseStatus) -> TokenStream {
-    if is_synth {
-        match status {
-            OperationResponseStatus::Code(code) => quote! { #code },
-            OperationResponseStatus::Range(r) => {
-                let min = r * 100;
-                let max = min + 99;
-                quote! { #min ..= #max }
-            }
-            OperationResponseStatus::Default => quote! { _ },
-        }
-    } else {
-        match status {
-            OperationResponseStatus::Code(code) => quote! { #code },
-            OperationResponseStatus::Range(_) | OperationResponseStatus::Default => {
-                quote! { 200 ..= 299 }
-            }
-        }
-    }
-}
-
-/// Generate the per-arm decode expression that pulls the response body
-/// into a variant of a synthesized response/error enum. The function
-/// signature uses `Result<ResponseValue<#enum>, Error<#enum>>` so the
-/// per-arm result has to be `ResponseValue<#enum>` (success) or
-/// `Err(Error::ErrorResponse(ResponseValue<#enum>))` (error). Each
-/// inner-kind branch leverages `ResponseValue::map` (which is
-/// infallible but typed as `Result<_, E>`) so `?` threads through the
-/// surrounding async block's error type.
-pub(super) fn synth_decode_arm(
-    enum_name: &str,
-    status: &OperationResponseStatus,
-    payload: &OperationResponseKind,
-    payload_ident: Option<&TokenStream>,
-    response_ident: &proc_macro2::Ident,
-    is_error: bool,
-) -> TokenStream {
-    let enum_ident = format_ident!("{}", enum_name);
-    let variant_ident = format_ident!("{}", synth_variant_name(status));
-
-    // Wrap the original kind's decode into a `ResponseValue<#enum>` whose
-    // inner value is the right variant constructor. `ResponseValue::map`
-    // is infallible but returns `Result<_, E>` so the `?` threads through
-    // the surrounding async block's error type without an extra branch.
-    //
-    // `from_response` and `upgrade` need a turbofish — their return type
-    // depends on a `T` the surrounding code can't infer once we collapse
-    // the result through the variant constructor.
-    let wrap_variant = match payload {
-        OperationResponseKind::Type(_) => {
-            let ty = payload_ident
-                .expect("Type payload requires an ident")
-                .clone();
-            quote! {
-                ResponseValue::<#ty>::from_response(#response_ident)
-                    .await?
-                    .map(|inner| #enum_ident::#variant_ident(inner))
-            }
-        }
-        OperationResponseKind::None => quote! {
-            ResponseValue::empty(#response_ident)
-                .map(|()| #enum_ident::#variant_ident)
-        },
-        OperationResponseKind::Raw => quote! {
-            ResponseValue::stream(#response_ident)
-                .map(|inner| #enum_ident::#variant_ident(inner))
-        },
-        OperationResponseKind::Upgrade => quote! {
-            ResponseValue::<::reqwest::Upgraded>::upgrade(#response_ident)
-                .await?
-                .map(|inner| #enum_ident::#variant_ident(inner))
-        },
-        OperationResponseKind::Synth(_) => {
-            unreachable!("Synth kinds cannot themselves contain a synth variant")
-        }
-    };
-
-    if is_error {
-        quote! { Err(Error::ErrorResponse(#wrap_variant)) }
-    } else {
-        // Success arms must produce `Result<ResponseValue<#enum>, _>`.
-        // `wrap_variant` already evaluated to `ResponseValue<#enum>` via
-        // the trailing `?`, so wrap it in `Ok(...)` here.
-        quote! { Ok(#wrap_variant) }
-    }
-}
-
 impl Generator {
     /// Extract responses for the requested side of an operation. The
     /// result is a `Vec<OperationResponse>` that enumerates the cases matching
@@ -168,16 +80,6 @@ impl Generator {
             ResponseSide::Success => OperationResponseStatus::is_success_or_default,
             ResponseSide::Error => OperationResponseStatus::is_error_or_default,
         };
-        self.extract_responses_inner(prepared, method, filter, side)
-    }
-
-    fn extract_responses_inner(
-        &self,
-        prepared: &PreparedIr,
-        method: &OperationMethod,
-        filter: fn(&OperationResponseStatus) -> bool,
-        side: ResponseSide,
-    ) -> (Vec<OperationResponse>, OperationResponseKind) {
         let mut response_items: Vec<OperationResponse> = method
             .responses
             .iter()
@@ -398,5 +300,132 @@ impl Generator {
             }
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use super::{collapse_bodyless_with_typed, find_common_supertype};
+    use crate::operation::OperationResponseKind;
+
+    fn kinds<const N: usize>(items: [OperationResponseKind; N]) -> BTreeSet<OperationResponseKind> {
+        items.into_iter().collect()
+    }
+
+    #[test]
+    fn collapse_bodyless_collapses_single_typed_plus_none() {
+        let collapsed = collapse_bodyless_with_typed(&kinds([
+            OperationResponseKind::Raw,
+            OperationResponseKind::None,
+        ]));
+        assert_eq!(collapsed, Some(OperationResponseKind::Raw));
+
+        let collapsed = collapse_bodyless_with_typed(&kinds([
+            OperationResponseKind::Upgrade,
+            OperationResponseKind::None,
+        ]));
+        assert_eq!(collapsed, Some(OperationResponseKind::Upgrade));
+    }
+
+    #[test]
+    fn collapse_bodyless_leaves_uniform_sets_alone() {
+        // Single kind — caller's existing path handles it.
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([OperationResponseKind::Raw])),
+            None
+        );
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([OperationResponseKind::None])),
+            None
+        );
+        assert_eq!(collapse_bodyless_with_typed(&BTreeSet::new()), None);
+    }
+
+    #[test]
+    fn collapse_bodyless_does_not_collapse_two_body_kinds() {
+        // `Raw` + `Upgrade` is a genuine multi-kind conflict — the existing
+        // assertion should still fire downstream so we surface the spec issue.
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([
+                OperationResponseKind::Raw,
+                OperationResponseKind::Upgrade,
+            ])),
+            None,
+        );
+    }
+
+    #[test]
+    fn collapse_bodyless_does_not_collapse_more_than_two_kinds() {
+        // Even when `None` is present, three distinct kinds is not the
+        // single-typed-plus-bodyless pattern the collapse is designed for.
+        assert_eq!(
+            collapse_bodyless_with_typed(&kinds([
+                OperationResponseKind::Raw,
+                OperationResponseKind::Upgrade,
+                OperationResponseKind::None,
+            ])),
+            None,
+        );
+    }
+
+    fn supertype_map(entries: &[(&str, &str)]) -> BTreeMap<String, String> {
+        entries
+            .iter()
+            .map(|(child, parent)| ((*child).to_string(), (*parent).to_string()))
+            .collect()
+    }
+
+    fn name_set(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn find_common_supertype_picks_immediate_parent_when_one_input_is_the_parent() {
+        // BadRequestProblem extends Problem; both appear in the input set.
+        // The LCA is Problem itself.
+        let map = supertype_map(&[("BadRequestProblem", "Problem")]);
+        assert_eq!(
+            find_common_supertype(&name_set(&["BadRequestProblem", "Problem"]), &map),
+            Some("Problem".to_string()),
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_walks_multi_step_chains() {
+        // A extends Middle extends Root; B extends Middle extends Root.
+        // The LCA is Middle (deeper than Root).
+        let map = supertype_map(&[("A", "Middle"), ("B", "Middle"), ("Middle", "Root")]);
+        assert_eq!(
+            find_common_supertype(&name_set(&["A", "B"]), &map),
+            Some("Middle".to_string()),
+        );
+    }
+
+    #[test]
+    fn find_common_supertype_returns_none_when_no_shared_ancestor() {
+        // X has no parent; Y has its own unrelated parent.
+        let map = supertype_map(&[("Y", "OtherRoot")]);
+        assert_eq!(find_common_supertype(&name_set(&["X", "Y"]), &map), None,);
+    }
+
+    #[test]
+    fn find_common_supertype_tolerates_cycles_in_the_map() {
+        // Pathological input: A → B → A. Walking must terminate.
+        let map = supertype_map(&[("A", "B"), ("B", "A")]);
+        // No shared ancestor with an unrelated type.
+        assert_eq!(find_common_supertype(&name_set(&["A", "C"]), &map), None,);
+    }
+
+    #[test]
+    fn find_common_supertype_handles_singleton_and_empty_sets() {
+        let map = supertype_map(&[("A", "Root")]);
+        // A single name's own chain trivially contains itself.
+        assert_eq!(
+            find_common_supertype(&name_set(&["A"]), &map),
+            Some("A".to_string()),
+        );
+        assert_eq!(find_common_supertype(&BTreeSet::new(), &map), None);
     }
 }

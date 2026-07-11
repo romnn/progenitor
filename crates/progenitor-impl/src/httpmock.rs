@@ -47,7 +47,7 @@ impl Generator {
 
         let crate_path = syn::TypePath {
             qself: None,
-            path: crate::util::parse_crate_path(crate_path)?,
+            path: crate::util::parse_rust_path(crate_path, "crate path")?,
         };
 
         let code = quote! {
@@ -99,7 +99,7 @@ impl Generator {
         Ok(code)
     }
 
-    fn httpmock_method(&mut self, method: &crate::operation::OperationMethod) -> MockOp {
+    fn httpmock_method(&self, method: &crate::operation::OperationMethod) -> MockOp {
         let when_name = sanitize(&format!("{}-when", method.operation_id), Case::Pascal);
         let when = format_ident!("{}", when_name).to_token_stream();
         let then_name = sanitize(&format!("{}-then", method.operation_id), Case::Pascal);
@@ -134,19 +134,19 @@ impl Generator {
                      kind,
                      api_name,
                      optional,
-                     inner_type_id,
                      description: _,
                  }| {
                     let arg_type_name = match typ {
                         OperationParameterType::Type(arg_type_id) => {
                             let arg_type = self.type_space.get_type(arg_type_id).unwrap();
                             // Body params use json_body_obj which requires &T: Serialize,
-                            // not Option<&T>. Unwrap any Optional wrapper so the function
-                            // signature and call site are consistent.
+                            // not Option<&T>. Unlike other parameters, body types keep
+                            // their Option wrapper in `typ`, so unwrap it here to keep
+                            // the function signature and call site consistent.
                             if matches!(kind, OperationParameterKind::Body(_)) {
-                                if let Some(inner_id) = inner_type_id {
+                                if let typify::TypeDetails::Option(inner_id) = arg_type.details() {
                                     self.type_space
-                                        .get_type(inner_id)
+                                        .get_type(&inner_id)
                                         .unwrap()
                                         .parameter_ident()
                                 } else {

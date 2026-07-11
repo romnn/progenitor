@@ -1,10 +1,31 @@
-use super::{
-    BodyContentType, BuilderImpl, BuilderParameter, Case, DROPSHOT_LIMIT_PARAM, Generator,
-    MethodSigBody, OperationMethod, OperationParameter, OperationParameterKind,
-    OperationParameterType, PreparedIr, Result, TagStyle, TokenStream, format_ident, ir,
-    make_doc_comment, quote, sanitize, unique_ident_from,
-};
 use std::collections::BTreeMap;
+
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+
+use super::method::{MethodSigBody, make_doc_comment};
+use crate::{
+    Generator, PreparedIr, Result, TagStyle, ir,
+    operation::{
+        BodyContentType, DROPSHOT_LIMIT_PARAM, OperationMethod, OperationParameter,
+        OperationParameterKind, OperationParameterType,
+    },
+    util::{Case, sanitize, unique_ident_from},
+};
+
+struct BuilderImpl {
+    doc: String,
+    sig: TokenStream,
+    body: TokenStream,
+}
+
+struct BuilderParameter {
+    name: proc_macro2::Ident,
+    typ: TokenStream,
+    initial_value: TokenStream,
+    finalize: TokenStream,
+    implementation: TokenStream,
+}
 
 impl Generator {
     fn builder_parameter(

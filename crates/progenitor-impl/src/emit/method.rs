@@ -1,10 +1,125 @@
-use super::{
-    BodyContentType, DROPSHOT_PAGE_TOKEN_PARAM, Error, Generator, HttpMethod, MethodSigBody,
-    OperationMethod, OperationParameterKind, OperationParameterType, OperationResponse,
-    OperationResponseKind, OperationResponseStatus, PreparedIr, ResponseSide, Result, TokenStream,
-    format_ident, quote, success_arm_pattern, synth_decode_arm, synth_variant_name,
-    unique_ident_from,
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+
+use crate::{
+    Error, Generator, PreparedIr, Result,
+    operation::{
+        BodyContentType, DROPSHOT_PAGE_TOKEN_PARAM, HttpMethod, OperationMethod,
+        OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
+        OperationResponseStatus, ResponseSide, synth_variant_name,
+    },
+    util::unique_ident_from,
 };
+
+pub(super) struct MethodSigBody {
+    pub success: TokenStream,
+    pub error: TokenStream,
+    pub body: TokenStream,
+    /// Definitions for any types synthesised by `method_sig_body` itself —
+    /// today this is the per-operation `Status<code>` sum-type enums that
+    /// `extract_responses` falls back to when the response set has multiple
+    /// distinct kinds. Emitted by the caller alongside the function so the
+    /// signature's `Synth("…")` identifier resolves.
+    pub extra_types: TokenStream,
+}
+
+/// Match-arm pattern for an exact response status: the specific code, the
+/// bucket's numeric range, or the catch-all for `default`.
+fn status_arm_pattern(status: &OperationResponseStatus) -> TokenStream {
+    match status {
+        OperationResponseStatus::Code(code) => quote! { #code },
+        OperationResponseStatus::Range(r) => {
+            let min = r * 100;
+            let max = min + 99;
+            quote! { #min ..= #max }
+        }
+        OperationResponseStatus::Default => quote! { _ },
+    }
+}
+
+/// Pattern to emit in the success-arm `match` for a given status code.
+/// In the regular (single-kind) case all 2xx statuses collapse into the
+/// catch-all `200 ..= 299` arm; in the synth (multi-kind) case each
+/// status gets its own specific arm so we dispatch to the right variant
+/// constructor.
+fn success_arm_pattern(is_synth: bool, status: &OperationResponseStatus) -> TokenStream {
+    if is_synth {
+        status_arm_pattern(status)
+    } else {
+        match status {
+            OperationResponseStatus::Code(code) => quote! { #code },
+            OperationResponseStatus::Range(_) | OperationResponseStatus::Default => {
+                quote! { 200 ..= 299 }
+            }
+        }
+    }
+}
+
+/// Generate the per-arm decode expression that pulls the response body
+/// into a variant of a synthesized response/error enum. The function
+/// signature uses `Result<ResponseValue<#enum>, Error<#enum>>` so the
+/// per-arm result has to be `ResponseValue<#enum>` (success) or
+/// `Err(Error::ErrorResponse(ResponseValue<#enum>))` (error). Each
+/// inner-kind branch leverages `ResponseValue::map` (which is
+/// infallible but typed as `Result<_, E>`) so `?` threads through the
+/// surrounding async block's error type.
+fn synth_decode_arm(
+    enum_name: &str,
+    status: &OperationResponseStatus,
+    payload: &OperationResponseKind,
+    payload_ident: Option<&TokenStream>,
+    response_ident: &proc_macro2::Ident,
+    is_error: bool,
+) -> TokenStream {
+    let enum_ident = format_ident!("{}", enum_name);
+    let variant_ident = format_ident!("{}", synth_variant_name(status));
+
+    // Wrap the original kind's decode into a `ResponseValue<#enum>` whose
+    // inner value is the right variant constructor. `ResponseValue::map`
+    // is infallible but returns `Result<_, E>` so the `?` threads through
+    // the surrounding async block's error type without an extra branch.
+    //
+    // `from_response` and `upgrade` need a turbofish — their return type
+    // depends on a `T` the surrounding code can't infer once we collapse
+    // the result through the variant constructor.
+    let wrap_variant = match payload {
+        OperationResponseKind::Type(_) => {
+            let ty = payload_ident
+                .expect("Type payload requires an ident")
+                .clone();
+            quote! {
+                ResponseValue::<#ty>::from_response(#response_ident)
+                    .await?
+                    .map(|inner| #enum_ident::#variant_ident(inner))
+            }
+        }
+        OperationResponseKind::None => quote! {
+            ResponseValue::empty(#response_ident)
+                .map(|()| #enum_ident::#variant_ident)
+        },
+        OperationResponseKind::Raw => quote! {
+            ResponseValue::stream(#response_ident)
+                .map(|inner| #enum_ident::#variant_ident(inner))
+        },
+        OperationResponseKind::Upgrade => quote! {
+            ResponseValue::<::reqwest::Upgraded>::upgrade(#response_ident)
+                .await?
+                .map(|inner| #enum_ident::#variant_ident(inner))
+        },
+        OperationResponseKind::Synth(_) => {
+            unreachable!("Synth kinds cannot themselves contain a synth variant")
+        }
+    };
+
+    if is_error {
+        quote! { Err(Error::ErrorResponse(#wrap_variant)) }
+    } else {
+        // Success arms must produce `Result<ResponseValue<#enum>, _>`.
+        // `wrap_variant` already evaluated to `ResponseValue<#enum>` via
+        // the trailing `?`, so wrap it in `Ok(...)` here.
+        quote! { Ok(#wrap_variant) }
+    }
+}
 
 pub(super) fn make_doc_comment(method: &OperationMethod) -> String {
     let mut buf = String::new();
@@ -389,20 +504,7 @@ impl Generator {
         };
 
         let error_response_matches = error_response_items.iter().map(|response| {
-            let pat = match &response.status_code {
-                OperationResponseStatus::Code(code) => {
-                    quote! { #code }
-                }
-                OperationResponseStatus::Range(r) => {
-                    let min = r * 100;
-                    let max = min + 99;
-                    quote! { #min ..= #max }
-                }
-
-                OperationResponseStatus::Default => {
-                    quote! { _ }
-                }
-            };
+            let pat = status_arm_pattern(&response.status_code);
 
             let decode = if let Some(enum_name) = &error_synth_name {
                 let payload_ident = match &response.typ {
@@ -444,7 +546,10 @@ impl Generator {
                         }
                     }
                     OperationResponseKind::Upgrade => {
-                        quote! {} // catch-all handled below
+                        // Handled by the catch-all upgrade arm below; emit
+                        // no status arm at all (an empty-bodied arm would
+                        // not type-check against the match's result type).
+                        return quote! {};
                     }
                     OperationResponseKind::Synth(_) => {
                         unreachable!("Synth never appears in per-item typ")
@@ -672,5 +777,66 @@ impl Generator {
                 #(#variants),*
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use quote::quote;
+
+    use crate::operation::{
+        HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
+        OperationResponseStatus,
+    };
+    use crate::{Error, Generator, PreparedIr};
+
+    #[test]
+    fn non_default_upgrade_error_returns_generation_error() {
+        let method = OperationMethod {
+            operation_id: "upgrade".to_string(),
+            tags: Vec::new(),
+            method: HttpMethod::Get,
+            path: crate::template::parse("/").unwrap(),
+            summary: None,
+            description: None,
+            params: Vec::new(),
+            responses: vec![
+                OperationResponse {
+                    status_code: OperationResponseStatus::Code(200),
+                    typ: OperationResponseKind::None,
+                    schema_name: None,
+                    media_type: None,
+                    description: None,
+                },
+                OperationResponse {
+                    status_code: OperationResponseStatus::Code(400),
+                    typ: OperationResponseKind::Upgrade,
+                    schema_name: None,
+                    media_type: None,
+                    description: None,
+                },
+            ],
+            dropshot_paginated: None,
+            dropshot_websocket: true,
+        };
+
+        let prepared = PreparedIr {
+            raw_methods: Vec::new(),
+            schema_supertypes: BTreeMap::new(),
+            schema_type_ids: BTreeMap::new(),
+        };
+        let result = Generator::default().method_sig_body(
+            &prepared,
+            &method,
+            quote! { Self },
+            quote! { self },
+            false,
+        );
+        let Err(Error::UnexpectedFormat(message)) = result else {
+            panic!("expected unsupported upgrade response error");
+        };
+        assert!(message.contains("non-default error responses"));
     }
 }

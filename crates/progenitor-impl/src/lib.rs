@@ -22,11 +22,12 @@ pub use typify::TypeSpacePatch as TypePatch;
 pub use typify::UnknownPolicy;
 
 mod cli;
+mod emit;
 mod httpmock;
 mod ir;
-mod method;
 mod openapi;
 mod operation;
+mod operations;
 mod server;
 mod template;
 mod util;
@@ -44,6 +45,8 @@ pub enum Error {
     InvalidPath(String),
     #[error("invalid dropshot extension use: {0}")]
     InvalidExtension(String),
+    #[error("unsupported combination of generation settings: {0}")]
+    UnsupportedSettings(String),
     #[error("internal error {0}")]
     InternalError(String),
 }
@@ -58,9 +61,9 @@ pub struct Generator {
     uses_futures: bool,
     uses_websockets: bool,
     /// Component-schema name → `TypeId` of the corresponding typify type
-    /// after `add_ref_types`. Needed alongside `schema_supertypes` so
-    /// `extract_responses` can resolve a common-ancestor schema name back
-    /// to a usable `TypeId` when rewriting response items.
+    /// after `add_ref_types`. Stashed by `prepare` (the emitters read the
+    /// copy in [`PreparedIr`]) so [`Self::example_schemas`] can map schema
+    /// names to named Rust types after generation.
     schema_type_ids: BTreeMap<String, TypeId>,
     /// Component schemas as schemars objects, retained after `generate_tokens`
     /// so callers can inspect metadata (e.g., examples) without a second parse.
@@ -77,11 +80,6 @@ pub(crate) struct PreparedIr {
     pub raw_methods: Vec<operation::OperationMethod>,
     pub schema_supertypes: BTreeMap<String, String>,
     pub schema_type_ids: BTreeMap<String, TypeId>,
-    #[expect(
-        dead_code,
-        reason = "retained with the prepared schema maps for backend metadata consumers"
-    )]
-    pub component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
 }
 
 /// Settings for [Generator].
@@ -430,7 +428,7 @@ impl Generator {
 
     /// Prepare the shared generation IR for a spec: register component schemas
     /// in the type space, build the supertype / schema-`TypeId` maps that
-    /// [`Generator::extract_responses`](crate::method) relies on, retain the
+    /// [`Generator::extract_responses`](crate::operations::responses) relies on, retain the
     /// component schemas, and produce the per-operation methods with deduped
     /// operation IDs.
     ///
@@ -453,9 +451,8 @@ impl Generator {
 
         let schema_supertypes = crate::ir::build_schema_supertype_map(&document.schemas);
         let schema_type_ids = self.build_schema_type_id_map(&document.schemas)?;
-        let component_schemas = document.schemas.clone();
         self.schema_type_ids = schema_type_ids.clone();
-        self.component_schemas = component_schemas.clone();
+        self.component_schemas = document.schemas.clone();
 
         let mut raw_methods = document
             .operations
@@ -463,9 +460,12 @@ impl Generator {
             .map(|operation| self.process_operation(operation, &document.schemas))
             .collect::<Result<Vec<_>>>()?;
 
-        // Specs sometimes assign the same operationId to multiple paths.
-        // Deduplicate by appending _2, _3, … to later occurrences so the
-        // generated Rust methods don't collide.
+        // Raw operation IDs are unique (`ir::validate` guarantees it), but
+        // distinct IDs can sanitize to the same snake-case method name
+        // (`getFoo` and `get_foo` collapse). Deduplicate by appending
+        // _2, _3, … to later occurrences — always probing against every
+        // name taken so far, so a synthesized `foo_2` can't collide with a
+        // literal one — so the generated Rust methods don't collide.
         {
             let mut taken = HashSet::new();
             for method in &mut raw_methods {
@@ -490,7 +490,6 @@ impl Generator {
             raw_methods,
             schema_supertypes,
             schema_type_ids,
-            component_schemas,
         })
     }
 
@@ -509,7 +508,7 @@ impl Generator {
                     self.settings.inner_type.is_some(),
                 ),
             (InterfaceStyle::Positional, TagStyle::Separate) => {
-                return Err(Error::UnexpectedFormat(
+                return Err(Error::UnsupportedSettings(
                     "positional arguments with separate tags are currently unsupported".to_string(),
                 ));
             }

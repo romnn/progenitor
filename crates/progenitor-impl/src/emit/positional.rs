@@ -1,9 +1,14 @@
-use super::{
-    BodyContentType, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM, Generator, MethodSigBody,
-    OperationMethod, OperationParameterKind, OperationParameterType, PreparedIr, Result,
-    TokenStream, format_ident, make_doc_comment, make_stream_doc_comment, quote,
+use proc_macro2::TokenStream;
+use quote::{ToTokens, format_ident, quote};
+
+use super::method::{MethodSigBody, make_doc_comment, make_stream_doc_comment};
+use crate::{
+    Generator, PreparedIr, Result,
+    operation::{
+        BodyContentType, DROPSHOT_LIMIT_PARAM, DROPSHOT_PAGE_TOKEN_PARAM, OperationMethod,
+        OperationParameterKind, OperationParameterType,
+    },
 };
-use quote::ToTokens;
 
 impl Generator {
     /// Generate the `impl`-block body for one positional-style method.

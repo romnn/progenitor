@@ -56,14 +56,14 @@ impl Generator {
 
         let crate_path = syn::TypePath {
             qself: None,
-            path: crate::util::parse_crate_path(crate_name)?,
+            path: crate::util::parse_rust_path(crate_name, "crate path")?,
         };
 
         let cli_bounds = self
             .settings
             .extra_cli_bounds
             .iter()
-            .map(|bound| crate::util::parse_crate_path(bound))
+            .map(|bound| crate::util::parse_rust_path(bound, "CLI trait bound"))
             .collect::<Result<Vec<_>>>()?;
 
         let code = quote! {
@@ -185,7 +185,7 @@ impl Generator {
     }
 
     fn cli_method(
-        &mut self,
+        &self,
         prepared: &PreparedIr,
         method: &crate::operation::OperationMethod,
     ) -> Result<CliOperation> {
@@ -324,6 +324,7 @@ impl Generator {
                         )));
                     }
                 };
+                let limit_arg = crate::operation::DROPSHOT_LIMIT_PARAM;
                 quote! {
                     self.config.list_start::<#success_type>();
 
@@ -334,7 +335,7 @@ impl Generator {
                     let mut stream = futures::StreamExt::take(
                         request.stream(),
                         matches
-                            .get_one::<std::num::NonZeroU32>("limit")
+                            .get_one::<std::num::NonZeroU32>(#limit_arg)
                             .map_or(usize::MAX, |x| x.get() as usize));
 
                     loop {

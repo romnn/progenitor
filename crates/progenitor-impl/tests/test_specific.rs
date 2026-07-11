@@ -1,5 +1,8 @@
 // Copyright 2024 Oxide Computer Company
 
+//! Behavioral regression tests for specific generator features and
+//! previously-fixed bugs, driven by small inline specs.
+
 use dropshot::{
     ApiDescription, Body, ConfigDropshot, ConfigLogging, ConfigLoggingLevel, EmptyScanParams,
     HttpError, HttpResponseOk, HttpResponseUpdatedNoContent, HttpServerStarter, PaginationParams,
@@ -248,6 +251,62 @@ fn cli_output_does_not_depend_on_prior_client_generation() {
     let warmed = warmed.cli(&spec, "crate").unwrap().to_string();
 
     assert_eq!(fresh, warmed);
+}
+
+#[test]
+fn httpmock_unwraps_nullable_body_types() {
+    // A nullable JSON request body lowers to `Option<T>`; the generated
+    // mock `when` method must take `&T` (json_body_obj needs a concrete
+    // serializable value), not the `Option` wrapper.
+    let spec = progenitor_impl::parse_openapi_value(serde_json::json!({
+        "openapi": "3.0.3",
+        "info": { "title": "test", "version": "1" },
+        "paths": {
+            "/thing": {
+                "post": {
+                    "operationId": "createThing",
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Thing" }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "201": { "description": "created" }
+                    }
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Thing": {
+                    "type": "object",
+                    "nullable": true,
+                    "properties": { "name": { "type": "string" } }
+                }
+            }
+        }
+    }))
+    .unwrap();
+
+    let mock = Generator::default()
+        .httpmock(&spec, "crate")
+        .unwrap()
+        .to_string();
+
+    let body_method = mock
+        .split("fn body")
+        .nth(1)
+        .expect("generated mock has a body method");
+    let signature = body_method
+        .split(')')
+        .next()
+        .expect("body method has a parameter list");
+    assert!(
+        signature.contains("Thing") && !signature.contains("Option"),
+        "body must take the unwrapped type: fn body{signature})"
+    );
 }
 
 #[test]
