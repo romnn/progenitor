@@ -12,6 +12,24 @@ Every item states the problem with `file:line` references, the exact fix, and
 acceptance criteria. Line numbers are against the tree at the commit this
 document was added; re-locate by the quoted identifiers if they have drifted.
 
+Status: **IMPLEMENTED** (2026-07-10/11, commits `37d6769..a6eb1d5`). All parts
+landed: A1–A4, B0–B3 (`to_schema.rs`/`ir/v30.rs` deleted, `openapiv3` now a
+dev-dependency, `ir/v31` renamed `ir/frontend`), C1–C6, D1, E (runtime, tool,
+generator, and facade crates inherit the workspace lints; typify and the
+examples stay excluded deliberately), F1–F7. Golden output stayed
+byte-identical across the whole range. A verification pass on 2026-07-11
+re-reviewed the implementation and fixed what it found, most notably: two 3.0
+tolerance regressions from the frontend unification (explicit `null` members
+in path items/operations; `jsonSchemaDialect` on 3.0 documents), the `anyOf`
+union heuristics accidentally applying to 3.0 documents (now gated to 3.1),
+an `Option`-unwrap for nullable request bodies in the httpmock backend that
+had become dead code (`OperationParameter.inner_type_id` removed outright —
+`typ` + `optional` are the contract now), plus fidelity drifts in the V30
+discriminator canonicalization and lone-`null` type spelling, a real module
+tree for `operations/`/`emit/` replacing the `#[path]` mounts, and regression
+tests for each fix (including the previously unpinned typify variant-scoped
+naming).
+
 ## Verdict
 
 **Sound shape, needs hygiene — plus two structural convergences.**
