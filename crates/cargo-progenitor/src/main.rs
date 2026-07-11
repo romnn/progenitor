@@ -1,5 +1,8 @@
 // Copyright 2025 Oxide Computer Company
 
+//! `cargo progenitor`: generate a full client crate (source, Cargo.toml,
+//! optional vendored runtime) from an `OpenAPI` document.
+
 use std::{
     fs::OpenOptions,
     io::Write,

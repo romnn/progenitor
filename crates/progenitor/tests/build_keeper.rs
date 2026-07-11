@@ -1,5 +1,7 @@
 // Copyright 2022 Oxide Computer Company
 
+//! Compile-time smoke test: the keeper sample generates in every interface style.
+
 mod positional {
     progenitor::generate_api!("../../sample_openapi/keeper.json");
 
@@ -7,8 +9,8 @@ mod positional {
         drop(Client::new("").enrol(
             "auth token",
             &types::EnrolBody {
-                host: "".to_string(),
-                key: "".to_string(),
+                host: String::new(),
+                key: String::new(),
             },
         ));
     }
@@ -27,8 +29,8 @@ mod builder_untagged {
                 .enrol()
                 .authorization("")
                 .body(types::EnrolBody {
-                    host: "".to_string(),
-                    key: "".to_string(),
+                    host: String::new(),
+                    key: String::new(),
                 })
                 .send(),
         );
@@ -48,8 +50,8 @@ mod builder_tagged {
                 .enrol()
                 .authorization("")
                 .body(types::EnrolBody {
-                    host: "".to_string(),
-                    key: "".to_string(),
+                    host: String::new(),
+                    key: String::new(),
                 })
                 .send(),
         );

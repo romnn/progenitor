@@ -1,5 +1,7 @@
 // Copyright 2025 Oxide Computer Company
 
+//! End-to-end tests for the `cargo progenitor` command.
+
 #[test]
 fn test_help() {
     assert_cmd::cargo::cargo_bin_cmd!()

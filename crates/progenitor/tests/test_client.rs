@@ -1,5 +1,7 @@
 // Copyright 2022 Oxide Computer Company
 
+//! Behavioral tests for generated client code against a mock server.
+
 // Validate that we get useful output from a user-typed error.
 #[test]
 #[should_panic = "Error Response: \

@@ -1,5 +1,7 @@
 // Copyright 2022 Oxide Computer Company
 
+//! Compile-time smoke test: the nexus sample generates with patches and replacements.
+
 mod positional {
     use futures::StreamExt;
 
@@ -9,6 +11,10 @@ mod positional {
 
     use nexus_client::{Client, types};
 
+    #[expect(
+        clippy::unwrap_used,
+        reason = "compile-only smoke helper; never executed"
+    )]
     fn _ignore() {
         drop(async {
             let client = Client::new("");

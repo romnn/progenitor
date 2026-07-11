@@ -1,5 +1,7 @@
 // Copyright 2025 Oxide Computer Company
 
+//! Behavioral tests for the shared client runtime.
+
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
     error::Error,

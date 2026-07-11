@@ -1,5 +1,7 @@
 // Copyright 2022 Oxide Computer Company
 
+//! Compile-time smoke test: the buildomat sample generates in every interface style.
+
 mod positional {
     progenitor::generate_api!("../../sample_openapi/buildomat.json");
 

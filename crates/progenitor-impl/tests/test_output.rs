@@ -1,5 +1,8 @@
 // Copyright 2025 Oxide Computer Company
 
+//! Golden-output tests: every sample spec is generated in each
+//! interface style and compared byte-for-byte against tests/output/.
+
 use std::path::{Path, PathBuf};
 
 use progenitor_impl::{
