@@ -1324,6 +1324,58 @@ mod tests {
     }
 
     #[test]
+    fn test_discriminated_variants_with_shared_property_get_scoped_names() {
+        // Two internally-tagged variants share a non-tag property (`config`)
+        // whose object shapes differ. Without variant-scoped naming both
+        // inline `config` structs get the same suggested name, colliding in
+        // the generated output. The `x-discriminator` extension marks the
+        // enum as explicitly discriminated, which enables the scoping.
+        let schema_value = serde_json::json!({
+            "oneOf": [
+                {
+                    "type": "object",
+                    "required": ["kind", "config"],
+                    "properties": {
+                        "kind": { "type": "string", "enum": ["a"] },
+                        "name": { "type": "string" },
+                        "config": {
+                            "type": "object",
+                            "required": ["alpha"],
+                            "properties": { "alpha": { "type": "string" } }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["kind", "config"],
+                    "properties": {
+                        "kind": { "type": "string", "enum": ["b"] },
+                        "name": { "type": "string" },
+                        "config": {
+                            "type": "object",
+                            "required": ["beta"],
+                            "properties": { "beta": { "type": "boolean" } }
+                        }
+                    }
+                }
+            ],
+            "x-discriminator": { "propertyName": "kind" }
+        });
+        let schema: schemars::schema::Schema = serde_json::from_value(schema_value).unwrap();
+
+        let mut type_space = TypeSpace::default();
+        type_space
+            .add_type_with_name(&schema, Some("Widget".to_string()))
+            .unwrap();
+
+        let output = type_space.to_stream().to_string();
+        assert!(
+            output.contains("struct WidgetAConfig") && output.contains("struct WidgetBConfig"),
+            "expected variant-scoped config struct names in output: {output}"
+        );
+    }
+
+    #[test]
     fn test_untagged_enum_output() {
         validate_output_for_untagged_enm::<UntaggedEnum>();
     }
