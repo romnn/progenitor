@@ -419,6 +419,10 @@ impl SchemaLowering {
 
         self.rewrite_prefix_items(map);
         self.rewrite_items_array(map);
+        self.coalesce_string_enum_branches(map);
+        self.promote_object_any_of_to_one_of(map);
+        self.partition_string_or_object_any_of(map);
+        self.canonicalize_type(map);
 
         // Fold the hybrid `nullable: true` (3.0 spelling appearing in
         // wild 3.1 documents) into the type set / nullable wrapper.
@@ -499,7 +503,6 @@ impl SchemaLowering {
             }
         }
 
-        self.canonicalize_type(map);
         if self.dialect == Dialect::V31 {
             self.rewrite_nullable_unions(map);
         }
@@ -587,27 +590,197 @@ impl SchemaLowering {
         map.insert("items".to_string(), json!({ "oneOf": items }));
     }
 
-    /// Normalize `type` arrays: drop duplicates, unwrap single-element
-    /// arrays, and order `"null"` last so the lowered value matches the
-    /// `[T, Null]` shape the 3.0 dialect produces for `nullable: true`.
-    fn canonicalize_type(&self, map: &mut Map<String, Value>) {
-        let Some(Value::Array(types)) = map.get("type") else {
+    fn coalesce_string_enum_branches(&self, map: &mut Map<String, Value>) {
+        let Some(Value::Array(branches)) = map.get("anyOf") else {
             return;
+        };
+        let mut values = Vec::new();
+        let mut matching = Vec::new();
+        for (index, branch) in branches.iter().enumerate() {
+            let Value::Object(branch) = branch else {
+                continue;
+            };
+            if !matches!(branch.get("type"), Some(Value::String(kind)) if kind.eq_ignore_ascii_case("string"))
+                || branch.keys().any(|key| {
+                    !key.starts_with("x-")
+                        && !matches!(key.as_str(), "type" | "enum" | "title" | "description")
+                })
+            {
+                continue;
+            }
+            let Some(Value::Array(branch_values)) = branch.get("enum") else {
+                continue;
+            };
+            if !branch_values.iter().all(Value::is_string) {
+                continue;
+            }
+            matching.push(index);
+            for value in branch_values {
+                if !values.contains(value) {
+                    values.push(value.clone());
+                }
+            }
+        }
+        if matching.len() < 2 {
+            return;
+        }
+
+        let Some(first) = matching.first().copied() else {
+            return;
+        };
+        let mut combined = Map::from_iter([
+            ("type".to_string(), json!("string")),
+            ("enum".to_string(), Value::Array(values)),
+        ]);
+        for index in &matching {
+            let Some(Value::Object(branch)) = branches.get(*index) else {
+                continue;
+            };
+            for (key, value) in branch {
+                if key.starts_with("x-") {
+                    combined.entry(key.clone()).or_insert_with(|| value.clone());
+                }
+            }
+        }
+        let combined = Value::Object(combined);
+        let branches = branches
+            .iter()
+            .cloned()
+            .enumerate()
+            .filter_map(|(index, branch)| {
+                if index == first {
+                    Some(combined.clone())
+                } else if matching.contains(&index) {
+                    None
+                } else {
+                    Some(branch)
+                }
+            })
+            .collect();
+        map.insert("anyOf".to_string(), Value::Array(branches));
+    }
+
+    fn promote_object_any_of_to_one_of(&self, map: &mut Map<String, Value>) {
+        if map.contains_key("oneOf") {
+            return;
+        }
+        let Some(Value::Array(branches)) = map.get("anyOf") else {
+            return;
+        };
+        let is_object_branch = |branch: &Value| {
+            let Value::Object(branch) = branch else {
+                return false;
+            };
+            matches!(branch.get("type"), Some(Value::String(kind)) if kind == "object")
+                || matches!(branch.get("$ref"), Some(Value::String(_)))
+                || matches!(branch.get("allOf"), Some(Value::Array(_)))
+        };
+        // Large object unions are typically OpenAPI sum types. Leaving them
+        // as `anyOf` makes typify flatten every alternative into one lossy
+        // struct. Preserve the established two-branch intersection behavior
+        // used by existing specifications such as Qdrant.
+        if branches.len() > 2 && branches.iter().all(is_object_branch) {
+            let Some(branches) = map.shift_remove("anyOf") else {
+                return;
+            };
+            map.insert("oneOf".to_string(), branches);
+        }
+    }
+
+    fn partition_string_or_object_any_of(&self, map: &mut Map<String, Value>) {
+        if map.contains_key("oneOf") {
+            return;
+        }
+        let Some(Value::Array(branches)) = map.get("anyOf") else {
+            return;
+        };
+        let string_branch = branches.iter().position(|branch| {
+            matches!(
+                branch,
+                Value::Object(branch)
+                    if matches!(branch.get("type"), Some(Value::String(kind)) if kind == "string")
+                        && matches!(branch.get("enum"), Some(Value::Array(_)))
+            )
+        });
+        let Some(string_branch) = string_branch else {
+            return;
+        };
+        let mut saw_explicit_object = false;
+        let mut object_branches = Vec::new();
+        for (index, branch) in branches.iter().enumerate() {
+            if index == string_branch {
+                continue;
+            }
+            let Value::Object(object) = branch else {
+                return;
+            };
+            let explicit_object =
+                matches!(object.get("type"), Some(Value::String(kind)) if kind == "object");
+            if !explicit_object && !matches!(object.get("$ref"), Some(Value::String(_))) {
+                return;
+            }
+            saw_explicit_object |= explicit_object;
+            object_branches.push(branch.clone());
+        }
+        if !saw_explicit_object || object_branches.is_empty() {
+            return;
+        }
+        let Some(string_branch) = branches.get(string_branch).cloned() else {
+            return;
+        };
+        let object_union = if object_branches.len() == 1 {
+            object_branches
+                .into_iter()
+                .next()
+                .unwrap_or(Value::Bool(false))
+        } else {
+            json!({ "anyOf": object_branches })
+        };
+
+        map.shift_remove("anyOf");
+        map.insert("oneOf".to_string(), json!([string_branch, object_union]));
+    }
+
+    /// Normalize known type names and degrade unknown names to an
+    /// unconstrained schema before data-bearing metadata is traversed.
+    fn canonicalize_type(&self, map: &mut Map<String, Value>) {
+        const VALID_TYPES: [&str; 7] = [
+            "null", "boolean", "object", "array", "number", "string", "integer",
+        ];
+        let Some(raw_type) = map.get("type").cloned() else {
+            return;
+        };
+        let types = match raw_type {
+            Value::String(name) => vec![Value::String(name)],
+            Value::Array(types) => types,
+            _ => {
+                map.shift_remove("type");
+                return;
+            }
         };
         let mut seen = Vec::new();
         let mut has_null = false;
         for entry in types {
             let Value::String(name) = entry else {
+                map.shift_remove("type");
                 return;
             };
+            let name = name.to_ascii_lowercase();
+            if !VALID_TYPES.contains(&name.as_str()) {
+                continue;
+            }
             if name == "null" {
                 has_null = true;
-            } else if !seen.contains(name) {
-                seen.push(name.clone());
+            } else if !seen.contains(&name) {
+                seen.push(name);
             }
         }
         let new_type = match (seen.len(), has_null) {
-            (0, _) => json!("null"),
+            (0, false) => {
+                map.shift_remove("type");
+                return;
+            }
+            (0, true) => json!("null"),
             (1, false) => json!(seen[0]),
             _ => {
                 let mut all: Vec<Value> = seen.into_iter().map(Value::String).collect();
@@ -858,6 +1031,63 @@ mod tests {
     }
 
     #[test]
+    fn coalesces_and_partitions_string_enum_any_of_branches() {
+        let lowered = serde_json::to_value(lower_one(json!({
+            "anyOf": [
+                {
+                    "type": "string",
+                    "enum": ["auto"],
+                    "x-speakeasy-unknown-values": "allow"
+                },
+                { "type": "object", "properties": { "name": { "type": "string" } } },
+                { "type": "string", "enum": ["none"] }
+            ]
+        })))
+        .unwrap();
+
+        assert_eq!(
+            lowered["oneOf"],
+            json!([
+                {
+                    "type": "string",
+                    "enum": ["auto", "none"],
+                    "x-speakeasy-unknown-values": "allow"
+                },
+                { "type": "object", "properties": { "name": { "type": "string" } } }
+            ])
+        );
+    }
+
+    #[test]
+    fn promotes_object_any_of_to_a_rust_union() {
+        let lowered = serde_json::to_value(lower_one(json!({
+            "anyOf": [
+                { "type": "object", "properties": { "first": { "type": "integer" } } },
+                { "type": "object", "properties": { "second": { "type": "string" } } },
+                { "allOf": [{ "type": "object", "required": ["third"] }] }
+            ]
+        })))
+        .unwrap();
+
+        assert!(lowered.get("anyOf").is_none());
+        assert_eq!(lowered["oneOf"].as_array().map(Vec::len), Some(3));
+    }
+
+    #[test]
+    fn preserves_two_branch_object_any_of() {
+        let lowered = serde_json::to_value(lower_one(json!({
+            "anyOf": [
+                { "type": "object", "properties": { "first": { "type": "integer" } } },
+                { "type": "object", "properties": { "second": { "type": "string" } } }
+            ]
+        })))
+        .unwrap();
+
+        assert!(lowered.get("oneOf").is_none());
+        assert_eq!(lowered["anyOf"].as_array().map(Vec::len), Some(2));
+    }
+
+    #[test]
     fn exclusive_bound_twins_lower_identically() {
         // 3.1 numeric form vs 3.0 boolean form.
         assert_eq!(
@@ -913,6 +1143,24 @@ mod tests {
         }));
         let value = serde_json::to_value(lowered).unwrap();
         assert_eq!(value["examples"], json!(["a", "b"]));
+    }
+
+    #[test]
+    fn object_example_fields_survive_lowering() {
+        let lowered = lower_one(json!({
+            "allOf": [
+                { "type": "object" },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": { "type": { "type": "string" } }
+                }
+            ],
+            "example": { "type": "unknown", "count": 1 }
+        }));
+        let value = serde_json::to_value(lowered).unwrap();
+
+        assert_eq!(value["examples"], json!([{"type": "unknown", "count": 1}]));
     }
 
     #[test]

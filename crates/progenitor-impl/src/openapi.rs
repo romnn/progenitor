@@ -5,8 +5,6 @@ use crate::ir::OpenApiDocument;
 
 mod ref_repair;
 
-const TYPE_KEY: &str = "type";
-
 /// YAML deserialization tolerant of real-world spec sloppiness that the
 /// straight `serde_json::Value` target rejects:
 ///
@@ -198,7 +196,6 @@ pub fn parse_openapi_value(
 
 fn normalize_real_world_sloppiness(value: &mut Value) {
     ensure_info_version(value);
-    normalize_type_strings(value);
     normalize_response_descriptions(value);
     normalize_non_query_deep_object_parameters(value);
 }
@@ -209,34 +206,6 @@ fn ensure_info_version(value: &mut Value) {
     };
     if !matches!(info.get("version"), Some(Value::String(_))) {
         info.insert("version".to_string(), Value::String("unknown".to_string()));
-    }
-}
-
-fn normalize_type_strings(value: &mut Value) {
-    match value {
-        Value::Object(map) => {
-            if let Some(Value::String(type_name)) = map.get(TYPE_KEY) {
-                let canonical = type_name.to_ascii_lowercase();
-                if type_name.is_empty() || canonical == "unknown" {
-                    map.shift_remove(TYPE_KEY);
-                } else if matches!(
-                    canonical.as_str(),
-                    "null" | "boolean" | "object" | "array" | "number" | "string" | "integer"
-                ) && canonical != *type_name
-                {
-                    map.insert(TYPE_KEY.to_string(), Value::String(canonical));
-                }
-            }
-            for entry in map.values_mut() {
-                normalize_type_strings(entry);
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                normalize_type_strings(item);
-            }
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
     }
 }
 
@@ -417,6 +386,32 @@ mod tests {
         .expect("parse openapi");
 
         assert!(document.0.schemas.contains_key("MaybeAnything"));
+    }
+
+    #[test]
+    fn preserves_type_fields_inside_schema_examples() {
+        let document = parse_openapi_value(json!({
+            "openapi": "3.1.0",
+            "info": { "title": "example", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Event": {
+                        "type": "object",
+                        "example": { "type": "unknown", "count": 1 }
+                    }
+                }
+            }
+        }))
+        .expect("parse openapi");
+        let Some(schemars::schema::Schema::Object(schema)) = document.0.schemas.get("Event") else {
+            panic!("expected Event object schema")
+        };
+
+        assert_eq!(
+            schema.metadata.as_ref().unwrap().examples[0]["type"],
+            json!("unknown")
+        );
     }
 
     #[test]

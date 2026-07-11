@@ -186,7 +186,10 @@ pub(crate) struct OperationResponse {
     pub media_type: Option<String>,
     // TODO this isn't currently used because dropshot doesn't give us a
     // particularly useful message here.
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "response descriptions are retained until dropshot can surface them"
+    )]
     pub(crate) description: Option<String>,
 }
 
