@@ -502,7 +502,12 @@ fn try_merge_with_subschemas_not(
                 })),
                 ..Default::default()
             };
-            merge_schema_object(&schema_object, &new_other, defs)
+            let merged = try_merge_schema(
+                &Schema::Object(schema_object),
+                &Schema::Object(new_other),
+                defs,
+            )?;
+            Ok(merged.into_object())
         }
 
         SubschemaValidation {
@@ -1944,5 +1949,32 @@ mod tests {
             "{}",
             serde_json::to_string_pretty(&merged).unwrap(),
         );
+    }
+
+    #[test]
+    fn test_subtract_any_of_resolves_reference_before_merging() {
+        let schema_object = serde_json::from_value(json!({
+            "$ref": "#/definitions/x"
+        }))
+        .unwrap();
+        let not_subschemas = serde_json::from_value(json!({
+            "anyOf": [
+                { "type": "number" },
+                { "type": "boolean" }
+            ]
+        }))
+        .unwrap();
+        let definitions = [(
+            RefKey::Def("x".to_string()),
+            serde_json::from_value(json!({ "type": "string" })).unwrap(),
+        )]
+        .into_iter()
+        .collect();
+
+        let merged =
+            super::try_merge_with_subschemas_not(schema_object, &not_subschemas, &definitions)
+                .unwrap();
+
+        assert_eq!(merged.reference.as_deref(), Some("#/definitions/x"));
     }
 }

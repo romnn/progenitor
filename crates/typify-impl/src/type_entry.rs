@@ -988,7 +988,8 @@ impl TypeEntry {
                     .iter()
                     .filter(|variant| matches!(variant.details, VariantDetails::Simple))
                     .count()
-                    <= 1
+                    <= 1,
+                "untagged enum {name} has multiple simple variants: {variants:#?}"
             )
         }
 

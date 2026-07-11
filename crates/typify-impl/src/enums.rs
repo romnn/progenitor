@@ -382,6 +382,48 @@ impl TypeSpace {
         constant_value_properties.sort();
         let tag = constant_value_properties.first()?;
 
+        let explicitly_discriminated = matches!(
+            original_schema,
+            Schema::Object(object)
+                if object.extensions.contains_key(crate::DISCRIMINATOR_EXTENSION_KEY)
+        );
+        let mut schemas_by_property: BTreeMap<String, Vec<&Schema>> = BTreeMap::new();
+        for schema in &resolved_subschemas {
+            let Some((_, validation)) = get_object(&schema.resolved) else {
+                unreachable!();
+            };
+            for (name, property_schema) in &validation.properties {
+                if name != tag {
+                    schemas_by_property
+                        .entry(name.clone())
+                        .or_default()
+                        .push(property_schema);
+                }
+            }
+        }
+        let needs_variant_scoped_names = schemas_by_property.values().any(|schemas| {
+            let constant_values = schemas
+                .iter()
+                .filter_map(|schema| constant_string_value(schema))
+                .collect::<Vec<_>>();
+            let differing_constants = constant_values.len() == schemas.len()
+                && constant_values.first().is_some_and(|first| {
+                    constant_values.iter().skip(1).any(|value| value != first)
+                });
+            let object_shapes = schemas
+                .iter()
+                .filter_map(|schema| get_object(schema).map(|(_, object)| object))
+                .collect::<Vec<_>>();
+            let differing_object_shapes = object_shapes.len() == schemas.len()
+                && object_shapes.first().is_some_and(|first| {
+                    object_shapes.iter().skip(1).any(|object| {
+                        object.required != first.required
+                            || object.properties.keys().ne(first.properties.keys())
+                    })
+                });
+            differing_constants || (explicitly_discriminated && differing_object_shapes)
+        });
+
         let mut deny_unknown_fields = false;
         let variants = resolved_subschemas
             .iter()
@@ -415,6 +457,7 @@ impl TypeSpace {
                     validation,
                     tag,
                     reference_type_id,
+                    needs_variant_scoped_names,
                 )
             })
             .collect::<Result<Vec<_>>>()
@@ -438,6 +481,7 @@ impl TypeSpace {
         validation: &ObjectValidation,
         tag: &str,
         reference_type_id: Option<TypeId>,
+        needs_variant_scoped_names: bool,
     ) -> Result<Variant> {
         if validation.properties.len() == 1 {
             let (tag_name, schema) = validation.properties.iter().next().unwrap();
@@ -469,8 +513,13 @@ impl TypeSpace {
             new_validation.properties.remove(tag);
             new_validation.required.remove(tag);
 
+            let variant_type_name = if needs_variant_scoped_names {
+                enum_type_name.append(variant_name)
+            } else {
+                enum_type_name
+            };
             let (properties, _) =
-                self.struct_members(enum_type_name.into_option(), &new_validation)?;
+                self.struct_members(variant_type_name.into_option(), &new_validation)?;
             Ok(Variant::new(
                 variant_name.to_string(),
                 metadata_title_and_description(metadata),
@@ -724,11 +773,21 @@ impl TypeSpace {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        let mut saw_simple = false;
         let variants = variant_details
             .into_iter()
-            .map(|(details, variant_name)| {
+            .filter_map(|(details, variant_name)| {
                 assert!(!variant_name.is_empty());
-                Variant::new(variant_name, None, details)
+                if matches!(details, VariantDetails::Simple)
+                    && std::mem::replace(&mut saw_simple, true)
+                {
+                    // Serde cannot distinguish multiple unit variants in an
+                    // untagged enum, and schema intersections can expose the
+                    // same null branch more than once.
+                    None
+                } else {
+                    Some(Variant::new(variant_name, None, details))
+                }
             })
             .collect();
 
@@ -1233,6 +1292,37 @@ mod tests {
             _ => panic!(),
         }
     }
+
+    #[test]
+    fn test_untagged_enum_deduplicates_unit_variants() {
+        let null_schema: schemars::schema::Schema = SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Null))),
+            ..Default::default()
+        }
+        .into();
+        let subschemas = vec![null_schema.clone(), null_schema];
+        let original_schema = schemars::schema::Schema::Object(SchemaObject::default());
+        let mut type_space = TypeSpace::default();
+
+        let ty = type_space
+            .untagged_enum(
+                Name::Required("DuplicateNulls".to_string()),
+                &original_schema,
+                &None,
+                &subschemas,
+            )
+            .unwrap();
+
+        let TypeEntryDetails::Enum(details) = ty.details else {
+            panic!("expected an enum")
+        };
+        assert_eq!(details.variants.len(), 1);
+        assert!(matches!(
+            details.variants[0].details,
+            VariantDetails::Simple
+        ));
+    }
+
     #[test]
     fn test_untagged_enum_output() {
         validate_output_for_untagged_enm::<UntaggedEnum>();
