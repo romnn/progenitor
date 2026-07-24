@@ -199,11 +199,29 @@ pub struct MultiKindRequest {
     pub mode: ::std::string::String,
 }
 
+#[doc = "Error type for the `render_rejection` operation."]
+pub type RenderRejectionError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `render_rejection` operation."]
+#[derive(Debug, Clone)]
+pub struct RenderRejectionRequest {}
 #[doc = r" The service trait. Implement it, then mount the generated server"]
 #[doc = r" adapter via the `progenitor-server` runtime (or `into_router()`"]
 #[doc = r" to compose it into your own axum app)."]
 #[::progenitor_server::codegen::async_trait]
 pub trait ServerGen: Send + Sync + 'static {
+    #[doc = r" Renders a failure outside an operation's declared response types."]
+    #[doc = r""]
+    #[doc = r" The default preserves the runtime status and plain-text message."]
+    #[doc = r" An override may change the body and headers. The server adapter"]
+    #[doc = r" preserves [`Rejection::status`](::progenitor_server::Rejection::status)"]
+    #[doc = r" after the renderer returns."]
+    fn render_rejection(
+        &self,
+        rejection: ::progenitor_server::Rejection,
+    ) -> axum::response::Response {
+        ::progenitor_server::codegen::axum::response::IntoResponse::into_response(rejection)
+    }
+
     #[doc = "List items, optionally limited."]
     async fn list_items(
         &self,
@@ -239,6 +257,11 @@ pub trait ServerGen: Send + Sync + 'static {
         &self,
         request: ::progenitor_server::Request<MultiKindRequest>,
     ) -> ::std::result::Result<::progenitor_server::Response<MultiKindResponse>, MultiKindError>;
+    #[doc = "An operation whose name collides with the service rejection hook."]
+    async fn render_rejection_2(
+        &self,
+        request: ::progenitor_server::Request<RenderRejectionRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<()>, RenderRejectionError>;
 }
 
 #[doc = r" Adapter that turns an implementation of the service trait into an"]
@@ -270,6 +293,10 @@ impl<T: ServerGen> ServerGenServer<T> {
             .route("/blob", axum::routing::get(Self::download_blob_route))
             .route("/multi/{mode}", axum::routing::get(Self::multi_kind_route))
             .route(
+                "/render-rejection",
+                axum::routing::post(Self::render_rejection_route),
+            )
+            .route(
                 "/search",
                 axum::routing::get(|| async { http::StatusCode::NOT_IMPLEMENTED }),
             )
@@ -280,18 +307,37 @@ impl<T: ServerGen> ServerGenServer<T> {
             .with_state(self.0)
     }
 
+    fn render_rejection(
+        __progenitor_inner: &T,
+        rejection: ::progenitor_server::Rejection,
+    ) -> axum::response::Response {
+        let status = rejection.status();
+        let mut response = <T as ServerGen>::render_rejection(__progenitor_inner, rejection);
+        *response.status_mut() = status;
+        response
+    }
+
     async fn list_items_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Query(__progenitor_query): ::progenitor_server::Query<ListItemsQuery>,
+        __progenitor_query_extractor: ::std::result::Result<
+            ::progenitor_server::Query<ListItemsQuery>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Query(__progenitor_query) = match __progenitor_query_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let x_trace = match ::progenitor_server::optional_header::<::std::string::String>(
             &__progenitor_meta,
             "x-trace",
         ) {
             Ok(value) => value,
             Err(rejection) => {
-                return axum::response::IntoResponse::into_response(rejection);
+                return Self::render_rejection(&__progenitor_inner, rejection);
             }
         };
         let message = ListItemsRequest {
@@ -300,10 +346,11 @@ impl<T: ServerGen> ServerGenServer<T> {
         };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::list_items(&__progenitor_inner, request).await;
-        Self::list_items_respond(result)
+        Self::list_items_respond(&__progenitor_inner, result)
     }
 
     fn list_items_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<
             ::progenitor_server::Response<types::ItemList>,
             ListItemsError,
@@ -330,7 +377,12 @@ impl<T: ServerGen> ServerGenServer<T> {
                     }
                 },
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -340,17 +392,27 @@ impl<T: ServerGen> ServerGenServer<T> {
     async fn create_item_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Json(__progenitor_body): ::progenitor_server::Json<types::Item>,
+        __progenitor_body_extractor: ::std::result::Result<
+            ::progenitor_server::Json<types::Item>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Json(__progenitor_body) = match __progenitor_body_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let message = CreateItemRequest {
             body: __progenitor_body,
         };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::create_item(&__progenitor_inner, request).await;
-        Self::create_item_respond(result)
+        Self::create_item_respond(&__progenitor_inner, result)
     }
 
     fn create_item_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<::progenitor_server::Response<()>, CreateItemError>,
     ) -> axum::response::Response {
         match result {
@@ -377,7 +439,12 @@ impl<T: ServerGen> ServerGenServer<T> {
                     }
                 },
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -387,15 +454,25 @@ impl<T: ServerGen> ServerGenServer<T> {
     async fn get_item_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Path(item_id): ::progenitor_server::Path<::std::string::String>,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Path(item_id) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let message = GetItemRequest { item_id };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::get_item(&__progenitor_inner, request).await;
-        Self::get_item_respond(result)
+        Self::get_item_respond(&__progenitor_inner, result)
     }
 
     fn get_item_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<::progenitor_server::Response<types::Item>, GetItemError>,
     ) -> axum::response::Response {
         match result {
@@ -419,7 +496,12 @@ impl<T: ServerGen> ServerGenServer<T> {
                     }
                 },
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -429,10 +511,37 @@ impl<T: ServerGen> ServerGenServer<T> {
     async fn update_item_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Path(item_id): ::progenitor_server::Path<::std::string::String>,
-        ::progenitor_server::Query(__progenitor_query): ::progenitor_server::Query<UpdateItemQuery>,
-        ::progenitor_server::Json(__progenitor_body): ::progenitor_server::Json<types::Item>,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
+        __progenitor_query_extractor: ::std::result::Result<
+            ::progenitor_server::Query<UpdateItemQuery>,
+            ::progenitor_server::Rejection,
+        >,
+        __progenitor_body_extractor: ::std::result::Result<
+            ::progenitor_server::Json<types::Item>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Path(item_id) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let ::progenitor_server::Query(__progenitor_query) = match __progenitor_query_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let ::progenitor_server::Json(__progenitor_body) = match __progenitor_body_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let message = UpdateItemRequest {
             item_id,
             dry_run: __progenitor_query.dry_run,
@@ -440,10 +549,11 @@ impl<T: ServerGen> ServerGenServer<T> {
         };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::update_item(&__progenitor_inner, request).await;
-        Self::update_item_respond(result)
+        Self::update_item_respond(&__progenitor_inner, result)
     }
 
     fn update_item_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<::progenitor_server::Response<types::Item>, UpdateItemError>,
     ) -> axum::response::Response {
         match result {
@@ -467,7 +577,12 @@ impl<T: ServerGen> ServerGenServer<T> {
                     }
                 },
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -477,16 +592,34 @@ impl<T: ServerGen> ServerGenServer<T> {
     async fn collide_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Path(inner): ::progenitor_server::Path<::std::string::String>,
-        ::progenitor_server::Query(__progenitor_query): ::progenitor_server::Query<CollideQuery>,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
+        __progenitor_query_extractor: ::std::result::Result<
+            ::progenitor_server::Query<CollideQuery>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Path(inner) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let ::progenitor_server::Query(__progenitor_query) = match __progenitor_query_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let meta = match ::progenitor_server::optional_header::<::std::string::String>(
             &__progenitor_meta,
             "meta",
         ) {
             Ok(value) => value,
             Err(rejection) => {
-                return axum::response::IntoResponse::into_response(rejection);
+                return Self::render_rejection(&__progenitor_inner, rejection);
             }
         };
         let message = CollideRequest {
@@ -497,10 +630,11 @@ impl<T: ServerGen> ServerGenServer<T> {
         };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::collide(&__progenitor_inner, request).await;
-        Self::collide_respond(result)
+        Self::collide_respond(&__progenitor_inner, result)
     }
 
     fn collide_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<::progenitor_server::Response<types::Message>, CollideError>,
     ) -> axum::response::Response {
         match result {
@@ -512,7 +646,12 @@ impl<T: ServerGen> ServerGenServer<T> {
             Err(__error) => match __error {
                 ::progenitor_server::ServerError::Api(__body) => match __body {},
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -526,10 +665,11 @@ impl<T: ServerGen> ServerGenServer<T> {
         let message = DownloadBlobRequest {};
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::download_blob(&__progenitor_inner, request).await;
-        Self::download_blob_respond(result)
+        Self::download_blob_respond(&__progenitor_inner, result)
     }
 
     fn download_blob_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<
             ::progenitor_server::Response<bytes::Bytes>,
             DownloadBlobError,
@@ -549,7 +689,12 @@ impl<T: ServerGen> ServerGenServer<T> {
             Err(__error) => match __error {
                 ::progenitor_server::ServerError::Api(__body) => match __body {},
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },
@@ -559,15 +704,25 @@ impl<T: ServerGen> ServerGenServer<T> {
     async fn multi_kind_route(
         axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
         __progenitor_meta: ::progenitor_server::Metadata,
-        ::progenitor_server::Path(mode): ::progenitor_server::Path<::std::string::String>,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
     ) -> axum::response::Response {
+        let ::progenitor_server::Path(mode) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
         let message = MultiKindRequest { mode };
         let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
         let result = <T as ServerGen>::multi_kind(&__progenitor_inner, request).await;
-        Self::multi_kind_respond(result)
+        Self::multi_kind_respond(&__progenitor_inner, result)
     }
 
     fn multi_kind_respond(
+        __progenitor_inner: &T,
         result: ::std::result::Result<
             ::progenitor_server::Response<MultiKindResponse>,
             MultiKindError,
@@ -627,7 +782,50 @@ impl<T: ServerGen> ServerGenServer<T> {
                     }
                 },
                 ::progenitor_server::ServerError::Internal(__e) => {
-                    ::progenitor_server::respond::internal(__e)
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn render_rejection_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+    ) -> axum::response::Response {
+        let message = RenderRejectionRequest {};
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::render_rejection_2(&__progenitor_inner, request).await;
+        Self::render_rejection_respond(&__progenitor_inner, result)
+    }
+
+    fn render_rejection_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<::progenitor_server::Response<()>, RenderRejectionError>,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::NO_CONTENT;
+                {
+                    let _ = __body;
+                    ::progenitor_server::respond::empty(__status, __headers)
+                }
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
                 }
                 ::progenitor_server::ServerError::Response(__r) => __r,
             },

@@ -522,6 +522,31 @@ impl Client {
         }
     }
 
+    ///An operation whose name collides with the service rejection hook
+    ///
+    ///Sends a `POST` request to `/render-rejection`
+    pub async fn render_rejection<'a>(&'a self) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!("{}/render-rejection", self.baseurl,);
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.post(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "render_rejection",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
     ///deepObject query params are emitted as a 501 server stub
     ///
     ///Sends a `GET` request to `/search`

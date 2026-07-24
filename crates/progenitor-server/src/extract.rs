@@ -1,17 +1,19 @@
 // Copyright 2026 Oxide Computer Company
 
-//! Request extractors with controlled, runtime-standard rejections.
+//! Request extractors with controlled, service-rendered rejections.
 //!
 //! Generated routes use these custom extractors instead of the bare axum ones so
-//! that an extraction failure produces *our* standardized HTTP error (a uniform
-//! `400`/`415`) rather than axum's default rejection body — and so the query
-//! extractor handles the repeated-key array encoding the generated client emits
-//! (`?x=1&x=2`), which axum's `serde_urlencoded`-based `Query` cannot.
+//! that an extraction failure carries a stable [`RejectionKind`] and status
+//! rather than axum's backend-specific body. The generated service trait chooses
+//! how to render that rejection. The query extractor also handles the
+//! repeated-key array encoding the generated client emits (`?x=1&x=2`), which
+//! axum's `serde_urlencoded`-based `Query` cannot.
 //!
-//! Extraction failures are intentionally **runtime-standard**, not the
-//! operation's typed error: a generic extractor can't know an operation's
-//! declared error type. A generated client may therefore surface such a `400` as
-//! an undecodable payload; the real status is observable via raw HTTP.
+//! Extraction failures are intentionally service-wide, not an operation's typed
+//! error: a generic extractor cannot construct an operation-specific response.
+//! A generated client may therefore surface an undocumented rejection status as
+//! an unexpected response; the real status and body remain observable via raw
+//! HTTP.
 
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::response::{IntoResponse, Response};
@@ -19,42 +21,157 @@ use http::request::Parts;
 use http::{Extensions, HeaderMap, Method, StatusCode, Uri};
 use serde::de::DeserializeOwned;
 
-/// A standardized extraction rejection: an HTTP status plus a short message.
+/// A machine-readable category for a request-level rejection.
 ///
-/// Its [`IntoResponse`] is what an extractor short-circuits with, so every
-/// generated route emits a uniform error shape for malformed requests.
+/// The enum is non-exhaustive so new extraction surfaces can be categorized
+/// without breaking service renderers.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RejectionKind {
+    /// A request body could not be read or decoded.
+    InvalidBody,
+    /// The request body has a missing or unsupported media type.
+    UnsupportedMediaType,
+    /// Query parameters could not be decoded.
+    InvalidQuery,
+    /// Path parameters could not be decoded.
+    InvalidPath,
+    /// A required header is absent.
+    MissingHeader,
+    /// A header value could not be decoded.
+    InvalidHeader,
+    /// A required cookie is absent.
+    MissingCookie,
+    /// A cookie value could not be decoded.
+    InvalidCookie,
+    /// A required multipart part is absent.
+    MissingPart,
+    /// A multipart part could not be decoded.
+    InvalidPart,
+    /// The service encountered an unexpected internal failure.
+    Internal,
+}
+
+/// A request-level failure with a stable category, status, and safe message.
+///
+/// [`IntoResponse`] preserves the runtime's plain-text default. Generated
+/// services can override that representation through their rejection renderer.
 #[derive(Debug, Clone)]
 pub struct Rejection {
     status: StatusCode,
+    kind: RejectionKind,
     message: String,
 }
 
 impl Rejection {
-    /// Construct a rejection with an explicit status.
-    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
+    /// Constructs a rejection with an explicit status and category.
+    pub fn new(status: StatusCode, kind: RejectionKind, message: impl Into<String>) -> Self {
         Rejection {
             status,
+            kind,
             message: message.into(),
         }
     }
 
-    /// A `400 Bad Request` rejection.
-    pub fn bad_request(message: impl Into<String>) -> Self {
-        Rejection::new(StatusCode::BAD_REQUEST, message)
+    /// Constructs a body rejection while preserving the extractor's status.
+    pub fn invalid_body(status: StatusCode, message: impl Into<String>) -> Self {
+        Rejection::new(status, RejectionKind::InvalidBody, message)
     }
 
-    /// A `415 Unsupported Media Type` rejection.
+    /// Constructs a `415 Unsupported Media Type` rejection.
     pub fn unsupported_media_type(message: impl Into<String>) -> Self {
-        Rejection::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, message)
+        Rejection::new(
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            RejectionKind::UnsupportedMediaType,
+            message,
+        )
     }
 
-    /// The HTTP status this rejection encodes to.
+    /// Constructs a `400 Bad Request` query rejection.
+    pub fn invalid_query(message: impl Into<String>) -> Self {
+        Rejection::new(
+            StatusCode::BAD_REQUEST,
+            RejectionKind::InvalidQuery,
+            message,
+        )
+    }
+
+    /// Constructs a path rejection while preserving the extractor's status.
+    pub fn invalid_path(status: StatusCode, message: impl Into<String>) -> Self {
+        Rejection::new(status, RejectionKind::InvalidPath, message)
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an absent header.
+    pub fn missing_header(message: impl Into<String>) -> Self {
+        Rejection::new(
+            StatusCode::BAD_REQUEST,
+            RejectionKind::MissingHeader,
+            message,
+        )
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an invalid header.
+    pub fn invalid_header(message: impl Into<String>) -> Self {
+        Rejection::new(
+            StatusCode::BAD_REQUEST,
+            RejectionKind::InvalidHeader,
+            message,
+        )
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an absent cookie.
+    pub fn missing_cookie(message: impl Into<String>) -> Self {
+        Rejection::new(
+            StatusCode::BAD_REQUEST,
+            RejectionKind::MissingCookie,
+            message,
+        )
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an invalid cookie.
+    pub fn invalid_cookie(message: impl Into<String>) -> Self {
+        Rejection::new(
+            StatusCode::BAD_REQUEST,
+            RejectionKind::InvalidCookie,
+            message,
+        )
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an absent multipart part.
+    pub fn missing_part(message: impl Into<String>) -> Self {
+        Rejection::new(StatusCode::BAD_REQUEST, RejectionKind::MissingPart, message)
+    }
+
+    /// Constructs a `400 Bad Request` rejection for an invalid multipart part.
+    pub fn invalid_part(message: impl Into<String>) -> Self {
+        Rejection::new(StatusCode::BAD_REQUEST, RejectionKind::InvalidPart, message)
+    }
+
+    /// Constructs a generic `500 Internal Server Error` rejection.
+    #[must_use]
+    pub fn internal() -> Self {
+        Rejection::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            RejectionKind::Internal,
+            "Internal Server Error",
+        )
+    }
+
+    /// Returns the HTTP status associated with this rejection.
+    ///
+    /// Generated server adapters restore this status after custom rendering.
     #[must_use]
     pub fn status(&self) -> StatusCode {
         self.status
     }
 
-    /// The human-readable message.
+    /// Returns the machine-readable rejection category.
+    #[must_use]
+    pub fn kind(&self) -> RejectionKind {
+        self.kind
+    }
+
+    /// Returns the safe, human-readable message.
     #[must_use]
     pub fn message(&self) -> &str {
         &self.message
@@ -137,7 +254,10 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         match axum::extract::Path::<T>::from_request_parts(parts, state).await {
             Ok(axum::extract::Path(value)) => Ok(Path(value)),
-            Err(rejection) => Err(Rejection::new(rejection.status(), "invalid path parameter")),
+            Err(rejection) => Err(Rejection::invalid_path(
+                rejection.status(),
+                "invalid path parameter",
+            )),
         }
     }
 }
@@ -159,7 +279,7 @@ where
         let query = parts.uri.query().unwrap_or("");
         match serde_html_form::from_str::<T>(query) {
             Ok(value) => Ok(Query(value)),
-            Err(error) => Err(Rejection::bad_request(format!(
+            Err(error) => Err(Rejection::invalid_query(format!(
                 "invalid query string: {error}"
             ))),
         }
@@ -181,7 +301,13 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req, state).await {
             Ok(axum::Json(value)) => Ok(Json(value)),
-            Err(rejection) => Err(Rejection::new(rejection.status(), "invalid JSON body")),
+            Err(rejection) if rejection.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE => {
+                Err(Rejection::unsupported_media_type("invalid JSON body"))
+            }
+            Err(rejection) => Err(Rejection::invalid_body(
+                rejection.status(),
+                "invalid JSON body",
+            )),
         }
     }
 }
@@ -200,7 +326,13 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         match axum::Form::<T>::from_request(req, state).await {
             Ok(axum::Form(value)) => Ok(Form(value)),
-            Err(rejection) => Err(Rejection::new(rejection.status(), "invalid form body")),
+            Err(rejection) if rejection.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE => {
+                Err(Rejection::unsupported_media_type("invalid form body"))
+            }
+            Err(rejection) => Err(Rejection::invalid_body(
+                rejection.status(),
+                "invalid form body",
+            )),
         }
     }
 }
@@ -218,7 +350,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         match bytes::Bytes::from_request(req, state).await {
             Ok(value) => Ok(Bytes(value)),
-            Err(rejection) => Err(Rejection::new(
+            Err(rejection) => Err(Rejection::invalid_body(
                 rejection.status(),
                 "could not read request body",
             )),
@@ -239,7 +371,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         match String::from_request(req, state).await {
             Ok(value) => Ok(Text(value)),
-            Err(rejection) => Err(Rejection::new(
+            Err(rejection) => Err(Rejection::invalid_body(
                 rejection.status(),
                 "could not read request body",
             )),
@@ -264,7 +396,7 @@ where
     let value = meta
         .headers()
         .get(name)
-        .ok_or_else(|| Rejection::bad_request(format!("missing required header `{name}`")))?;
+        .ok_or_else(|| Rejection::missing_header(format!("missing required header `{name}`")))?;
     parse_header_value(value, name)
 }
 
@@ -295,7 +427,7 @@ where
     T: std::str::FromStr,
 {
     optional_cookie(meta, name)?
-        .ok_or_else(|| Rejection::bad_request(format!("missing required cookie `{name}`")))
+        .ok_or_else(|| Rejection::missing_cookie(format!("missing required cookie `{name}`")))
 }
 
 /// Parse an optional typed cookie from already-extracted [`Metadata`].
@@ -314,7 +446,7 @@ where
     value
         .parse::<T>()
         .map(Some)
-        .map_err(|_| Rejection::bad_request(format!("cookie `{name}` is malformed")))
+        .map_err(|_| Rejection::invalid_cookie(format!("cookie `{name}` is malformed")))
 }
 
 fn parse_header_value<T>(value: &http::HeaderValue, name: &str) -> Result<T, Rejection>
@@ -323,16 +455,16 @@ where
 {
     let text = value
         .to_str()
-        .map_err(|_| Rejection::bad_request(format!("header `{name}` is not valid text")))?;
+        .map_err(|_| Rejection::invalid_header(format!("header `{name}` is not valid text")))?;
     text.parse::<T>()
-        .map_err(|_| Rejection::bad_request(format!("header `{name}` is malformed")))
+        .map_err(|_| Rejection::invalid_header(format!("header `{name}` is malformed")))
 }
 
 fn cookie_value(meta: &Metadata, name: &str) -> Result<Option<String>, Rejection> {
     for value in meta.headers().get_all(http::header::COOKIE) {
         let text = value
             .to_str()
-            .map_err(|_| Rejection::bad_request("cookie header is not valid text"))?;
+            .map_err(|_| Rejection::invalid_cookie("cookie header is not valid text"))?;
         for pair in text.split(';') {
             let Some((cookie_name, cookie_value)) = pair.trim().split_once('=') else {
                 continue;
@@ -348,7 +480,10 @@ fn cookie_value(meta: &Metadata, name: &str) -> Result<Option<String>, Rejection
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::FromRequestParts;
+    use axum::body::{Body, to_bytes};
+    use axum::extract::{FromRequest, FromRequestParts};
+    use axum::routing::get;
+    use tower::ServiceExt;
 
     fn meta_with(headers: HeaderMap) -> Metadata {
         Metadata {
@@ -390,6 +525,120 @@ mod tests {
         assert!(q.x.is_none());
     }
 
+    #[tokio::test]
+    async fn invalid_query_has_a_stable_kind() {
+        #[derive(Debug, serde::Deserialize)]
+        struct Q {
+            #[serde(rename = "x")]
+            _x: i32,
+        }
+        let (mut parts, ()) = http::Request::builder()
+            .uri("/items?x=not-a-number")
+            .body(())
+            .unwrap()
+            .into_parts();
+
+        let rejection = Query::<Q>::from_request_parts(&mut parts, &())
+            .await
+            .unwrap_err();
+
+        assert_eq!(rejection.kind(), RejectionKind::InvalidQuery);
+        assert_eq!(rejection.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn invalid_path_has_a_stable_kind() {
+        async fn handler(path: Result<Path<i32>, Rejection>) -> String {
+            match path {
+                Ok(_) => "ok".to_string(),
+                Err(rejection) => format!("{:?}", rejection.kind()),
+            }
+        }
+
+        let response = axum::Router::new()
+            .route("/{id}", get(handler))
+            .oneshot(
+                http::Request::builder()
+                    .uri("/not-a-number")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        assert_eq!(body.as_ref(), b"InvalidPath");
+    }
+
+    #[tokio::test]
+    async fn json_distinguishes_media_type_from_body_failures() {
+        #[derive(Debug, serde::Deserialize)]
+        struct Payload {
+            #[serde(rename = "value")]
+            _value: i32,
+        }
+
+        let missing_media_type = http::Request::builder()
+            .body(Body::from(r#"{"value":1}"#))
+            .unwrap();
+        let rejection = Json::<Payload>::from_request(missing_media_type, &())
+            .await
+            .unwrap_err();
+        assert_eq!(rejection.kind(), RejectionKind::UnsupportedMediaType);
+        assert_eq!(rejection.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+
+        let malformed = http::Request::builder()
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from("{"))
+            .unwrap();
+        let rejection = Json::<Payload>::from_request(malformed, &())
+            .await
+            .unwrap_err();
+        assert_eq!(rejection.kind(), RejectionKind::InvalidBody);
+        assert_eq!(rejection.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn form_decode_failure_has_a_stable_kind() {
+        #[derive(Debug, serde::Deserialize)]
+        struct Payload {
+            #[serde(rename = "value")]
+            _value: i32,
+        }
+
+        let request = http::Request::builder()
+            .header(
+                http::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .body(Body::from("value=not-a-number"))
+            .unwrap();
+        let rejection = Form::<Payload>::from_request(request, &())
+            .await
+            .unwrap_err();
+
+        assert_eq!(rejection.kind(), RejectionKind::InvalidBody);
+    }
+
+    fn failing_body() -> Body {
+        Body::from_stream(futures::stream::once(async {
+            Err::<bytes::Bytes, std::io::Error>(std::io::Error::other("read failed"))
+        }))
+    }
+
+    #[tokio::test]
+    async fn raw_body_read_failures_have_a_stable_kind() {
+        let bytes_rejection = Bytes::from_request(http::Request::new(failing_body()), &())
+            .await
+            .unwrap_err();
+        let text_rejection = Text::from_request(http::Request::new(failing_body()), &())
+            .await
+            .unwrap_err();
+
+        assert_eq!(bytes_rejection.kind(), RejectionKind::InvalidBody);
+        assert_eq!(text_rejection.kind(), RejectionKind::InvalidBody);
+    }
+
     #[test]
     fn required_header_parses_present_and_rejects_absent() {
         let mut headers = HeaderMap::new();
@@ -399,6 +648,18 @@ mod tests {
         assert_eq!(n, 42);
         let err = required_header::<i32>(&meta, "absent").unwrap_err();
         assert_eq!(err.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(err.kind(), RejectionKind::MissingHeader);
+    }
+
+    #[test]
+    fn malformed_header_has_a_stable_kind() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-num", http::HeaderValue::from_static("not-a-number"));
+        let meta = meta_with(headers);
+
+        let err = required_header::<i32>(&meta, "x-num").unwrap_err();
+
+        assert_eq!(err.kind(), RejectionKind::InvalidHeader);
     }
 
     #[test]
@@ -422,6 +683,21 @@ mod tests {
         assert_eq!(theme, "dark");
         let err = required_cookie::<i32>(&meta, "absent").unwrap_err();
         assert_eq!(err.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(err.kind(), RejectionKind::MissingCookie);
+    }
+
+    #[test]
+    fn malformed_cookie_has_a_stable_kind() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::COOKIE,
+            http::HeaderValue::from_static("session=not-a-number"),
+        );
+        let meta = meta_with(headers);
+
+        let err = required_cookie::<i32>(&meta, "session").unwrap_err();
+
+        assert_eq!(err.kind(), RejectionKind::InvalidCookie);
     }
 
     #[test]
@@ -447,5 +723,14 @@ mod tests {
             .into_parts();
         let Query(q): Query<Q> = Query::from_request_parts(&mut parts, &()).await.unwrap();
         assert!(q.tags.is_empty());
+    }
+
+    #[test]
+    fn internal_rejection_never_carries_the_error_value() {
+        let rejection = Rejection::internal();
+
+        assert_eq!(rejection.kind(), RejectionKind::Internal);
+        assert_eq!(rejection.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(rejection.message(), "Internal Server Error");
     }
 }

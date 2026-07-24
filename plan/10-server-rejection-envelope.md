@@ -14,9 +14,9 @@ operation that documents no error response. A service-wide renderer is therefore
 base layer; mapping rejections into per-operation *declared* error types remains the optional
 refinement tracked in §5.
 
-Status: **PLANNED**. Grounded in branch `feat/openapi3.1-support` at `c38e41d`. **Sequencing: land
-after plan 11 (typed statuses)** — plan 11 rewrites the responders this plan threads `&T` through
-and deletes the status-guard surface, so this plan assumes guards no longer exist.
+Status: **IMPLEMENTED** (2026-07-24). Landed after plan 11's typed responder
+rewrite, so every extraction and internal-error funnel targets the final
+responder shape.
 
 ## 1. Current state (measured)
 
@@ -89,7 +89,8 @@ pub trait {Api}: Send + Sync + 'static {
 
     /// Render a request-level failure (extraction rejection, internal error,
     /// contract violation) as the HTTP response. The default preserves the
-    /// runtime-standard body. Override to emit your API's error envelope.
+    /// runtime-standard body. Override to emit your API's error envelope; the
+    /// generated adapter restores the rejection's status after rendering.
     fn render_rejection(
         &self,
         rejection: ::progenitor_server::Rejection,
@@ -101,6 +102,10 @@ pub trait {Api}: Send + Sync + 'static {
 
 Sync, non-async (rendering is pure formatting; keeps it out of `async_trait` boxing), and a
 provided default so every existing implementation keeps compiling byte-identically.
+
+The hook shares the trait method namespace with operation IDs. A server operation that sanitizes to
+`render_rejection` therefore receives the first free numeric suffix, using the same deterministic
+collision style as other generated operation names.
 
 ### 2.3 Funnel all three surfaces through the hook
 
@@ -129,11 +134,15 @@ All in `server_op` / its helpers:
 3. **Responder** gains the implementation: signature becomes
    `fn {op}_respond(inner: &T, result: …) -> Response` and the call site
    (`server.rs:320`) passes `&__progenitor_inner`. The `Internal` arm becomes: log via the
-   runtime (keep the current tracing in `respond::internal`, split into
+   runtime (keep the current logging in `respond::internal`, split into
    `respond::log_internal(&error)` so the error value is still recorded), then
    `inner.render_rejection(Rejection::internal())`. The error value itself is never given to the
    renderer — it must not leak into response bodies, which is the existing `respond::internal`
    posture (`response.rs:158`).
+
+The adapter records `rejection.status()` before invoking the hook and restores it on the returned
+response. Body and header customization therefore cannot accidentally violate the rejection's
+status contract.
 
 `ServerError::Api` and `ServerError::Response` arms are untouched — declared errors and the escape
 hatch already belong to the implementor.
@@ -150,7 +159,7 @@ feature.
 ## 3. Implementation steps
 
 1. **Runtime** (`progenitor-server/src/extract.rs`): `RejectionKind`, per-kind constructors,
-   migrate all constructor call sites, add `internal()`/`status_contract()`; split
+   migrate all constructor call sites, add `internal()`; split
    `respond::internal` into log + render-default halves (`response.rs:158`). Unit tests: each
    extractor's rejection carries the right kind (extend the existing test module,
    `extract.rs:353-450`).
@@ -163,14 +172,20 @@ feature.
 4. **Conformance** (`conformance/petstore-31`): two round-trip additions — (a) default: malformed
    JSON body → assert today's plain-text 400 via raw HTTP (unchanged behavior pinned); (b)
    override: an impl with a custom envelope → assert the envelope + correct status for a body
-   rejection, a missing required header, and an `Internal` return.
+   rejection, invalid query/path values, missing required header/cookie values, and an `Internal`
+   return. The override deliberately returns the wrong status so the adapter's status enforcement
+   is also pinned.
 
 ## 4. Acceptance criteria
 
 - An implementation overriding nothing produces byte-identical responses to today (pinned by the
   default-path conformance test and the golden diff being additive-only around the funnel points).
-- An implementation overriding `render_rejection` controls the body of: body/query/path/header/
+- An implementation overriding `render_rejection` controls the body of body/query/path/header/
   cookie extraction failures and `ServerError::Internal` — verified by the round-trip test.
+- The generated adapter preserves `Rejection::status()` even when an override returns a different
+  response status.
+- An operation ID that sanitizes to `render_rejection` still generates a compilable client and
+  server.
 - `Rejection::kind()` is sufficient to map every surface onto a custom error-code set without
   parsing `message`.
 - The internal error value is logged but never reaches the renderer.
@@ -183,9 +198,9 @@ feature.
 - **Per-operation typed extraction errors** (mapping a rejection into the operation's declared
   error *type*) — remains the tracked follow-up from plan 07 §6.5; this hook is the service-wide
   80% solution and does not preclude it.
-- Changing the status codes themselves — the hook renders bodies; statuses stay the runtime's
-  (`rejection.status()`); a renderer emitting a different status would desync the client's
-  status-based decode arms (statuses are otherwise fully typed per plan 11).
+- Changing the status codes themselves — the hook renders bodies; the adapter restores the
+  runtime's `rejection.status()` so a renderer cannot desync the client's status-based decode arms
+  (statuses are otherwise fully typed per plan 11).
 
 ## 6. Design rationale (architecture notes)
 

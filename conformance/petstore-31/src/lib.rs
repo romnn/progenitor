@@ -124,7 +124,9 @@ mod server_round_trip {
     use super::*;
     use progenitor_server::codegen::async_trait;
     use progenitor_server::codegen::http::StatusCode;
-    use progenitor_server::{Request, Response};
+    use progenitor_server::{
+        Rejection, RejectionKind, Request, Response, ServerError,
+    };
     use std::sync::Mutex;
 
     #[derive(Default)]
@@ -193,6 +195,95 @@ mod server_round_trip {
                 "missing" => Err(server::TypedErrorsErrorResponse::Status404(body).into()),
                 _ => Err(server::TypedErrorsErrorResponse::Status409(body).into()),
             }
+        }
+
+        async fn rejection_probe(
+            &self,
+            request: Request<server::RejectionProbeRequest>,
+        ) -> Result<Response<()>, server::RejectionProbeError> {
+            if request.get_ref().x_mode == "internal" {
+                return Err(ServerError::internal(std::io::Error::other(
+                    "private internal detail",
+                )));
+            }
+            Ok(Response::new(()))
+        }
+    }
+
+    struct CustomRejections(MyPets);
+
+    #[derive(serde::Serialize)]
+    struct RejectionEnvelope {
+        code: &'static str,
+        message: String,
+    }
+
+    #[async_trait]
+    impl server::Petstore for CustomRejections {
+        fn render_rejection(
+            &self,
+            rejection: Rejection,
+        ) -> progenitor_server::codegen::axum::response::Response {
+            let code = match rejection.kind() {
+                RejectionKind::InvalidBody => "invalid_body",
+                RejectionKind::UnsupportedMediaType => "unsupported_media_type",
+                RejectionKind::InvalidQuery => "invalid_query",
+                RejectionKind::InvalidPath => "invalid_path",
+                RejectionKind::MissingHeader => "missing_header",
+                RejectionKind::InvalidHeader => "invalid_header",
+                RejectionKind::MissingCookie => "missing_cookie",
+                RejectionKind::InvalidCookie => "invalid_cookie",
+                RejectionKind::MissingPart => "missing_part",
+                RejectionKind::InvalidPart => "invalid_part",
+                RejectionKind::Internal => "internal",
+                _ => "request_rejected",
+            };
+            let body = RejectionEnvelope {
+                code,
+                message: rejection.message().to_string(),
+            };
+            // The adapter owns status semantics, so this deliberately incorrect
+            // status verifies that a renderer can only customize body and headers.
+            progenitor_server::respond::json(
+                StatusCode::IM_A_TEAPOT,
+                progenitor_server::codegen::http::HeaderMap::new(),
+                &body,
+            )
+        }
+
+        async fn list_pets(
+            &self,
+            request: Request<server::ListPetsRequest>,
+        ) -> Result<Response<types::Pets>, server::ListPetsError> {
+            <MyPets as server::Petstore>::list_pets(&self.0, request).await
+        }
+
+        async fn create_pets(
+            &self,
+            request: Request<server::CreatePetsRequest>,
+        ) -> Result<Response<()>, server::CreatePetsError> {
+            <MyPets as server::Petstore>::create_pets(&self.0, request).await
+        }
+
+        async fn show_pet_by_id(
+            &self,
+            request: Request<server::ShowPetByIdRequest>,
+        ) -> Result<Response<types::Pet>, server::ShowPetByIdError> {
+            <MyPets as server::Petstore>::show_pet_by_id(&self.0, request).await
+        }
+
+        async fn typed_errors(
+            &self,
+            request: Request<server::TypedErrorsRequest>,
+        ) -> Result<Response<()>, server::TypedErrorsError> {
+            <MyPets as server::Petstore>::typed_errors(&self.0, request).await
+        }
+
+        async fn rejection_probe(
+            &self,
+            request: Request<server::RejectionProbeRequest>,
+        ) -> Result<Response<()>, server::RejectionProbeError> {
+            <MyPets as server::Petstore>::rejection_probe(&self.0, request).await
         }
     }
 
@@ -287,5 +378,134 @@ mod server_round_trip {
             }
             other => panic!("expected typed 409 response, got {other:?}"),
         }
+    }
+
+    #[conformance_support::tokio::test]
+    async fn default_rejection_renderer_preserves_plain_text_body() {
+        let addr = spawn().await;
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/rejection-probe/1?limit=1"))
+            .header("x-mode", "ok")
+            .header(reqwest::header::COOKIE, "session=1")
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body("{")
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        assert_eq!(response.text().await.unwrap(), "invalid JSON body");
+    }
+
+    fn rejection_probe_request(
+        client: &reqwest::Client,
+        url: &str,
+        mode: &str,
+    ) -> reqwest::RequestBuilder {
+        client
+            .post(url)
+            .header("x-mode", mode)
+            .header(reqwest::header::COOKIE, "session=1")
+    }
+
+    async fn rejection_body(
+        response: reqwest::Response,
+        status: reqwest::StatusCode,
+        code: &str,
+    ) -> serde_json::Value {
+        assert_eq!(response.status(), status);
+        let body = response.json::<serde_json::Value>().await.unwrap();
+        assert_eq!(body["code"], code);
+        body
+    }
+
+    #[conformance_support::tokio::test]
+    async fn custom_renderer_controls_request_and_internal_failures() {
+        let addr = spawn_service(CustomRejections(MyPets::default())).await;
+        let client = reqwest::Client::new();
+        let url = format!("http://{addr}/rejection-probe/1?limit=1");
+
+        let invalid_body = rejection_probe_request(&client, &url, "ok")
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body("{")
+            .send()
+            .await
+            .unwrap();
+        let body =
+            rejection_body(invalid_body, reqwest::StatusCode::BAD_REQUEST, "invalid_body").await;
+        assert_eq!(body["message"], "invalid JSON body");
+
+        let missing_header = client
+            .post(&url)
+            .header(reqwest::header::COOKIE, "session=1")
+            .json(&serde_json::json!({"id": 1, "name": "Fido"}))
+            .send()
+            .await
+            .unwrap();
+        let body = rejection_body(
+            missing_header,
+            reqwest::StatusCode::BAD_REQUEST,
+            "missing_header",
+        )
+        .await;
+        assert_eq!(body["message"], "missing required header `x-mode`");
+
+        let missing_cookie = client
+            .post(&url)
+            .header("x-mode", "ok")
+            .json(&serde_json::json!({"id": 1, "name": "Fido"}))
+            .send()
+            .await
+            .unwrap();
+        let body = rejection_body(
+            missing_cookie,
+            reqwest::StatusCode::BAD_REQUEST,
+            "missing_cookie",
+        )
+        .await;
+        assert_eq!(body["message"], "missing required cookie `session`");
+
+        let invalid_query_url = format!("http://{addr}/rejection-probe/1?limit=invalid");
+        let invalid_query = rejection_probe_request(&client, &invalid_query_url, "ok")
+            .json(&serde_json::json!({"id": 1, "name": "Fido"}))
+            .send()
+            .await
+            .unwrap();
+        let body = rejection_body(
+            invalid_query,
+            reqwest::StatusCode::BAD_REQUEST,
+            "invalid_query",
+        )
+        .await;
+        assert!(
+            body["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("invalid query string:")
+        );
+
+        let invalid_path_url = format!("http://{addr}/rejection-probe/invalid?limit=1");
+        let invalid_path = rejection_probe_request(&client, &invalid_path_url, "ok")
+            .json(&serde_json::json!({"id": 1, "name": "Fido"}))
+            .send()
+            .await
+            .unwrap();
+        let body =
+            rejection_body(invalid_path, reqwest::StatusCode::BAD_REQUEST, "invalid_path").await;
+        assert_eq!(body["message"], "invalid path parameter");
+
+        let internal = rejection_probe_request(&client, &url, "internal")
+            .json(&serde_json::json!({"id": 1, "name": "Fido"}))
+            .send()
+            .await
+            .unwrap();
+        let body = rejection_body(
+            internal,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+        )
+        .await;
+        assert_eq!(body["message"], "Internal Server Error");
+        assert!(!body.to_string().contains("private internal detail"));
     }
 }

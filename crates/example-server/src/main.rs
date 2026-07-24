@@ -16,14 +16,49 @@ generate_api!(
 
 use progenitor_server::codegen::async_trait;
 use progenitor_server::codegen::bytes::Bytes;
-use progenitor_server::{ClassStatus, Request, Response};
+use progenitor_server::{ClassStatus, Rejection, RejectionKind, Request, Response};
 
 /// The user's implementation — just business logic; no (de)serialization.
 #[derive(Default)]
 struct Example;
 
+#[derive(serde::Serialize)]
+struct ErrorEnvelope {
+    code: &'static str,
+    message: String,
+}
+
 #[async_trait]
 impl server::Example for Example {
+    fn render_rejection(
+        &self,
+        rejection: Rejection,
+    ) -> progenitor_server::codegen::axum::response::Response {
+        let code = match rejection.kind() {
+            RejectionKind::InvalidBody => "invalid_body",
+            RejectionKind::UnsupportedMediaType => "unsupported_media_type",
+            RejectionKind::InvalidQuery => "invalid_query",
+            RejectionKind::InvalidPath => "invalid_path",
+            RejectionKind::MissingHeader => "missing_header",
+            RejectionKind::InvalidHeader => "invalid_header",
+            RejectionKind::MissingCookie => "missing_cookie",
+            RejectionKind::InvalidCookie => "invalid_cookie",
+            RejectionKind::MissingPart => "missing_part",
+            RejectionKind::InvalidPart => "invalid_part",
+            RejectionKind::Internal => "internal",
+            _ => "request_rejected",
+        };
+        let envelope = ErrorEnvelope {
+            code,
+            message: rejection.message().to_string(),
+        };
+        progenitor_server::respond::json(
+            rejection.status(),
+            progenitor_server::codegen::http::HeaderMap::new(),
+            &envelope,
+        )
+    }
+
     async fn ping(
         &self,
         _request: Request<server::PingRequest>,

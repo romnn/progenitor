@@ -17,6 +17,7 @@
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use std::collections::HashSet;
 use typify::TypeDetails;
 
 use crate::{
@@ -82,10 +83,18 @@ impl Generator {
         let trait_ident = format_ident!("{}", title);
         let server_ident = format_ident!("{}Server", title);
 
+        let operation_names = prepared
+            .raw_methods
+            .iter()
+            .map(|method| method.operation_id.as_str())
+            .collect::<HashSet<_>>();
         let ops = prepared
             .raw_methods
             .iter()
-            .map(|method| self.server_op(method, &trait_ident))
+            .map(|method| {
+                let op_ident = server_operation_ident(method, &operation_names);
+                self.server_op(method, &trait_ident, &op_ident)
+            })
             .collect::<Result<Vec<_>>>()?;
 
         let module_items = ops.iter().map(|o| &o.module_items);
@@ -124,6 +133,21 @@ impl Generator {
             /// to compose it into your own axum app).
             #[::progenitor_server::codegen::async_trait]
             pub trait #trait_ident: Send + Sync + 'static {
+                /// Renders a failure outside an operation's declared response types.
+                ///
+                /// The default preserves the runtime status and plain-text message.
+                /// An override may change the body and headers. The server adapter
+                /// preserves [`Rejection::status`](::progenitor_server::Rejection::status)
+                /// after the renderer returns.
+                fn render_rejection(
+                    &self,
+                    rejection: ::progenitor_server::Rejection,
+                ) -> axum::response::Response {
+                    ::progenitor_server::codegen::axum::response::IntoResponse::into_response(
+                        rejection,
+                    )
+                }
+
                 #(#trait_methods)*
             }
 
@@ -149,6 +173,17 @@ impl Generator {
                         .with_state(self.0)
                 }
 
+                fn render_rejection(
+                    __progenitor_inner: &T,
+                    rejection: ::progenitor_server::Rejection,
+                ) -> axum::response::Response {
+                    let status = rejection.status();
+                    let mut response =
+                        <T as #trait_ident>::render_rejection(__progenitor_inner, rejection);
+                    *response.status_mut() = status;
+                    response
+                }
+
                 #(#adapter_fns)*
             }
 
@@ -164,8 +199,8 @@ impl Generator {
         &mut self,
         method: &OperationMethod,
         trait_ident: &proc_macro2::Ident,
+        op_ident: &proc_macro2::Ident,
     ) -> Result<ServerOp> {
-        let op_ident = format_ident!("{}", method.operation_id);
         let route_ident = format_ident!("{}_route", method.operation_id);
         let respond_ident = format_ident!("{}_respond", method.operation_id);
         let pascal = sanitize(&method.operation_id, Case::Pascal);
@@ -247,6 +282,7 @@ impl Generator {
             request_fields,
             query_struct,
             extractor_args,
+            extractor_lets,
             header_lets,
             field_inits,
         } = parts;
@@ -301,16 +337,18 @@ impl Generator {
             async fn #route_ident(
                 #(#extractor_args),*
             ) -> axum::response::Response {
+                #(#extractor_lets)*
                 #(#header_lets)*
                 let message = #request_ident { #(#field_inits),* };
                 let request =
                     ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
                 let result =
                     <T as #trait_ident>::#op_ident(&__progenitor_inner, request).await;
-                Self::#respond_ident(result)
+                Self::#respond_ident(&__progenitor_inner, result)
             }
 
             fn #respond_ident(
+                __progenitor_inner: &T,
                 result: ::std::result::Result<
                     ::progenitor_server::Response<#success_type>,
                     #error_ident,
@@ -325,7 +363,12 @@ impl Generator {
                             #error_respond
                         }
                         ::progenitor_server::ServerError::Internal(__e) => {
-                            ::progenitor_server::respond::internal(__e)
+                            ::progenitor_server::respond::log_internal(&__e);
+                            ::std::mem::drop(__e);
+                            Self::render_rejection(
+                                __progenitor_inner,
+                                ::progenitor_server::Rejection::internal(),
+                            )
                         }
                         ::progenitor_server::ServerError::Response(__r) => __r,
                     },
@@ -661,7 +704,8 @@ impl Generator {
             quote! { axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>> },
             quote! { __progenitor_meta: ::progenitor_server::Metadata },
         ];
-        let mut body_extractor_arg: Option<TokenStream> = None;
+        let mut extractor_lets: Vec<TokenStream> = Vec::new();
+        let mut body_extractor: Option<(TokenStream, TokenStream)> = None;
         let mut header_lets: Vec<TokenStream> = Vec::new();
         let mut field_inits: Vec<TokenStream> = Vec::new();
 
@@ -693,14 +737,29 @@ impl Generator {
             1 => {
                 let ident = &path_idents[0];
                 let ty = &path_types[0];
+                let binding = format_ident!("__progenitor_path_extractor");
                 extractor_args.push(quote! {
-                    ::progenitor_server::Path(#ident): ::progenitor_server::Path<#ty>
+                    #binding: ::std::result::Result<
+                        ::progenitor_server::Path<#ty>,
+                        ::progenitor_server::Rejection,
+                    >
+                });
+                let extractor = rejection_match(&binding);
+                extractor_lets.push(quote! {
+                    let ::progenitor_server::Path(#ident) = #extractor;
                 });
             }
             _ => {
+                let binding = format_ident!("__progenitor_path_extractor");
                 extractor_args.push(quote! {
-                    ::progenitor_server::Path((#(#path_idents),*)):
-                        ::progenitor_server::Path<(#(#path_types),*)>
+                    #binding: ::std::result::Result<
+                        ::progenitor_server::Path<(#(#path_types),*)>,
+                        ::progenitor_server::Rejection,
+                    >
+                });
+                let extractor = rejection_match(&binding);
+                extractor_lets.push(quote! {
+                    let ::progenitor_server::Path((#(#path_idents),*)) = #extractor;
                 });
             }
         }
@@ -750,7 +809,10 @@ impl Generator {
                                 ) {
                                     Ok(value) => value,
                                     Err(rejection) => {
-                                        return axum::response::IntoResponse::into_response(rejection);
+                                        return Self::render_rejection(
+                                            &__progenitor_inner,
+                                            rejection,
+                                        );
                                     }
                                 };
                             },
@@ -764,7 +826,10 @@ impl Generator {
                                 ) {
                                     Ok(value) => value,
                                     Err(rejection) => {
-                                        return axum::response::IntoResponse::into_response(rejection);
+                                        return Self::render_rejection(
+                                            &__progenitor_inner,
+                                            rejection,
+                                        );
                                     }
                                 };
                             },
@@ -787,7 +852,10 @@ impl Generator {
                                 ) {
                                     Ok(value) => value,
                                     Err(rejection) => {
-                                        return axum::response::IntoResponse::into_response(rejection);
+                                        return Self::render_rejection(
+                                            &__progenitor_inner,
+                                            rejection,
+                                        );
                                     }
                                 };
                             },
@@ -801,7 +869,10 @@ impl Generator {
                                 ) {
                                     Ok(value) => value,
                                     Err(rejection) => {
-                                        return axum::response::IntoResponse::into_response(rejection);
+                                        return Self::render_rejection(
+                                            &__progenitor_inner,
+                                            rejection,
+                                        );
                                     }
                                 };
                             },
@@ -812,9 +883,21 @@ impl Generator {
                     field_inits.push(quote! { #ident });
                 }
                 OperationParameterKind::Body(content_type) => {
-                    let (extractor, field_ty) = self.body_extractor(content_type, &param.typ);
+                    let (extractor_type, extractor_pattern, field_ty) =
+                        self.body_extractor(content_type, &param.typ);
+                    let binding = format_ident!("__progenitor_body_extractor");
+                    let extractor_arg = quote! {
+                        #binding: ::std::result::Result<
+                            #extractor_type,
+                            ::progenitor_server::Rejection,
+                        >
+                    };
+                    let extractor = rejection_match(&binding);
+                    let extractor_let = quote! {
+                        let #extractor_pattern = #extractor;
+                    };
                     request_fields.extend(quote! { pub body: #field_ty, });
-                    body_extractor_arg = Some(extractor);
+                    body_extractor = Some((extractor_arg, extractor_let));
                     field_inits.push(quote! { body: __progenitor_body });
                 }
                 OperationParameterKind::Query {
@@ -824,25 +907,35 @@ impl Generator {
         }
 
         let query_struct = if has_query {
+            let binding = format_ident!("__progenitor_query_extractor");
             extractor_args.push(quote! {
-                ::progenitor_server::Query(__progenitor_query): ::progenitor_server::Query<#query_ident>
+                #binding: ::std::result::Result<
+                    ::progenitor_server::Query<#query_ident>,
+                    ::progenitor_server::Rejection,
+                >
+            });
+            let extractor = rejection_match(&binding);
+            extractor_lets.push(quote! {
+                let ::progenitor_server::Query(__progenitor_query) = #extractor;
             });
             Some(query_fields)
         } else {
             None
         };
-        if let Some(extractor) = body_extractor_arg {
+        if let Some((extractor_arg, extractor_let)) = body_extractor {
             // axum allows at most one body-consuming `FromRequest` extractor,
             // and it must be the final handler argument. Keep all path/query
             // parts extractors before it even when the OpenAPI param order has
             // the body before query params.
-            extractor_args.push(extractor);
+            extractor_args.push(extractor_arg);
+            extractor_lets.push(extractor_let);
         }
 
         CollectedParams {
             request_fields,
             query_struct,
             extractor_args,
+            extractor_lets,
             header_lets,
             field_inits,
         }
@@ -914,33 +1007,71 @@ impl Generator {
         &self,
         content_type: &BodyContentType,
         typ: &OperationParameterType,
-    ) -> (TokenStream, TokenStream) {
+    ) -> (TokenStream, TokenStream, TokenStream) {
         match (content_type, typ) {
             (BodyContentType::Json, OperationParameterType::Type(id)) => {
                 let ty = self.type_space.get_type(id).unwrap().ident();
                 (
-                    quote! { ::progenitor_server::Json(__progenitor_body): ::progenitor_server::Json<#ty> },
+                    quote! { ::progenitor_server::Json<#ty> },
+                    quote! { ::progenitor_server::Json(__progenitor_body) },
                     ty,
                 )
             }
             (BodyContentType::FormUrlencoded, OperationParameterType::Type(id)) => {
                 let ty = self.type_space.get_type(id).unwrap().ident();
                 (
-                    quote! { ::progenitor_server::Form(__progenitor_body): ::progenitor_server::Form<#ty> },
+                    quote! { ::progenitor_server::Form<#ty> },
+                    quote! { ::progenitor_server::Form(__progenitor_body) },
                     ty,
                 )
             }
             (BodyContentType::Text(_), _) => (
-                quote! { ::progenitor_server::Text(__progenitor_body): ::progenitor_server::Text },
+                quote! { ::progenitor_server::Text },
+                quote! { ::progenitor_server::Text(__progenitor_body) },
                 quote! { String },
             ),
             // OctetStream, Raw, and any JSON/form body without a schema are
             // exposed as raw bytes (raw passthrough).
             _ => (
-                quote! { ::progenitor_server::Bytes(__progenitor_body): ::progenitor_server::Bytes },
+                quote! { ::progenitor_server::Bytes },
+                quote! { ::progenitor_server::Bytes(__progenitor_body) },
                 quote! { bytes::Bytes },
             ),
         }
+    }
+}
+
+fn rejection_match(binding: &proc_macro2::Ident) -> TokenStream {
+    quote! {
+        match #binding {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(
+                    &__progenitor_inner,
+                    rejection,
+                );
+            }
+        }
+    }
+}
+
+fn server_operation_ident(
+    method: &OperationMethod,
+    operation_names: &HashSet<&str>,
+) -> proc_macro2::Ident {
+    const RENDER_REJECTION: &str = "render_rejection";
+
+    if method.operation_id != RENDER_REJECTION {
+        return format_ident!("{}", method.operation_id);
+    }
+
+    let mut suffix = 2;
+    loop {
+        let candidate = format!("{RENDER_REJECTION}_{suffix}");
+        if !operation_names.contains(candidate.as_str()) {
+            return format_ident!("{candidate}");
+        }
+        suffix += 1;
     }
 }
 
@@ -948,6 +1079,7 @@ struct CollectedParams {
     request_fields: TokenStream,
     query_struct: Option<TokenStream>,
     extractor_args: Vec<TokenStream>,
+    extractor_lets: Vec<TokenStream>,
     header_lets: Vec<TokenStream>,
     field_inits: Vec<TokenStream>,
 }
@@ -1140,11 +1272,12 @@ fn raw_content_type(items: &[OperationResponse]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_server_responses;
+    use super::{extract_server_responses, server_operation_ident};
     use crate::operation::{
         HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
         OperationResponseStatus, ResponseSide,
     };
+    use std::collections::HashSet;
 
     fn method(statuses: impl IntoIterator<Item = OperationResponseStatus>) -> OperationMethod {
         OperationMethod {
@@ -1192,5 +1325,16 @@ mod tests {
             error_kind,
             OperationResponseKind::Synth("TypedStatusError".to_string())
         );
+    }
+
+    #[test]
+    fn server_operation_name_avoids_the_rejection_hook_and_existing_operations() {
+        let mut method = method([OperationResponseStatus::Code(204)]);
+        method.operation_id = "render_rejection".to_string();
+        let operation_names = HashSet::from(["render_rejection", "render_rejection_2"]);
+
+        let ident = server_operation_ident(&method, &operation_names);
+
+        assert_eq!(ident.to_string(), "render_rejection_3");
     }
 }

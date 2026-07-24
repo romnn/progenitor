@@ -139,12 +139,20 @@ pub mod respond {
         response
     }
 
-    /// Encode a `500 Internal Server Error` with a generic body. The underlying
-    /// error is intentionally not leaked to the client.
+    /// Records an internal error without exposing it to a rejection renderer.
+    pub fn log_internal(error: &crate::BoxError) {
+        log::error!("internal server error: {error}");
+    }
+
+    /// Encodes a `500 Internal Server Error` with the runtime's default body.
+    ///
+    /// The underlying error is logged but intentionally not leaked to the
+    /// client.
     #[must_use]
-    pub fn internal(_error: crate::BoxError) -> Response {
-        // TODO: surface `_error` through `tracing` once that dependency lands.
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
+    pub fn internal(error: crate::BoxError) -> Response {
+        log_internal(&error);
+        drop(error);
+        crate::Rejection::internal().into_response()
     }
 }
 

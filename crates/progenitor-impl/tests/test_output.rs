@@ -179,7 +179,9 @@ fn test_nexus_with_different_timeout() {
 // the server module body that references it, exercising response shapes the
 // petstore round-trip doesn't: a JSON body, a `201`/no-content (`None`) success,
 // a raw octet-stream response, an optional header, a typed default error, and an
-// upgrade op that becomes a `501` route stub (no trait method).
+// operation ID that collides with the rejection hook.
+//
+// An upgrade op becomes a `501` route stub with no trait method.
 #[test]
 fn test_server_gen() {
     let spec = load_api("../../sample_openapi/server-gen.json");

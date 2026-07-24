@@ -88,6 +88,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /rejection-probe/{id}:
+    post:
+      operationId: rejectionProbe
+      summary: Exercise request rejection rendering
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: x-mode
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: session
+          in: cookie
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pet"
+      responses:
+        "204":
+          description: Request accepted
 components:
   schemas:
     Pet:
