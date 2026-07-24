@@ -691,7 +691,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DeviceAuthRequest) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -730,7 +730,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DeviceAuthVerify) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -784,7 +784,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DeviceAccessTokenRequest) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -911,7 +911,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SpoofLoginBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -970,7 +970,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::UsernamePasswordCredentials) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -1316,7 +1316,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -1440,7 +1440,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -1621,7 +1621,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -1780,7 +1780,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -1930,7 +1930,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -2177,7 +2177,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -2649,7 +2649,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ImageCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -2983,7 +2983,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -3345,7 +3345,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskIdentifier) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -3434,7 +3434,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskIdentifier) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -3608,7 +3608,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceMigrate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -3815,7 +3815,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::NetworkInterfaceCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -4009,7 +4009,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::NetworkInterfaceUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -4758,7 +4758,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -4937,7 +4937,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SnapshotCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -5271,7 +5271,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -5435,7 +5435,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -5684,7 +5684,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcFirewallRuleUpdateParams) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -5887,7 +5887,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcRouterCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -6079,7 +6079,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcRouterUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -6393,7 +6393,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::RouterRouteCreateParams) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -6605,7 +6605,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::RouterRouteUpdateParams) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -6907,7 +6907,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcSubnetCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -7099,7 +7099,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::VpcSubnetUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -7430,7 +7430,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SiloRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -7857,7 +7857,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SshKeyCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -8304,7 +8304,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::CertificateCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9051,7 +9051,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::GlobalImageCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9313,7 +9313,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpPoolCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9439,7 +9439,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpPoolUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9646,7 +9646,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpRange) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9714,7 +9714,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpRange) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9900,7 +9900,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpRange) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -9957,7 +9957,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::IpRange) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -10175,7 +10175,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::FleetRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -10470,7 +10470,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SiloCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -10746,7 +10746,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::UserCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -10895,7 +10895,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::UserPassword) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -10956,7 +10956,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SamlIdentityProviderCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -11153,7 +11153,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SiloRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -11817,7 +11817,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -12160,7 +12160,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -12525,7 +12525,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskPath) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -12615,7 +12615,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::DiskPath) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -12702,7 +12702,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::InstanceMigrate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -13296,7 +13296,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -13422,7 +13422,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -13606,7 +13606,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::OrganizationRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -13768,7 +13768,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -13914,7 +13914,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectUpdate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -14128,7 +14128,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ProjectRolePolicy) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -14477,7 +14477,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::SystemUpdateStart) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 

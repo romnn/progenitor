@@ -23,7 +23,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::EnrolBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -139,7 +139,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ReportFinishBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -182,7 +182,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ReportOutputBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -225,7 +225,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::ReportStartBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 

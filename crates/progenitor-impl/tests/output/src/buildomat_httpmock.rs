@@ -159,7 +159,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::TaskSubmit) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -339,7 +339,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::UserCreate) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -447,7 +447,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::WorkerBootstrap) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -527,7 +527,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::WorkerAppendTask) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -613,7 +613,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::WorkerCompleteTask) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 
@@ -653,7 +653,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::WorkerAddOutput) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 

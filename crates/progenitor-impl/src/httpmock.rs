@@ -139,10 +139,11 @@ impl Generator {
                     let arg_type_name = match typ {
                         OperationParameterType::Type(arg_type_id) => {
                             let arg_type = self.type_space.get_type(arg_type_id).unwrap();
-                            // Body params use json_body_obj which requires &T: Serialize,
-                            // not Option<&T>. Unlike other parameters, body types keep
-                            // their Option wrapper in `typ`, so unwrap it here to keep
-                            // the function signature and call site consistent.
+                            // Body params pass their borrowed value directly to
+                            // `json_body_obj`, not as `Option<&T>`. Unlike other
+                            // parameters, body types keep their `Option` wrapper in
+                            // `typ`, so unwrap it here to keep the signature and call
+                            // site consistent.
                             if matches!(kind, OperationParameterKind::Body(_)) {
                                 if let typify::TypeDetails::Option(inner_id) = arg_type.details() {
                                     self.type_space
@@ -261,7 +262,7 @@ impl Generator {
                             OperationParameterType::Type(_) => (
                                 true,
                                 quote! {
-                                    Self(self.0.json_body_obj(&value))
+                                    Self(self.0.json_body_obj(value))
                                 },
                             ),
                             OperationParameterType::RawBody => match body_content_type {

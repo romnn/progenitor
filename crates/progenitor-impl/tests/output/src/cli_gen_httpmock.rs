@@ -23,7 +23,7 @@ pub mod operations {
         }
 
         pub fn body(self, value: &types::UnoBody) -> Self {
-            Self(self.0.json_body_obj(&value))
+            Self(self.0.json_body_obj(value))
         }
     }
 

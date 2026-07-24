@@ -256,8 +256,8 @@ fn cli_output_does_not_depend_on_prior_client_generation() {
 #[test]
 fn httpmock_unwraps_nullable_body_types() {
     // A nullable JSON request body lowers to `Option<T>`; the generated
-    // mock `when` method must take `&T` (json_body_obj needs a concrete
-    // serializable value), not the `Option` wrapper.
+    // mock `when` method must take `&T` (`json_body_obj` needs a concrete
+    // serializable value), not the `Option` wrapper or an extra reference.
     let spec = progenitor_impl::parse_openapi_value(serde_json::json!({
         "openapi": "3.0.3",
         "info": { "title": "test", "version": "1" },
@@ -306,6 +306,10 @@ fn httpmock_unwraps_nullable_body_types() {
     assert!(
         signature.contains("Thing") && !signature.contains("Option"),
         "body must take the unwrapped type: fn body{signature})"
+    );
+    assert!(
+        body_method.contains("json_body_obj (value)"),
+        "body must pass its existing reference directly: {body_method}"
     );
 }
 
