@@ -3,13 +3,9 @@
 # generated types — serving both as integration coverage and as worked
 # examples for "how do I use progenitor with API X".
 #
-# This is a separate workspace so the main one stays fast; build it with
-# `cargo check` / `cargo test` from this directory. Crates type-check in
-# parallel. Plain stable `cargo check` is the right tool: measured on the
-# full workspace, nightly's parallel frontend (-Z threads=8) wins a cold
-# build only modestly (~80s -> ~53s) and is ~3x SLOWER than stable for
-# incremental single-crate recompiles, because the nightly compiler's
-# per-crate overhead exceeds what its threading recovers.
+# This is a separate workspace so the main one stays fast. Some generated
+# crates are large enough for a single rustc process to consume substantial
+# memory, so the local Cargo configuration builds one crate at a time.
 [workspace]
 resolver = "2"
 members = [
@@ -143,3 +139,14 @@ serde_json = "1"
 serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 uuid = { version = "1", features = ["serde"] }
+
+# Debug metadata and incremental state for the largest generated modules add
+# substantial memory and disk pressure. The conformance corpus favors
+# predictable full checks over interactive debugging and rebuild latency.
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false

@@ -1,18 +1,13 @@
 [alias]
-c = 'check --workspace --all-targets'
+c = 'check --workspace --lib'
 
 l = "clippy --all-targets --no-deps"
 lint = "clippy --all-targets --no-deps"
 fixit = "clippy --fix --allow-dirty --allow-staged --all-targets --no-deps"
 
-# Cap parallel jobs to avoid OOM on monster specs.
+# Keep monster-spec generation usable on memory-constrained machines.
 [build]
-jobs = 8
-
-# Exposes the conformance workspace root as an absolute path so build scripts
-# can emit cargo:rerun-if-changed paths without hard-coding relative jumps.
-[env]
-CARGO_CONFORMANCE_WORKSPACE_DIR = { value = "", relative = true }
+jobs = 1
 
 # Faster linker for the dev profile. Disable or change to "lld" if mold is
 # not installed.

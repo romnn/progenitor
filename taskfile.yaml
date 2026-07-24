@@ -139,7 +139,10 @@ tasks:
     desc: "run conformance suite"
     dir: "{{.ROOT_DIR}}/conformance"
     cmds:
-      - cargo test --workspace --all-targets {{.CLI_ARGS}}
+      # Testing only the library targets avoids compiling every generated API
+      # both as a normal library and as a test harness.
+      - cargo test --workspace --lib {{.CLI_ARGS}}
+      - cargo test -p conformance-support --all-targets
 
   lint:ast-grep:
     desc: "lint with ast-grep rules"

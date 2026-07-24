@@ -46,7 +46,7 @@ impl SpecManifest {
         fetch_spec_with_cache(self, cache_root)
     }
 
-    /// Fetch the spec document for use in a build script (`OUT_DIR` as cache root).
+    /// Fetch the spec document for use in a build script.
     pub fn fetch_document(&self) -> anyhow::Result<String> {
         fetch_spec(self)
     }
@@ -61,13 +61,12 @@ pub fn cache_path_for(manifest: &SpecManifest, cache_root: &std::path::Path) -> 
     cache_root.join(format!("{}.{extension}", manifest.name))
 }
 
-/// Returns the spec cache root for build-script contexts (`$OUT_DIR`).
+/// Returns the shared spec cache root for build-script contexts.
 ///
-/// Panics if `OUT_DIR` is not set — this is only valid inside a build script.
+/// The shared cache keeps profile and source changes from downloading another
+/// copy into each new `OUT_DIR`.
 pub fn build_script_cache_root() -> PathBuf {
-    let out_dir = std::env::var_os("OUT_DIR")
-        .expect("OUT_DIR not set — build_script_cache_root is only valid in build scripts");
-    PathBuf::from(out_dir)
+    super::conformance_root().join("../.cache")
 }
 
 /// Fetch the spec document text, preferring the on-disk cache at `cache_root`.
@@ -115,7 +114,7 @@ pub fn fetch_spec_with_cache(manifest: &SpecManifest, cache_root: &std::path::Pa
     Ok(body)
 }
 
-/// Fetch the spec document text for use in a build script (`OUT_DIR` as cache root).
+/// Fetch the spec document text for use in a build script.
 ///
 /// Set `CONFORMANCE_REFRESH=1` to force re-download.
 pub fn fetch_spec(manifest: &SpecManifest) -> Result<String> {
@@ -145,4 +144,15 @@ fn download(url: &str) -> Result<String> {
         .limit(256 * 1024 * 1024)
         .read_to_string()
         .with_context(|| format!("reading response body from {url}"))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn build_scripts_use_the_workspace_cache() {
+        assert_eq!(
+            super::build_script_cache_root(),
+            super::super::conformance_root().join("../.cache"),
+        );
+    }
 }

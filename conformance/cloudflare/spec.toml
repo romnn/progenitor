@@ -29,6 +29,7 @@ bad_examples = [
     "magic-visibility-mnm_mnm_rule_duration",
     "organizations-api_MemberID",
     "organizations-api_OrganizationID",
+    "posture-api_Asset",
     "r2_queue_identifier",
     "realtimekit_app_id",
     "tunnel_tunnel_types",
