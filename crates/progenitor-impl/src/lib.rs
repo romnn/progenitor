@@ -400,8 +400,9 @@ impl Generator {
     /// Returns `(schema_name, rust_ident, examples)` for every component schema
     /// that maps to a named Rust type and carries at least one example value.
     ///
-    /// Must be called after [`generate_text`] or [`generate_tokens`]; returns
-    /// an empty vec if called before generation.
+    /// Must be called after [`Self::generate_text`] or
+    /// [`Self::generate_tokens`]; returns an empty vec if called before
+    /// generation.
     #[must_use]
     pub fn example_schemas(&self) -> Vec<(String, String, Vec<serde_json::Value>)> {
         self.schema_type_ids
