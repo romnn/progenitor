@@ -3,37 +3,28 @@
 //! The typed response wrapper returned by generated trait methods, and the
 //! low-level response encoders the generated per-operation responders call.
 
-use http::{HeaderMap, StatusCode};
+use http::HeaderMap;
 
 /// The success half of a generated server trait method's return type: a typed
-/// `message` plus an optional status override and extra headers.
+/// `message` plus extra headers.
 ///
-/// When `status` is `None` the generated responder uses the operation's default
-/// success status (the lowest declared 2xx). An override is validated against the
-/// operation's declared success set by the responder (off-contract → `500`).
+/// The message type determines the HTTP status. It is the response payload when
+/// an operation declares exactly one concrete success status and a generated
+/// enum otherwise.
 #[derive(Debug, Clone)]
 #[must_use = "a response must be returned or converted into an HTTP response"]
 pub struct Response<T> {
     message: T,
-    status: Option<StatusCode>,
     headers: HeaderMap,
 }
 
 impl<T> Response<T> {
-    /// Wrap a message with no status override and no extra headers.
+    /// Wrap a message with no extra headers.
     pub fn new(message: T) -> Self {
         Response {
             message,
-            status: None,
             headers: HeaderMap::new(),
         }
-    }
-
-    /// Set an explicit status (validated against the operation contract by the
-    /// generated responder).
-    pub fn with_status(mut self, code: StatusCode) -> Self {
-        self.status = Some(code);
-        self
     }
 
     /// Insert an extra response header.
@@ -52,11 +43,6 @@ impl<T> Response<T> {
         &mut self.message
     }
 
-    /// The status override, if any.
-    pub fn status(&self) -> Option<StatusCode> {
-        self.status
-    }
-
     /// The extra response headers.
     pub fn headers(&self) -> &HeaderMap {
         &self.headers
@@ -72,23 +58,24 @@ impl<T> Response<T> {
         self.message
     }
 
-    /// Consume the response, returning `(status override, extra headers, message)`.
-    pub fn into_parts(self) -> (Option<StatusCode>, HeaderMap, T) {
-        (self.status, self.headers, self.message)
+    /// Consume the response, returning `(extra headers, message)`.
+    pub fn into_parts(self) -> (HeaderMap, T) {
+        (self.headers, self.message)
     }
 }
 
 /// Low-level response encoders used by the generated per-operation responders.
 ///
 /// The generator selects the encoder by the operation's response kind (typed →
-/// [`json`], `None` → [`empty`], raw → [`bytes`]); validates the status against
-/// the operation contract; and merges any [`Response`] headers — then calls one
-/// of these. Keeping the encoders here (not in generated code) makes them
-/// unit-testable and lets us evolve the wire format without regenerating.
+/// [`respond::json`], `None` → [`respond::empty`], raw →
+/// [`respond::bytes`]), derives the status from the response type, and merges
+/// any [`Response`] headers before calling one of these. Keeping the encoders
+/// here (not in generated code) makes them unit-testable and lets the wire
+/// format evolve without regenerating.
 pub mod respond {
-    use super::{HeaderMap, StatusCode};
+    use super::HeaderMap;
     use axum::response::{IntoResponse, Response};
-    use http::header;
+    use http::{StatusCode, header};
 
     fn merge_headers(dst: &mut HeaderMap, src: HeaderMap) {
         // `HeaderMap::into_iter` yields the key only on the first value of a
@@ -164,7 +151,10 @@ pub mod respond {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::header::{CONTENT_TYPE, SET_COOKIE};
+    use http::{
+        StatusCode,
+        header::{CONTENT_TYPE, SET_COOKIE},
+    };
 
     #[test]
     fn json_sets_content_type_and_status() {

@@ -3,6 +3,21 @@
 //! Hermetic crate: spec is committed in this directory as petstore-31.yaml.
 //! Used as a fast always-asserted PR-CI gate; the tiny spec ensures a quick
 //! cold build and any regression in 3.1 baseline handling surfaces immediately.
+//!
+//! An exact response variant has no independent status slot, so a mismatched
+//! status and payload cannot be constructed:
+//!
+//! ```compile_fail
+//! use conformance_petstore_31::{server, types};
+//! use progenitor_server::codegen::http::StatusCode;
+//!
+//! let body = types::Error {
+//!     code: 418,
+//!     message: "teapot".to_string(),
+//! };
+//! let declared = server::TypedErrorsErrorResponse::Status404(body);
+//! let _ = server::TypedErrorsError::api(StatusCode::IM_A_TEAPOT, declared);
+//! ```
 
 include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 
@@ -61,7 +76,6 @@ pub mod mock {
     include!(concat!(env!("OUT_DIR"), "/mock.rs"));
 }
 
-#[cfg(test)]
 pub mod server {
     include!(concat!(env!("OUT_DIR"), "/server.rs"));
 }
@@ -109,15 +123,14 @@ mod operation_tests {
 mod server_round_trip {
     use super::*;
     use progenitor_server::codegen::async_trait;
-    use progenitor_server::{Request, Response, ServerError};
+    use progenitor_server::codegen::http::StatusCode;
+    use progenitor_server::{Request, Response};
     use std::sync::Mutex;
 
     #[derive(Default)]
     struct MyPets {
         store: Mutex<Vec<types::Pet>>,
     }
-
-    struct BadStatus;
 
     #[async_trait]
     impl server::Petstore for MyPets {
@@ -157,43 +170,29 @@ mod server_round_trip {
                 .cloned();
             match found {
                 Some(pet) => Ok(Response::new(pet)),
-                None => Err(ServerError::api(
-                    progenitor_server::codegen::http::StatusCode::NOT_FOUND,
-                    types::Error {
+                None => Err(server::ShowPetByIdErrorResponse::Default {
+                    status: StatusCode::NOT_FOUND,
+                    body: types::Error {
                         code: 404,
                         message: "not found".to_string(),
                     },
-                )),
+                }
+                .into()),
             }
         }
-    }
 
-    #[async_trait]
-    impl server::Petstore for BadStatus {
-        async fn list_pets(
+        async fn typed_errors(
             &self,
-            _request: Request<server::ListPetsRequest>,
-        ) -> Result<Response<types::Pets>, server::ListPetsError> {
-            Ok(Response::new(types::Pets(Vec::new()))
-                .with_status(progenitor_server::codegen::http::StatusCode::CREATED))
-        }
-
-        async fn create_pets(
-            &self,
-            _request: Request<server::CreatePetsRequest>,
-        ) -> Result<Response<()>, server::CreatePetsError> {
-            Ok(Response::new(()))
-        }
-
-        async fn show_pet_by_id(
-            &self,
-            _request: Request<server::ShowPetByIdRequest>,
-        ) -> Result<Response<types::Pet>, server::ShowPetByIdError> {
-            Ok(Response::new(types::Pet {
-                id: 1,
-                name: "Fido".to_string(),
-                tag: None,
-            }))
+            request: Request<server::TypedErrorsRequest>,
+        ) -> Result<Response<()>, server::TypedErrorsError> {
+            let body = types::Error {
+                code: 1,
+                message: request.get_ref().kind.clone(),
+            };
+            match request.get_ref().kind.as_str() {
+                "missing" => Err(server::TypedErrorsErrorResponse::Status404(body).into()),
+                _ => Err(server::TypedErrorsErrorResponse::Status409(body).into()),
+            }
         }
     }
 
@@ -240,8 +239,8 @@ mod server_round_trip {
         let client = Client::new(&format!("http://{addr}"));
         match client.show_pet_by_id("999").await {
             Err(Error::ErrorResponse(resp)) => {
-                let body = resp.into_inner();
-                assert_eq!(body.code, 404);
+                assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
+                assert_eq!(resp.into_inner().code, 404);
             }
             other => panic!("expected ErrorResponse, got {other:?}"),
         }
@@ -261,16 +260,32 @@ mod server_round_trip {
     }
 
     #[conformance_support::tokio::test]
-    async fn undeclared_success_status_becomes_500() {
-        let addr = spawn_service(BadStatus).await;
-        let response = reqwest::Client::new()
-            .get(format!("http://{addr}/pets"))
-            .send()
+    async fn same_payload_errors_preserve_their_declared_status() {
+        let addr = spawn().await;
+        let client = Client::new(&format!("http://{addr}"));
+
+        let missing = client
+            .typed_errors("missing")
             .await
-            .unwrap();
-        assert_eq!(
-            response.status(),
-            reqwest::StatusCode::INTERNAL_SERVER_ERROR
-        );
+            .expect_err("missing must return an error");
+        match missing {
+            Error::ErrorResponse(response) => {
+                assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
+                assert_eq!(response.into_inner().message, "missing");
+            }
+            other => panic!("expected typed 404 response, got {other:?}"),
+        }
+
+        let conflict = client
+            .typed_errors("conflict")
+            .await
+            .expect_err("conflict must return an error");
+        match conflict {
+            Error::ErrorResponse(response) => {
+                assert_eq!(response.status(), reqwest::StatusCode::CONFLICT);
+                assert_eq!(response.into_inner().message, "conflict");
+            }
+            other => panic!("expected typed 409 response, got {other:?}"),
+        }
     }
 }

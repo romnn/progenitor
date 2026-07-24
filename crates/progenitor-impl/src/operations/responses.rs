@@ -63,6 +63,43 @@ pub(super) fn collapse_bodyless_with_typed(
         .cloned()
 }
 
+/// Select and order the declared response items for one side of an operation.
+///
+/// Client and server generation deliberately apply different type-collapsing
+/// rules after this point, but both must start from the same status-keyed list.
+pub(crate) fn response_items_for_side(
+    method: &OperationMethod,
+    side: ResponseSide,
+) -> Vec<OperationResponse> {
+    let filter: fn(&OperationResponseStatus) -> bool = match side {
+        ResponseSide::Success => OperationResponseStatus::is_success_or_default,
+        ResponseSide::Error => OperationResponseStatus::is_error_or_default,
+    };
+    let mut response_items = method
+        .responses
+        .iter()
+        .filter(|response| filter(&response.status_code))
+        .cloned()
+        .collect::<Vec<_>>();
+    response_items.sort();
+
+    // A default response is initially eligible for both sides. Once an
+    // explicit success precedes it, classification assigns the remaining
+    // default statuses to the error side; retaining it here would make the
+    // client's success catch-all shadow those error arms.
+    if let [.., previous, last] = response_items.as_slice()
+        && matches!(last.status_code, OperationResponseStatus::Default)
+        && matches!(
+            previous.status_code,
+            OperationResponseStatus::Range(2) | OperationResponseStatus::Code(200..=299),
+        )
+    {
+        response_items.pop();
+    }
+
+    response_items
+}
+
 impl Generator {
     /// Extract responses for the requested side of an operation. The
     /// result is a `Vec<OperationResponse>` that enumerates the cases matching
@@ -76,40 +113,7 @@ impl Generator {
         method: &OperationMethod,
         side: ResponseSide,
     ) -> (Vec<OperationResponse>, OperationResponseKind) {
-        let filter: fn(&OperationResponseStatus) -> bool = match side {
-            ResponseSide::Success => OperationResponseStatus::is_success_or_default,
-            ResponseSide::Error => OperationResponseStatus::is_error_or_default,
-        };
-        let mut response_items: Vec<OperationResponse> = method
-            .responses
-            .iter()
-            .filter(|response| filter(&response.status_code))
-            .cloned()
-            .collect();
-        response_items.sort();
-
-        // If at least one 2xx response is declared and a `default` response
-        // is also present, the `default` arm is unreachable from the success
-        // path — every concrete success status is already handled by an
-        // explicit code, and any 4xx/5xx that would otherwise fall through
-        // to `default` is picked up by the error-side `extract_responses`
-        // call anyway. Pop the trailing `default` so we don't trip the
-        // unstable collapsed response signature with a
-        // `{Type(success), Type(default)}` set. No-op for error-side calls
-        // because the error filter excludes 2xx codes.
-        let len = response_items.len();
-        if len >= 2
-            && matches!(
-                response_items[len - 1].status_code,
-                OperationResponseStatus::Default
-            )
-            && matches!(
-                response_items[len - 2].status_code,
-                OperationResponseStatus::Range(2) | OperationResponseStatus::Code(200..=299),
-            )
-        {
-            response_items.pop();
-        }
+        let mut response_items = response_items_for_side(method, side);
 
         // First pass: if every distinct `Type(...)` variant in the set
         // descends from a common ancestor schema via `allOf`, rewrite each

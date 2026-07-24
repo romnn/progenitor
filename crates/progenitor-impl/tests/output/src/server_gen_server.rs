@@ -1,8 +1,28 @@
 use crate::server_gen_client::types;
 #[allow(unused_imports)]
 use ::progenitor_server::codegen::*;
+#[doc = "The declared responses represented by `ListItemsError`."]
+#[derive(Debug, Clone)]
+pub enum ListItemsErrorResponse {
+    #[doc = "The default response."]
+    Default {
+        #[doc = r" The HTTP status selected for this response."]
+        status: http::StatusCode,
+        #[doc = r" The response body."]
+        body: types::Error,
+    },
+}
+
+impl ::std::convert::From<ListItemsErrorResponse>
+    for ::progenitor_server::ServerError<ListItemsErrorResponse>
+{
+    fn from(body: ListItemsErrorResponse) -> Self {
+        ::progenitor_server::ServerError::Api(body)
+    }
+}
+
 #[doc = "Error type for the `list_items` operation."]
-pub type ListItemsError = ::progenitor_server::ServerError<types::Error>;
+pub type ListItemsError = ::progenitor_server::ServerError<ListItemsErrorResponse>;
 #[doc = "Bundled, typed request for the `list_items` operation."]
 #[derive(Debug, Clone)]
 pub struct ListItemsRequest {
@@ -16,24 +36,84 @@ pub struct ListItemsQuery {
     pub limit: Option<i32>,
 }
 
+#[doc = "The declared responses represented by `CreateItemError`."]
+#[derive(Debug, Clone)]
+pub enum CreateItemErrorResponse {
+    #[doc = "The default response."]
+    Default {
+        #[doc = r" The HTTP status selected for this response."]
+        status: http::StatusCode,
+        #[doc = r" The response body."]
+        body: types::Error,
+    },
+}
+
+impl ::std::convert::From<CreateItemErrorResponse>
+    for ::progenitor_server::ServerError<CreateItemErrorResponse>
+{
+    fn from(body: CreateItemErrorResponse) -> Self {
+        ::progenitor_server::ServerError::Api(body)
+    }
+}
+
 #[doc = "Error type for the `create_item` operation."]
-pub type CreateItemError = ::progenitor_server::ServerError<types::Error>;
+pub type CreateItemError = ::progenitor_server::ServerError<CreateItemErrorResponse>;
 #[doc = "Bundled, typed request for the `create_item` operation."]
 #[derive(Debug, Clone)]
 pub struct CreateItemRequest {
     pub body: types::Item,
 }
 
+#[doc = "The declared responses represented by `GetItemError`."]
+#[derive(Debug, Clone)]
+pub enum GetItemErrorResponse {
+    #[doc = "The default response."]
+    Default {
+        #[doc = r" The HTTP status selected for this response."]
+        status: http::StatusCode,
+        #[doc = r" The response body."]
+        body: types::Error,
+    },
+}
+
+impl ::std::convert::From<GetItemErrorResponse>
+    for ::progenitor_server::ServerError<GetItemErrorResponse>
+{
+    fn from(body: GetItemErrorResponse) -> Self {
+        ::progenitor_server::ServerError::Api(body)
+    }
+}
+
 #[doc = "Error type for the `get_item` operation."]
-pub type GetItemError = ::progenitor_server::ServerError<types::Error>;
+pub type GetItemError = ::progenitor_server::ServerError<GetItemErrorResponse>;
 #[doc = "Bundled, typed request for the `get_item` operation."]
 #[derive(Debug, Clone)]
 pub struct GetItemRequest {
     pub item_id: ::std::string::String,
 }
 
+#[doc = "The declared responses represented by `UpdateItemError`."]
+#[derive(Debug, Clone)]
+pub enum UpdateItemErrorResponse {
+    #[doc = "The default response."]
+    Default {
+        #[doc = r" The HTTP status selected for this response."]
+        status: http::StatusCode,
+        #[doc = r" The response body."]
+        body: types::Error,
+    },
+}
+
+impl ::std::convert::From<UpdateItemErrorResponse>
+    for ::progenitor_server::ServerError<UpdateItemErrorResponse>
+{
+    fn from(body: UpdateItemErrorResponse) -> Self {
+        ::progenitor_server::ServerError::Api(body)
+    }
+}
+
 #[doc = "Error type for the `update_item` operation."]
-pub type UpdateItemError = ::progenitor_server::ServerError<types::Error>;
+pub type UpdateItemError = ::progenitor_server::ServerError<UpdateItemErrorResponse>;
 #[doc = "Bundled, typed request for the `update_item` operation."]
 #[derive(Debug, Clone)]
 pub struct UpdateItemRequest {
@@ -49,7 +129,7 @@ pub struct UpdateItemQuery {
 }
 
 #[doc = "Error type for the `collide` operation."]
-pub type CollideError = ::progenitor_server::ServerError<()>;
+pub type CollideError = ::progenitor_server::ServerError<::std::convert::Infallible>;
 #[doc = "Bundled, typed request for the `collide` operation."]
 #[derive(Debug, Clone)]
 pub struct CollideRequest {
@@ -69,54 +149,45 @@ pub struct CollideQuery {
 }
 
 #[doc = "Error type for the `download_blob` operation."]
-pub type DownloadBlobError = ::progenitor_server::ServerError<()>;
+pub type DownloadBlobError = ::progenitor_server::ServerError<::std::convert::Infallible>;
 #[doc = "Bundled, typed request for the `download_blob` operation."]
 #[derive(Debug, Clone)]
 pub struct DownloadBlobRequest {}
+#[doc = "The declared responses represented by `MultiKindResponse`."]
 #[derive(Debug, Clone)]
 pub enum MultiKindResponse {
-    Status200(types::Message),
-    Status206(bytes::Bytes),
+    #[doc = "The `200` response."]
+    Status200(#[doc = r" The response body."] types::Message),
+    #[doc = "The `206` response."]
+    Status206(#[doc = r" The raw response body."] bytes::Bytes),
 }
 
-impl MultiKindResponse {
-    pub fn status(&self) -> http::StatusCode {
-        match self {
-            MultiKindResponse::Status200(..) => http::StatusCode::from_u16(200u16).unwrap(),
-            MultiKindResponse::Status206(..) => http::StatusCode::from_u16(206u16).unwrap(),
-        }
-    }
-}
-
+#[doc = "The declared responses represented by `MultiKindError`."]
 #[derive(Debug, Clone)]
 pub enum MultiKindErrorResponse {
-    Status401(types::Error),
+    #[doc = "The `401` response."]
+    Status401(#[doc = r" The response body."] types::Error),
+    #[doc = "A `4XX` response."]
     StatusRange4xx {
-        status: http::StatusCode,
+        #[doc = r" The HTTP status selected for this response."]
+        status: ::progenitor_server::ClassStatus<4u16>,
+        #[doc = r" The response body."]
         body: types::Error,
     },
+    #[doc = "The default response."]
     Default {
+        #[doc = r" The HTTP status selected for this response."]
         status: http::StatusCode,
+        #[doc = r" The raw response body."]
         body: bytes::Bytes,
     },
-}
-
-impl MultiKindErrorResponse {
-    pub fn status(&self) -> http::StatusCode {
-        match self {
-            MultiKindErrorResponse::Status401(..) => http::StatusCode::from_u16(401u16).unwrap(),
-            MultiKindErrorResponse::StatusRange4xx { status, .. } => *status,
-            MultiKindErrorResponse::Default { status, .. } => *status,
-        }
-    }
 }
 
 impl ::std::convert::From<MultiKindErrorResponse>
     for ::progenitor_server::ServerError<MultiKindErrorResponse>
 {
     fn from(body: MultiKindErrorResponse) -> Self {
-        let status = body.status();
-        ::progenitor_server::ServerError::Api { status, body }
+        ::progenitor_server::ServerError::Api(body)
     }
 }
 
@@ -240,52 +311,24 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(200u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 200u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "list_items",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::OK;
                 ::progenitor_server::respond::json(__status, __headers, &__body)
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if __code == 200u16 {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "list_items",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
+                ::progenitor_server::ServerError::Api(__body) => match __body {
+                    ListItemsErrorResponse::Default {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status;
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                    ::progenitor_server::respond::json(__status, http::HeaderMap::new(), &__body)
-                }
+                },
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -312,55 +355,27 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(201u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 201u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "create_item",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::CREATED;
                 {
                     let _ = __body;
                     ::progenitor_server::respond::empty(__status, __headers)
                 }
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if __code == 201u16 {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "create_item",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
+                ::progenitor_server::ServerError::Api(__body) => match __body {
+                    CreateItemErrorResponse::Default {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status;
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                    ::progenitor_server::respond::json(__status, http::HeaderMap::new(), &__body)
-                }
+                },
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -385,52 +400,24 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(200u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 200u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "get_item",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::OK;
                 ::progenitor_server::respond::json(__status, __headers, &__body)
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if __code == 200u16 {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "get_item",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
+                ::progenitor_server::ServerError::Api(__body) => match __body {
+                    GetItemErrorResponse::Default {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status;
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                    ::progenitor_server::respond::json(__status, http::HeaderMap::new(), &__body)
-                }
+                },
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -461,52 +448,24 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(200u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 200u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "update_item",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::OK;
                 ::progenitor_server::respond::json(__status, __headers, &__body)
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if __code == 200u16 {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "update_item",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
+                ::progenitor_server::ServerError::Api(__body) => match __body {
+                    UpdateItemErrorResponse::Default {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status;
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                    ::progenitor_server::respond::json(__status, http::HeaderMap::new(), &__body)
-                }
+                },
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -546,55 +505,12 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(200u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 200u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "collide",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::OK;
                 ::progenitor_server::respond::json(__status, __headers, &__body)
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if true {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "collide",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
-                    }
-                    {
-                        let _ = __body;
-                        ::progenitor_server::respond::empty(__status, http::HeaderMap::new())
-                    }
-                }
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -621,27 +537,8 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(200u16).unwrap(),
-                };
-                {
-                    let __code = __status.as_u16();
-                    if !(__code == 200u16) {
-                        return ::progenitor_server::respond::internal(Box::new(
-                            ::std::io::Error::new(
-                                ::std::io::ErrorKind::Other,
-                                ::std::format!(
-                                    "operation `{}` returned undeclared {} status {}",
-                                    "download_blob",
-                                    "success",
-                                    __status,
-                                ),
-                            ),
-                        ));
-                    }
-                }
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::OK;
                 ::progenitor_server::respond::bytes(
                     __status,
                     __headers,
@@ -650,31 +547,7 @@ impl<T: ServerGen> ServerGenServer<T> {
                 )
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if true {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "download_blob",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
-                    }
-                    {
-                        let _ = __body;
-                        ::progenitor_server::respond::empty(__status, http::HeaderMap::new())
-                    }
-                }
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }
@@ -702,46 +575,14 @@ impl<T: ServerGen> ServerGenServer<T> {
     ) -> axum::response::Response {
         match result {
             Ok(response) => {
-                let (__status_override, __headers, __body) = response.into_parts();
+                let (__headers, __body) = response.into_parts();
                 match __body {
                     MultiKindResponse::Status200(__body) => {
-                        let __status = http::StatusCode::from_u16(200u16).unwrap();
-                        if let Some(__override_status) = __status_override {
-                            if __override_status != __status {
-                                return ::progenitor_server::respond::internal(Box::new(
-                                    ::std::io::Error::new(
-                                        ::std::io::ErrorKind::Other,
-                                        ::std::format!(
-                                            "operation `{}` returned conflicting success status \
-                                             {} for synth variant status {}",
-                                            "multi_kind",
-                                            __override_status,
-                                            __status,
-                                        ),
-                                    ),
-                                ));
-                            }
-                        }
+                        let __status = http::StatusCode::OK;
                         ::progenitor_server::respond::json(__status, __headers, &__body)
                     }
                     MultiKindResponse::Status206(__body) => {
-                        let __status = http::StatusCode::from_u16(206u16).unwrap();
-                        if let Some(__override_status) = __status_override {
-                            if __override_status != __status {
-                                return ::progenitor_server::respond::internal(Box::new(
-                                    ::std::io::Error::new(
-                                        ::std::io::ErrorKind::Other,
-                                        ::std::format!(
-                                            "operation `{}` returned conflicting success status \
-                                             {} for synth variant status {}",
-                                            "multi_kind",
-                                            __override_status,
-                                            __status,
-                                        ),
-                                    ),
-                                ));
-                            }
-                        }
+                        let __status = http::StatusCode::PARTIAL_CONTENT;
                         ::progenitor_server::respond::bytes(
                             __status,
                             __headers,
@@ -752,134 +593,39 @@ impl<T: ServerGen> ServerGenServer<T> {
                 }
             }
             Err(__error) => match __error {
-                ::progenitor_server::ServerError::Api {
-                    status: __status,
-                    body: __body,
-                } => {
-                    {
-                        let __code = __status.as_u16();
-                        if __code == 200u16 || __code == 206u16 {
-                            return ::progenitor_server::respond::internal(Box::new(
-                                ::std::io::Error::new(
-                                    ::std::io::ErrorKind::Other,
-                                    ::std::format!(
-                                        "operation `{}` returned undeclared {} status {}",
-                                        "multi_kind",
-                                        "error",
-                                        __status,
-                                    ),
-                                ),
-                            ));
-                        }
+                ::progenitor_server::ServerError::Api(__body) => match __body {
+                    MultiKindErrorResponse::Status401(__body) => {
+                        let __status = http::StatusCode::UNAUTHORIZED;
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                    match __body {
-                        MultiKindErrorResponse::Status401(__body) => {
-                            let __variant_status = http::StatusCode::from_u16(401u16).unwrap();
-                            if __variant_status != __status {
-                                return ::progenitor_server::respond::internal(Box::new(
-                                    ::std::io::Error::new(
-                                        ::std::io::ErrorKind::Other,
-                                        ::std::format!(
-                                            "operation `{}` returned conflicting error status {} \
-                                             for synth variant status {}",
-                                            "multi_kind",
-                                            __status,
-                                            __variant_status,
-                                        ),
-                                    ),
-                                ));
-                            }
-                            ::progenitor_server::respond::json(
-                                __status,
-                                http::HeaderMap::new(),
-                                &__body,
-                            )
-                        }
-                        MultiKindErrorResponse::StatusRange4xx {
-                            status: __variant_status,
-                            body: __body,
-                        } => {
-                            {
-                                let __code = __variant_status.as_u16();
-                                if !matches!(__code, 400u16..=499u16) || __code == 401u16 {
-                                    return ::progenitor_server::respond::internal(Box::new(
-                                        ::std::io::Error::new(
-                                            ::std::io::ErrorKind::Other,
-                                            ::std::format!(
-                                                "operation `{}` returned status {} with \
-                                                 mismatched {} response variant",
-                                                "multi_kind",
-                                                __variant_status,
-                                                "error",
-                                            ),
-                                        ),
-                                    ));
-                                }
-                            }
-                            if __variant_status != __status {
-                                return ::progenitor_server::respond::internal(Box::new(
-                                    ::std::io::Error::new(
-                                        ::std::io::ErrorKind::Other,
-                                        ::std::format!(
-                                            "operation `{}` returned conflicting error status {} \
-                                             for synth variant status {}",
-                                            "multi_kind",
-                                            __status,
-                                            __variant_status,
-                                        ),
-                                    ),
-                                ));
-                            }
-                            ::progenitor_server::respond::json(
-                                __status,
-                                http::HeaderMap::new(),
-                                &__body,
-                            )
-                        }
-                        MultiKindErrorResponse::Default {
-                            status: __variant_status,
-                            body: __body,
-                        } => {
-                            {
-                                let __code = __variant_status.as_u16();
-                                if __code == 401u16 || matches!(__code, 400u16..=499u16) {
-                                    return ::progenitor_server::respond::internal(Box::new(
-                                        ::std::io::Error::new(
-                                            ::std::io::ErrorKind::Other,
-                                            ::std::format!(
-                                                "operation `{}` returned status {} with \
-                                                 mismatched {} response variant",
-                                                "multi_kind",
-                                                __variant_status,
-                                                "error",
-                                            ),
-                                        ),
-                                    ));
-                                }
-                            }
-                            if __variant_status != __status {
-                                return ::progenitor_server::respond::internal(Box::new(
-                                    ::std::io::Error::new(
-                                        ::std::io::ErrorKind::Other,
-                                        ::std::format!(
-                                            "operation `{}` returned conflicting error status {} \
-                                             for synth variant status {}",
-                                            "multi_kind",
-                                            __status,
-                                            __variant_status,
-                                        ),
-                                    ),
-                                ));
-                            }
-                            ::progenitor_server::respond::bytes(
-                                __status,
-                                http::HeaderMap::new(),
-                                "text/plain",
-                                __body,
-                            )
-                        }
+                    MultiKindErrorResponse::StatusRange4xx {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status.get();
+                        ::progenitor_server::respond::json(
+                            __status,
+                            http::HeaderMap::new(),
+                            &__body,
+                        )
                     }
-                }
+                    MultiKindErrorResponse::Default {
+                        status: __response_status,
+                        body: __body,
+                    } => {
+                        let __status = __response_status;
+                        ::progenitor_server::respond::bytes(
+                            __status,
+                            http::HeaderMap::new(),
+                            "text/plain",
+                            __body,
+                        )
+                    }
+                },
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::internal(__e)
                 }

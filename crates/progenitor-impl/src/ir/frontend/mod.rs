@@ -351,12 +351,17 @@ fn parse_status(status: &str, context: &str) -> Result<ir::ResponseStatus> {
     if status == "default" {
         return Ok(ir::ResponseStatus::Default);
     }
-    if let Ok(code) = status.parse::<u16>() {
-        return Ok(ir::ResponseStatus::Code(code));
-    }
-    let bytes = status.as_bytes();
-    if bytes.len() == 3 && bytes[0].is_ascii_digit() && status[1..].eq_ignore_ascii_case("xx") {
-        return Ok(ir::ResponseStatus::Range(u16::from(bytes[0] - b'0')));
+    match status.as_bytes() {
+        [class @ b'1'..=b'5', tens, ones] if tens.is_ascii_digit() && ones.is_ascii_digit() => {
+            let code = u16::from(*class - b'0') * 100
+                + u16::from(*tens - b'0') * 10
+                + u16::from(*ones - b'0');
+            return Ok(ir::ResponseStatus::Code(code));
+        }
+        [class @ b'1'..=b'5', b'x' | b'X', b'x' | b'X'] => {
+            return Ok(ir::ResponseStatus::Range(u16::from(*class - b'0')));
+        }
+        _ => {}
     }
     Err(Error::UnexpectedFormat(format!(
         "invalid response status `{status}` in {context}"
@@ -582,4 +587,41 @@ struct MediaType31 {
     schema: Option<Value>,
     #[serde(default)]
     encoding: IndexMap<String, Value>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_status;
+    use crate::ir::ResponseStatus;
+
+    #[test]
+    fn response_statuses_are_limited_to_openapi_http_classes() {
+        assert_eq!(
+            parse_status("100", "test").unwrap(),
+            ResponseStatus::Code(100)
+        );
+        assert_eq!(
+            parse_status("599", "test").unwrap(),
+            ResponseStatus::Code(599)
+        );
+        assert_eq!(
+            parse_status("1XX", "test").unwrap(),
+            ResponseStatus::Range(1)
+        );
+        assert_eq!(
+            parse_status("5xx", "test").unwrap(),
+            ResponseStatus::Range(5)
+        );
+        assert_eq!(
+            parse_status("default", "test").unwrap(),
+            ResponseStatus::Default
+        );
+
+        for invalid in [
+            "99", "600", "1000", "0200", "+200", "2x0", "0XX", "6XX", "XXX",
+        ] {
+            let error = parse_status(invalid, "test").unwrap_err();
+            assert!(error.to_string().contains(invalid));
+        }
+    }
 }

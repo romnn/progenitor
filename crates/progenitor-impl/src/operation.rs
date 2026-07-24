@@ -293,14 +293,12 @@ pub(crate) enum OperationResponseKind {
     None,
     Raw,
     Upgrade,
-    /// Per-operation synthesized sum type, used when the response set
-    /// contains multiple distinct kinds (e.g. some statuses return a
-    /// typed JSON body and others return a streamed non-JSON body) that
-    /// don't collapse to a single kind via the bodyless or `allOf`
-    /// passes. The string is the synthesized enum's Rust identifier; the
-    /// enum definition itself is emitted alongside the operation function
-    /// by `method_sig_body`, deriving variants from the response items'
-    /// status codes and original payload kinds.
+    /// Per-operation synthesized, status-keyed response type.
+    ///
+    /// Client generation uses this when payload kinds cannot collapse to one
+    /// type. Server generation also uses it whenever a single exact status
+    /// does not imply the response status. The string is the synthesized
+    /// enum's Rust identifier.
     Synth(String),
 }
 

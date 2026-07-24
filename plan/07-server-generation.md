@@ -408,6 +408,10 @@ Design alternative (positional args, mirroring the client method signature) is i
 
 ### 6.4 Success/error typing and the response-encoding contract
 
+Plan 11 supersedes this section's runtime status resolution and validation rules
+with status-typed generated response enums; the original design remains below
+for historical context.
+
 Reuse the existing partition logic, but the server must **own the encoding** —
 this is where a "typed server" and a "wire-compatible client" can silently
 diverge, so it is specified explicitly (review Findings 1 & 2).

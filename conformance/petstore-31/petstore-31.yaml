@@ -63,6 +63,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /typed-errors/{kind}:
+    get:
+      operationId: typedErrors
+      summary: Return one of two errors with the same payload schema
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No error requested
+        "404":
+          description: Missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Pet:

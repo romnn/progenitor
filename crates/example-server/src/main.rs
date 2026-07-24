@@ -16,7 +16,7 @@ generate_api!(
 
 use progenitor_server::codegen::async_trait;
 use progenitor_server::codegen::bytes::Bytes;
-use progenitor_server::{Request, Response, ServerError};
+use progenitor_server::{ClassStatus, Request, Response};
 
 /// The user's implementation — just business logic; no (de)serialization.
 #[derive(Default)]
@@ -39,13 +39,14 @@ impl server::Example for Example {
     ) -> Result<Response<types::Message>, server::EchoError> {
         let req = request.get_ref();
         if req.text.is_empty() {
-            return Err(ServerError::api(
-                progenitor_server::codegen::http::StatusCode::BAD_REQUEST,
-                types::Error {
+            return Err(server::EchoErrorResponse::Default {
+                status: progenitor_server::codegen::http::StatusCode::BAD_REQUEST,
+                body: types::Error {
                     code: 400,
                     message: "text must not be empty".to_string(),
                 },
-            ));
+            }
+            .into());
         }
         let message = match &req.suffix {
             Some(suffix) => format!("{}{}", req.text, suffix),
@@ -73,7 +74,7 @@ impl server::Example for Example {
             })
             .into()),
             "bad" => Err(server::MaybeErrorResponse::StatusRange4xx {
-                status: progenitor_server::codegen::http::StatusCode::BAD_REQUEST,
+                status: ClassStatus::<4>::BAD_REQUEST,
                 body: types::Error {
                     code: 400,
                     message: "bad mode".to_string(),

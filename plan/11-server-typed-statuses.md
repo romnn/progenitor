@@ -13,8 +13,8 @@ it free (`default` responses) — and where the spec constrains it to a class (`
 is enforced at the implementor's construction site with an explicit fallible constructor, never
 silently at respond time.
 
-Status: **PLANNED**. Grounded in branch `feat/openapi3.1-support` at `c38e41d`. Supersedes plan
-07's "status resolution contract" / "status-validation matrix" (§6.4) — those runtime rules are
+Status: **IMPLEMENTED** (2026-07-24). Supersedes plan 07's "status resolution
+contract" / "status-validation matrix" (§6.4) — those runtime rules are
 replaced by types, and this plan deletes their implementation.
 
 ## 1. Current state (measured) — where the type system currently gives up

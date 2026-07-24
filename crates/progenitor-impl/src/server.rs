@@ -11,9 +11,8 @@
 //!
 //! Unsupported operations (websocket/upgrade and deepObject query parameters)
 //! are not given a trait method; instead a `501 Not Implemented` route stub is
-//! emitted so routing stays complete and the gap is visible. Synthesized
-//! multi-kind responses get server-side status-keyed enums. See the
-//! `07-server-generation.md` plan, especially §6.4/§6.5, for the contract.
+//! emitted so routing stays complete and the gap is visible. Response sets
+//! whose status is not uniquely implied get server-side status-keyed enums.
 
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
@@ -28,6 +27,7 @@ use crate::{
         OperationResponse, OperationResponseKind, OperationResponseStatus, ResponseSide,
         synth_variant_name,
     },
+    operations::responses::response_items_for_side,
     util::{Case, sanitize},
 };
 
@@ -62,7 +62,6 @@ impl Generator {
     }
 
     /// Shared core used by both [`Generator::server`] and `generate_tokens`.
-    /// The prepared document carries the response-analysis maps explicitly.
     pub(crate) fn server_body(
         &mut self,
         prepared: &PreparedIr,
@@ -86,7 +85,7 @@ impl Generator {
         let ops = prepared
             .raw_methods
             .iter()
-            .map(|method| self.server_op(prepared, method, &trait_ident))
+            .map(|method| self.server_op(method, &trait_ident))
             .collect::<Result<Vec<_>>>()?;
 
         let module_items = ops.iter().map(|o| &o.module_items);
@@ -163,7 +162,6 @@ impl Generator {
 
     fn server_op(
         &mut self,
-        prepared: &PreparedIr,
         method: &OperationMethod,
         trait_ident: &proc_macro2::Ident,
     ) -> Result<ServerOp> {
@@ -178,16 +176,12 @@ impl Generator {
         let axum_path = method.path.as_axum_path();
         let routing_fn = method.method.routing_ident();
 
-        let (success_items, success_kind) =
-            self.extract_responses(prepared, method, ResponseSide::Success);
-        let (error_items, error_kind) =
-            self.extract_responses(prepared, method, ResponseSide::Error);
+        let (success_items, success_kind) = extract_server_responses(method, ResponseSide::Success);
+        let (error_items, error_kind) = extract_server_responses(method, ResponseSide::Error);
 
-        // Decide whether this operation is supported. Websocket/upgrade and
-        // deepObject query parameters get a 501 stub instead of a trait method
-        // (see plan §6.4 D-skip / §6.8). Synthesized multi-kind responses are
-        // supported below via server-side status-keyed enums, except for any
-        // response item that itself needs an HTTP upgrade.
+        // Websocket/upgrade responses and deepObject query parameters cannot be
+        // represented by the generated trait yet. Keep their routes visible as
+        // 501 stubs instead of silently omitting them.
         let unsupported_reason = if method.dropshot_websocket {
             Some("websocket/upgrade endpoint")
         } else if method.params.iter().any(|param| {
@@ -235,22 +229,18 @@ impl Generator {
             });
         }
 
-        let success_type = self.response_payload_type(&success_kind, SynthSide::Success);
-        let error_type = self.response_payload_type(&error_kind, SynthSide::Error);
-        let default_status = default_success_status(&success_items);
-        let success_respond = self.success_responder(
-            &method.operation_id,
-            &success_kind,
-            &success_items,
-            default_status,
-        );
-        let error_respond = self.error_responder(
-            &method.operation_id,
-            &error_kind,
-            &error_items,
-            &success_items,
-            matches!(success_kind, OperationResponseKind::Synth(_)),
-        );
+        let success_type = if success_items.is_empty() {
+            quote! { ::std::convert::Infallible }
+        } else {
+            self.response_payload_type(&success_kind, SynthSide::Success)
+        };
+        let error_type = if error_items.is_empty() {
+            quote! { ::std::convert::Infallible }
+        } else {
+            self.response_payload_type(&error_kind, SynthSide::Error)
+        };
+        let success_respond = self.success_responder(&success_kind, &success_items);
+        let error_respond = self.error_responder(&error_kind, &error_items);
 
         let parts = self.collect_params(method, &query_ident);
         let CollectedParams {
@@ -331,7 +321,7 @@ impl Generator {
                         #success_respond
                     }
                     Err(__error) => match __error {
-                        ::progenitor_server::ServerError::Api { status: __status, body: __body } => {
+                        ::progenitor_server::ServerError::Api(__body) => {
                             #error_respond
                         }
                         ::progenitor_server::ServerError::Internal(__e) => {
@@ -376,24 +366,22 @@ impl Generator {
 
     fn success_responder(
         &self,
-        operation_id: &str,
         kind: &OperationResponseKind,
         items: &[OperationResponse],
-        default_status: u16,
     ) -> TokenStream {
-        if let OperationResponseKind::Synth(name) = kind {
-            self.synth_success_encoder(operation_id, name, items)
+        if items.is_empty() {
+            quote! {
+                let (_, __body) = response.into_parts();
+                match __body {}
+            }
+        } else if let OperationResponseKind::Synth(name) = kind {
+            self.synth_success_encoder(name, items)
         } else {
-            let success_status_guard =
-                response_status_guard(operation_id, items, ResponseSide::Success, false, None);
+            let status = single_response_status(items);
             let success_encode = self.success_encoder(kind, items);
             quote! {
-                let (__status_override, __headers, __body) = response.into_parts();
-                let __status = match __status_override {
-                    Some(status) => status,
-                    None => http::StatusCode::from_u16(#default_status).unwrap(),
-                };
-                #success_status_guard
+                let (__headers, __body) = response.into_parts();
+                let __status = #status;
                 #success_encode
             }
         }
@@ -401,29 +389,18 @@ impl Generator {
 
     fn error_responder(
         &self,
-        operation_id: &str,
         kind: &OperationResponseKind,
         items: &[OperationResponse],
-        success_items: &[OperationResponse],
-        success_is_synth: bool,
     ) -> TokenStream {
-        let error_status_guard = response_status_guard(
-            operation_id,
-            items,
-            ResponseSide::Error,
-            false,
-            Some((success_items, success_is_synth)),
-        );
-        if let OperationResponseKind::Synth(name) = kind {
-            let error_encode = self.synth_error_encoder(operation_id, name, items);
-            quote! {
-                #error_status_guard
-                #error_encode
-            }
+        if items.is_empty() {
+            quote! { match __body {} }
+        } else if let OperationResponseKind::Synth(name) = kind {
+            self.synth_error_encoder(name, items)
         } else {
+            let status = single_response_status(items);
             let error_encode = self.error_encoder(kind, items);
             quote! {
-                #error_status_guard
+                let __status = #status;
                 #error_encode
             }
         }
@@ -492,17 +469,14 @@ impl Generator {
         };
         let enum_ident = server_synth_ident(name, side);
         let variants = items.iter().map(|item| self.synth_variant_definition(item));
-        let status_arms = items
-            .iter()
-            .map(|item| synth_variant_status_arm(&enum_ident, item));
+        let enum_doc = format!("The declared responses represented by `{name}`.");
         let error_from_impl = if matches!(side, SynthSide::Error) {
             Some(quote! {
                 impl ::std::convert::From<#enum_ident>
                     for ::progenitor_server::ServerError<#enum_ident>
                 {
                     fn from(body: #enum_ident) -> Self {
-                        let status = body.status();
-                        ::progenitor_server::ServerError::Api { status, body }
+                        ::progenitor_server::ServerError::Api(body)
                     }
                 }
             })
@@ -511,17 +485,10 @@ impl Generator {
         };
 
         Some(quote! {
+            #[doc = #enum_doc]
             #[derive(Debug, Clone)]
             pub enum #enum_ident {
                 #(#variants),*
-            }
-
-            impl #enum_ident {
-                pub fn status(&self) -> http::StatusCode {
-                    match self {
-                        #(#status_arms),*
-                    }
-                }
             }
 
             #error_from_impl
@@ -530,28 +497,66 @@ impl Generator {
 
     fn synth_variant_definition(&self, item: &OperationResponse) -> TokenStream {
         let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
-        let status_field = needs_explicit_synth_status(&item.status_code);
+        let variant_doc = response_variant_doc(&item.status_code);
+        let status_type = synth_status_field_type(&item.status_code);
         match &item.typ {
             OperationResponseKind::Type(type_id) => {
                 let ty = self.type_space.get_type(type_id).unwrap().ident();
-                if status_field {
-                    quote! { #variant_ident { status: http::StatusCode, body: #ty } }
+                if let Some(status_type) = status_type {
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident {
+                            /// The HTTP status selected for this response.
+                            status: #status_type,
+                            /// The response body.
+                            body: #ty,
+                        }
+                    }
                 } else {
-                    quote! { #variant_ident(#ty) }
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident(
+                            /// The response body.
+                            #ty
+                        )
+                    }
                 }
             }
             OperationResponseKind::None => {
-                if status_field {
-                    quote! { #variant_ident { status: http::StatusCode } }
+                if let Some(status_type) = status_type {
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident {
+                            /// The HTTP status selected for this response.
+                            status: #status_type,
+                        }
+                    }
                 } else {
-                    quote! { #variant_ident }
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident
+                    }
                 }
             }
             OperationResponseKind::Raw => {
-                if status_field {
-                    quote! { #variant_ident { status: http::StatusCode, body: bytes::Bytes } }
+                if let Some(status_type) = status_type {
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident {
+                            /// The HTTP status selected for this response.
+                            status: #status_type,
+                            /// The raw response body.
+                            body: bytes::Bytes,
+                        }
+                    }
                 } else {
-                    quote! { #variant_ident(bytes::Bytes) }
+                    quote! {
+                        #[doc = #variant_doc]
+                        #variant_ident(
+                            /// The raw response body.
+                            bytes::Bytes
+                        )
+                    }
                 }
             }
             OperationResponseKind::Upgrade | OperationResponseKind::Synth(_) => {
@@ -560,66 +565,36 @@ impl Generator {
         }
     }
 
-    fn synth_success_encoder(
-        &self,
-        operation_id: &str,
-        name: &str,
-        items: &[OperationResponse],
-    ) -> TokenStream {
+    fn synth_success_encoder(&self, name: &str, items: &[OperationResponse]) -> TokenStream {
         let enum_ident = server_synth_ident(name, SynthSide::Success);
-        let arms = items.iter().enumerate().map(|(index, item)| {
-            let pattern = synth_variant_pattern(&enum_ident, item, quote! { __status });
-            let status = synth_variant_status_value(item, quote! { __status });
-            let status_guard = synth_variant_status_guard(
-                operation_id,
-                item,
-                &items[..index],
-                ResponseSide::Success,
-                quote! { __status },
-            );
-            let override_guard = synth_success_override_guard(operation_id);
+        let arms = items.iter().map(|item| {
+            let pattern = synth_variant_pattern(&enum_ident, item);
+            let status = synth_variant_status_value(item);
             let encode = self.synth_variant_success_encode(item);
             quote! {
                 #pattern => {
                     #status
-                    #status_guard
-                    #override_guard
                     #encode
                 }
             }
         });
         quote! {
-            let (__status_override, __headers, __body) = response.into_parts();
+            let (__headers, __body) = response.into_parts();
             match __body {
                 #(#arms),*
             }
         }
     }
 
-    fn synth_error_encoder(
-        &self,
-        operation_id: &str,
-        name: &str,
-        items: &[OperationResponse],
-    ) -> TokenStream {
+    fn synth_error_encoder(&self, name: &str, items: &[OperationResponse]) -> TokenStream {
         let enum_ident = server_synth_ident(name, SynthSide::Error);
-        let arms = items.iter().enumerate().map(|(index, item)| {
-            let pattern = synth_variant_pattern(&enum_ident, item, quote! { __variant_status });
-            let variant_status = synth_variant_status_value(item, quote! { __variant_status });
-            let status_guard = synth_variant_status_guard(
-                operation_id,
-                item,
-                &items[..index],
-                ResponseSide::Error,
-                quote! { __variant_status },
-            );
-            let status_match_guard = synth_error_status_match_guard(operation_id);
+        let arms = items.iter().map(|item| {
+            let pattern = synth_variant_pattern(&enum_ident, item);
+            let status = synth_variant_status_value(item);
             let encode = self.synth_variant_error_encode(item);
             quote! {
                 #pattern => {
-                    #variant_status
-                    #status_guard
-                    #status_match_guard
+                    #status
                     #encode
                 }
             }
@@ -983,120 +958,6 @@ enum SynthSide {
     Error,
 }
 
-enum StatusPredicate {
-    Always,
-    Never,
-    Expr(TokenStream),
-}
-
-impl StatusPredicate {
-    fn invalid_condition(self) -> Option<TokenStream> {
-        match self {
-            StatusPredicate::Always => None,
-            StatusPredicate::Never => Some(quote! { true }),
-            StatusPredicate::Expr(expr) => Some(quote! { !(#expr) }),
-        }
-    }
-}
-
-fn response_status_guard(
-    operation_id: &str,
-    items: &[OperationResponse],
-    side: ResponseSide,
-    is_synth: bool,
-    success_items: Option<(&[OperationResponse], bool)>,
-) -> TokenStream {
-    let invalid_condition = match side {
-        ResponseSide::Success => {
-            response_status_predicate(items, side, is_synth).invalid_condition()
-        }
-        ResponseSide::Error => {
-            let error_match = response_status_predicate(items, side, is_synth);
-            let (success_items, success_is_synth) = success_items.unwrap_or((&[], false));
-            let success_match =
-                response_status_predicate(success_items, ResponseSide::Success, success_is_synth);
-            match (error_match, success_match) {
-                (StatusPredicate::Never, _) => Some(quote! { true }),
-                (_, StatusPredicate::Always) => Some(quote! { true }),
-                (StatusPredicate::Always, StatusPredicate::Never) => None,
-                (StatusPredicate::Always, StatusPredicate::Expr(success)) => {
-                    Some(quote! { #success })
-                }
-                (StatusPredicate::Expr(error), StatusPredicate::Never) => {
-                    Some(quote! { !(#error) })
-                }
-                (StatusPredicate::Expr(error), StatusPredicate::Expr(success)) => {
-                    Some(quote! { !(#error) || #success })
-                }
-            }
-        }
-    };
-    let Some(invalid_condition) = invalid_condition else {
-        return quote! {};
-    };
-    let side_name = match side {
-        ResponseSide::Success => "success",
-        ResponseSide::Error => "error",
-    };
-    quote! {
-        {
-            let __code = __status.as_u16();
-            if #invalid_condition {
-                return ::progenitor_server::respond::internal(Box::new(
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::Other,
-                        ::std::format!(
-                            "operation `{}` returned undeclared {} status {}",
-                            #operation_id,
-                            #side_name,
-                            __status,
-                        ),
-                    ),
-                ));
-            }
-        }
-    }
-}
-
-/// Predicate, in terms of a generated local `__code: u16`, that mirrors the
-/// client-side response classifier for a single response side.
-fn response_status_predicate(
-    items: &[OperationResponse],
-    side: ResponseSide,
-    is_synth: bool,
-) -> StatusPredicate {
-    let mut clauses = Vec::new();
-    for item in items {
-        let clause = match item.status_code {
-            OperationResponseStatus::Code(code) => quote! { __code == #code },
-            OperationResponseStatus::Range(range) => {
-                let min = range * 100;
-                let max = min + 99;
-                match side {
-                    ResponseSide::Success if !is_synth => quote! { matches!(__code, 200..=299) },
-                    _ => quote! { matches!(__code, #min..=#max) },
-                }
-            }
-            OperationResponseStatus::Default => match side {
-                // In the non-synth client path, a success-side `default`
-                // collapses to the normal 2xx success bucket. In a synthesized
-                // success enum, the client emits `_` for the default arm, so it
-                // classifies every otherwise-unmatched status as success.
-                ResponseSide::Success if is_synth => return StatusPredicate::Always,
-                ResponseSide::Success => quote! { matches!(__code, 200..=299) },
-                ResponseSide::Error => return StatusPredicate::Always,
-            },
-        };
-        clauses.push(clause);
-    }
-
-    let mut clauses = clauses.into_iter();
-    let Some(first) = clauses.next() else {
-        return StatusPredicate::Never;
-    };
-    StatusPredicate::Expr(clauses.fold(first, |acc, clause| quote! { #acc || #clause }))
-}
-
 fn server_synth_ident(name: &str, side: SynthSide) -> proc_macro2::Ident {
     match side {
         SynthSide::Success => format_ident!("{}", name),
@@ -1105,195 +966,167 @@ fn server_synth_ident(name: &str, side: SynthSide) -> proc_macro2::Ident {
     }
 }
 
-fn needs_explicit_synth_status(status: &OperationResponseStatus) -> bool {
-    !matches!(status, OperationResponseStatus::Code(_))
+fn extract_server_responses(
+    method: &OperationMethod,
+    side: ResponseSide,
+) -> (Vec<OperationResponse>, OperationResponseKind) {
+    let items = response_items_for_side(method, side);
+    let kind = match items.as_slice() {
+        [] => OperationResponseKind::None,
+        [item] if matches!(item.status_code, OperationResponseStatus::Code(_)) => item.typ.clone(),
+        _ => OperationResponseKind::Synth(format!(
+            "{}{}",
+            sanitize(&method.operation_id, Case::Pascal),
+            match side {
+                ResponseSide::Success => "Response",
+                ResponseSide::Error => "Error",
+            }
+        )),
+    };
+    (items, kind)
 }
 
-fn synth_variant_status_arm(
-    enum_ident: &proc_macro2::Ident,
-    item: &OperationResponse,
-) -> TokenStream {
-    let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
-    match item.status_code {
-        OperationResponseStatus::Code(code) => {
-            let pattern = if matches!(&item.typ, OperationResponseKind::None) {
-                quote! { #enum_ident::#variant_ident }
-            } else {
-                quote! { #enum_ident::#variant_ident(..) }
-            };
-            quote! {
-                #pattern => http::StatusCode::from_u16(#code).unwrap()
-            }
-        }
-        OperationResponseStatus::Range(_) | OperationResponseStatus::Default => {
-            quote! {
-                #enum_ident::#variant_ident { status, .. } => *status
-            }
+fn single_response_status(items: &[OperationResponse]) -> TokenStream {
+    let [item] = items else {
+        unreachable!("plain response kinds contain exactly one item")
+    };
+    let OperationResponseStatus::Code(code) = item.status_code else {
+        unreachable!("plain response kinds use an exact status")
+    };
+    status_code_tokens(code)
+}
+
+fn status_code_tokens(code: u16) -> TokenStream {
+    let named = match code {
+        100 => Some("CONTINUE"),
+        101 => Some("SWITCHING_PROTOCOLS"),
+        102 => Some("PROCESSING"),
+        103 => Some("EARLY_HINTS"),
+        200 => Some("OK"),
+        201 => Some("CREATED"),
+        202 => Some("ACCEPTED"),
+        203 => Some("NON_AUTHORITATIVE_INFORMATION"),
+        204 => Some("NO_CONTENT"),
+        205 => Some("RESET_CONTENT"),
+        206 => Some("PARTIAL_CONTENT"),
+        207 => Some("MULTI_STATUS"),
+        208 => Some("ALREADY_REPORTED"),
+        226 => Some("IM_USED"),
+        300 => Some("MULTIPLE_CHOICES"),
+        301 => Some("MOVED_PERMANENTLY"),
+        302 => Some("FOUND"),
+        303 => Some("SEE_OTHER"),
+        304 => Some("NOT_MODIFIED"),
+        305 => Some("USE_PROXY"),
+        307 => Some("TEMPORARY_REDIRECT"),
+        308 => Some("PERMANENT_REDIRECT"),
+        400 => Some("BAD_REQUEST"),
+        401 => Some("UNAUTHORIZED"),
+        402 => Some("PAYMENT_REQUIRED"),
+        403 => Some("FORBIDDEN"),
+        404 => Some("NOT_FOUND"),
+        405 => Some("METHOD_NOT_ALLOWED"),
+        406 => Some("NOT_ACCEPTABLE"),
+        407 => Some("PROXY_AUTHENTICATION_REQUIRED"),
+        408 => Some("REQUEST_TIMEOUT"),
+        409 => Some("CONFLICT"),
+        410 => Some("GONE"),
+        411 => Some("LENGTH_REQUIRED"),
+        412 => Some("PRECONDITION_FAILED"),
+        413 => Some("PAYLOAD_TOO_LARGE"),
+        414 => Some("URI_TOO_LONG"),
+        415 => Some("UNSUPPORTED_MEDIA_TYPE"),
+        416 => Some("RANGE_NOT_SATISFIABLE"),
+        417 => Some("EXPECTATION_FAILED"),
+        418 => Some("IM_A_TEAPOT"),
+        421 => Some("MISDIRECTED_REQUEST"),
+        422 => Some("UNPROCESSABLE_ENTITY"),
+        423 => Some("LOCKED"),
+        424 => Some("FAILED_DEPENDENCY"),
+        425 => Some("TOO_EARLY"),
+        426 => Some("UPGRADE_REQUIRED"),
+        428 => Some("PRECONDITION_REQUIRED"),
+        429 => Some("TOO_MANY_REQUESTS"),
+        431 => Some("REQUEST_HEADER_FIELDS_TOO_LARGE"),
+        451 => Some("UNAVAILABLE_FOR_LEGAL_REASONS"),
+        500 => Some("INTERNAL_SERVER_ERROR"),
+        501 => Some("NOT_IMPLEMENTED"),
+        502 => Some("BAD_GATEWAY"),
+        503 => Some("SERVICE_UNAVAILABLE"),
+        504 => Some("GATEWAY_TIMEOUT"),
+        505 => Some("HTTP_VERSION_NOT_SUPPORTED"),
+        506 => Some("VARIANT_ALSO_NEGOTIATES"),
+        507 => Some("INSUFFICIENT_STORAGE"),
+        508 => Some("LOOP_DETECTED"),
+        510 => Some("NOT_EXTENDED"),
+        511 => Some("NETWORK_AUTHENTICATION_REQUIRED"),
+        _ => None,
+    };
+    if let Some(named) = named {
+        let ident = format_ident!("{named}");
+        quote! { http::StatusCode::#ident }
+    } else {
+        // Exact codes are validated before responder generation, so this keeps
+        // the generated expression typed as `StatusCode` without adding a
+        // runtime branch to every response.
+        quote! {
+            http::StatusCode::from_u16(#code)
+                .expect("the generator validates declared HTTP response statuses")
         }
     }
 }
 
-fn synth_variant_pattern(
-    enum_ident: &proc_macro2::Ident,
-    item: &OperationResponse,
-    status_ident: TokenStream,
-) -> TokenStream {
+fn response_variant_doc(status: &OperationResponseStatus) -> String {
+    match status {
+        OperationResponseStatus::Code(code) => format!("The `{code}` response."),
+        OperationResponseStatus::Range(range) => format!("A `{range}XX` response."),
+        OperationResponseStatus::Default => "The default response.".to_string(),
+    }
+}
+
+fn synth_status_field_type(status: &OperationResponseStatus) -> Option<TokenStream> {
+    match status {
+        OperationResponseStatus::Code(_) => None,
+        OperationResponseStatus::Range(range) => {
+            Some(quote! { ::progenitor_server::ClassStatus<#range> })
+        }
+        OperationResponseStatus::Default => Some(quote! { http::StatusCode }),
+    }
+}
+
+fn synth_variant_pattern(enum_ident: &proc_macro2::Ident, item: &OperationResponse) -> TokenStream {
     let variant_ident = format_ident!("{}", synth_variant_name(&item.status_code));
-    let explicit_status = needs_explicit_synth_status(&item.status_code);
+    let explicit_status = synth_status_field_type(&item.status_code).is_some();
     match (&item.typ, explicit_status) {
         (OperationResponseKind::None, false) => quote! { #enum_ident::#variant_ident },
         (OperationResponseKind::None, true) => {
-            quote! { #enum_ident::#variant_ident { status: #status_ident } }
+            quote! { #enum_ident::#variant_ident { status: __response_status } }
         }
         (_, false) => quote! { #enum_ident::#variant_ident(__body) },
-        (_, true) => quote! { #enum_ident::#variant_ident { status: #status_ident, body: __body } },
+        (_, true) => {
+            quote! {
+                #enum_ident::#variant_ident {
+                    status: __response_status,
+                    body: __body,
+                }
+            }
+        }
     }
 }
 
-fn synth_variant_status_value(item: &OperationResponse, status_ident: TokenStream) -> TokenStream {
+fn synth_variant_status_value(item: &OperationResponse) -> TokenStream {
     match item.status_code {
         OperationResponseStatus::Code(code) => {
-            quote! { let #status_ident = http::StatusCode::from_u16(#code).unwrap(); }
+            let status = status_code_tokens(code);
+            quote! { let __status = #status; }
         }
-        OperationResponseStatus::Range(_) | OperationResponseStatus::Default => quote! {},
-    }
-}
-
-fn synth_variant_status_guard(
-    operation_id: &str,
-    item: &OperationResponse,
-    earlier_items: &[OperationResponse],
-    side: ResponseSide,
-    status_ident: TokenStream,
-) -> TokenStream {
-    let earlier_match = status_predicate_for_items(earlier_items);
-    let invalid_condition = match item.status_code {
-        OperationResponseStatus::Code(code) => {
-            let mut shadowing = earlier_items
-                .iter()
-                .filter(|item| status_covers_code(&item.status_code, code))
-                .map(status_predicate_for_item);
-            let Some(first) = shadowing.next() else {
-                return quote! {};
-            };
-            shadowing.fold(first, |acc, clause| quote! { #acc || #clause })
+        OperationResponseStatus::Range(_) => {
+            quote! { let __status = __response_status.get(); }
         }
-        OperationResponseStatus::Range(range) => {
-            let min = range * 100;
-            let max = min + 99;
-            if let Some(earlier_match) = earlier_match {
-                quote! { !matches!(__code, #min..=#max) || #earlier_match }
-            } else {
-                quote! { !matches!(__code, #min..=#max) }
-            }
-        }
-        OperationResponseStatus::Default => match earlier_match {
-            Some(earlier_match) => earlier_match,
-            None => return quote! {},
-        },
-    };
-    let side_name = match side {
-        ResponseSide::Success => "success",
-        ResponseSide::Error => "error",
-    };
-    quote! {
-        {
-            let __code = #status_ident.as_u16();
-            if #invalid_condition {
-                return ::progenitor_server::respond::internal(Box::new(
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::Other,
-                        ::std::format!(
-                            "operation `{}` returned status {} with mismatched {} response variant",
-                            #operation_id,
-                            #status_ident,
-                            #side_name,
-                        ),
-                    ),
-                ));
-            }
+        OperationResponseStatus::Default => {
+            quote! { let __status = __response_status; }
         }
     }
-}
-
-fn status_predicate_for_items(items: &[OperationResponse]) -> Option<TokenStream> {
-    let mut clauses = items.iter().map(status_predicate_for_item);
-    let first = clauses.next()?;
-    Some(clauses.fold(first, |acc, clause| quote! { #acc || #clause }))
-}
-
-fn status_predicate_for_item(item: &OperationResponse) -> TokenStream {
-    match item.status_code {
-        OperationResponseStatus::Code(code) => quote! { __code == #code },
-        OperationResponseStatus::Range(range) => {
-            let min = range * 100;
-            let max = min + 99;
-            quote! { matches!(__code, #min..=#max) }
-        }
-        OperationResponseStatus::Default => quote! { true },
-    }
-}
-
-fn status_covers_code(status: &OperationResponseStatus, code: u16) -> bool {
-    match status {
-        OperationResponseStatus::Code(other) => *other == code,
-        OperationResponseStatus::Range(range) => {
-            let min = range * 100;
-            let max = min + 99;
-            (min..=max).contains(&code)
-        }
-        OperationResponseStatus::Default => true,
-    }
-}
-
-fn synth_success_override_guard(operation_id: &str) -> TokenStream {
-    quote! {
-        if let Some(__override_status) = __status_override {
-            if __override_status != __status {
-                return ::progenitor_server::respond::internal(Box::new(
-                    ::std::io::Error::new(
-                        ::std::io::ErrorKind::Other,
-                        ::std::format!(
-                            "operation `{}` returned conflicting success status {} for synth variant status {}",
-                            #operation_id,
-                            __override_status,
-                            __status,
-                        ),
-                    ),
-                ));
-            }
-        }
-    }
-}
-
-fn synth_error_status_match_guard(operation_id: &str) -> TokenStream {
-    quote! {
-        if __variant_status != __status {
-            return ::progenitor_server::respond::internal(Box::new(
-                ::std::io::Error::new(
-                    ::std::io::ErrorKind::Other,
-                    ::std::format!(
-                        "operation `{}` returned conflicting error status {} for synth variant status {}",
-                        #operation_id,
-                        __status,
-                        __variant_status,
-                    ),
-                ),
-            ));
-        }
-    }
-}
-
-/// The lowest concrete 2xx in the success set, else 200.
-fn default_success_status(items: &[OperationResponse]) -> u16 {
-    items
-        .iter()
-        .filter_map(|item| match item.status_code {
-            OperationResponseStatus::Code(code @ 200..=299) => Some(code),
-            _ => None,
-        })
-        .min()
-        .unwrap_or(200)
 }
 
 /// The `content-type` for a raw response: the first item's recorded media type,
@@ -1303,4 +1136,61 @@ fn raw_content_type(items: &[OperationResponse]) -> String {
         .iter()
         .find_map(|item| item.media_type.clone())
         .unwrap_or_else(|| "application/octet-stream".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_server_responses;
+    use crate::operation::{
+        HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
+        OperationResponseStatus, ResponseSide,
+    };
+
+    fn method(statuses: impl IntoIterator<Item = OperationResponseStatus>) -> OperationMethod {
+        OperationMethod {
+            operation_id: "typed_status".to_string(),
+            tags: Vec::new(),
+            method: HttpMethod::Get,
+            path: crate::template::parse("/").unwrap(),
+            summary: None,
+            description: None,
+            params: Vec::new(),
+            responses: statuses
+                .into_iter()
+                .map(|status_code| OperationResponse {
+                    status_code,
+                    typ: OperationResponseKind::None,
+                    schema_name: None,
+                    media_type: None,
+                    description: None,
+                })
+                .collect(),
+            dropshot_paginated: None,
+            dropshot_websocket: false,
+        }
+    }
+
+    #[test]
+    fn server_uses_plain_payload_only_for_one_exact_status() {
+        let exact = method([OperationResponseStatus::Code(204)]);
+        let (_, exact_kind) = extract_server_responses(&exact, ResponseSide::Success);
+        assert_eq!(exact_kind, OperationResponseKind::None);
+
+        let range = method([OperationResponseStatus::Range(2)]);
+        let (_, range_kind) = extract_server_responses(&range, ResponseSide::Success);
+        assert_eq!(
+            range_kind,
+            OperationResponseKind::Synth("TypedStatusResponse".to_string())
+        );
+
+        let same_payload = method([
+            OperationResponseStatus::Code(404),
+            OperationResponseStatus::Code(409),
+        ]);
+        let (_, error_kind) = extract_server_responses(&same_payload, ResponseSide::Error);
+        assert_eq!(
+            error_kind,
+            OperationResponseKind::Synth("TypedStatusError".to_string())
+        );
+    }
 }

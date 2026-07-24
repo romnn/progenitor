@@ -32,6 +32,7 @@ mod extract;
 mod request;
 mod response;
 mod service;
+mod status;
 
 pub use error::{BoxError, ServerError};
 pub use extract::{
@@ -41,6 +42,7 @@ pub use extract::{
 pub use request::Request;
 pub use response::{Response, respond};
 pub use service::Service;
+pub use status::ClassStatus;
 
 #[cfg(feature = "transport")]
 mod transport;
