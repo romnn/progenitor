@@ -80,9 +80,6 @@ impl TypeEntry {
         };
         if let Some(default) = whole_default {
             match self.validate_value(type_space, &default) {
-                Ok(DefaultKind::Generic(default_fn)) => {
-                    type_space.defaults.insert(default_fn);
-                }
                 Ok(_) => (),
                 // Wild schemas routinely carry `default` values that don't
                 // conform to their own schema. That's a flaw in the schema
@@ -156,10 +153,7 @@ impl TypeEntry {
         };
 
         match result {
-            Ok(DefaultKind::Generic(default_fn)) => {
-                type_space.defaults.insert(default_fn);
-                Ok(())
-            }
+            Ok(DefaultKind::Generic) => Ok(()),
             Ok(_) => Ok(()),
             // The schema data contains a `default` value that doesn't
             // conform to the property's type--a common flaw in wild schemas
@@ -334,7 +328,7 @@ impl TypeEntry {
             TypeEntryDetails::JsonValue => Ok(DefaultKind::Specific),
             TypeEntryDetails::Boolean => match default {
                 serde_json::Value::Bool(false) => Ok(DefaultKind::Intrinsic),
-                serde_json::Value::Bool(true) => Ok(DefaultKind::Generic(DefaultImpl::Boolean)),
+                serde_json::Value::Bool(true) => Ok(DefaultKind::Generic),
                 _ => Err(Error::invalid_value()),
             },
             // Check the default against the range of the chosen Rust type.
@@ -346,25 +340,19 @@ impl TypeEntry {
             TypeEntryDetails::Integer(itype) if !integer_in_range(itype, default) => {
                 Err(Error::invalid_value())
             }
-            TypeEntryDetails::Integer(itype) => match (default.as_u64(), default.as_i64()) {
+            TypeEntryDetails::Integer(_) => match (default.as_u64(), default.as_i64()) {
                 (None, None) => Err(Error::invalid_value()),
                 (Some(0), _) => Ok(DefaultKind::Intrinsic),
                 (_, Some(0)) => unreachable!(),
-                (Some(_), _) => {
-                    if itype.starts_with(STD_NUM_NONZERO_PREFIX) {
-                        Ok(DefaultKind::Generic(DefaultImpl::NZU64))
-                    } else {
-                        Ok(DefaultKind::Generic(DefaultImpl::U64))
-                    }
-                }
-                (_, Some(_)) => Ok(DefaultKind::Generic(DefaultImpl::I64)),
+                (Some(_), _) => Ok(DefaultKind::Generic),
+                (_, Some(_)) => Ok(DefaultKind::Generic),
             },
             TypeEntryDetails::Float(_) => {
                 if let Some(value) = default.as_f64() {
                     if value == 0.0 {
                         Ok(DefaultKind::Intrinsic)
                     } else {
-                        Ok(DefaultKind::Generic(DefaultImpl::I64))
+                        Ok(DefaultKind::Generic)
                     }
                 } else {
                     Err(Error::invalid_value())
@@ -391,28 +379,39 @@ impl TypeEntry {
 
     /// Return a string representing the function that can be called to produce
     /// the value for the given default. If there is no such built-in function,
-    /// the .1 will be Some with a TokenStream for a function that can produce
-    /// that value.
+    /// the second tuple element contains its deduplication key and definition.
     pub(crate) fn default_fn(
         &self,
         default: &serde_json::Value,
         type_space: &TypeSpace,
         type_name: &str,
         prop_name: &str,
-    ) -> (String, Option<TokenStream>) {
+    ) -> (String, Option<(String, TokenStream)>) {
         let maybe_builtin = match &self.details {
             // This can only be covered by the intrinsic default
             TypeEntryDetails::Unit => unreachable!(),
-            TypeEntryDetails::Boolean => Some("defaults::default_bool::<true>".to_string()),
+            TypeEntryDetails::Boolean => Some((
+                "defaults::default_bool::<true>".to_string(),
+                DefaultImpl::Boolean,
+            )),
             TypeEntryDetails::Integer(name) => {
                 if let Some(value) = default.as_u64() {
                     if name.starts_with(STD_NUM_NONZERO_PREFIX) {
-                        Some(format!("defaults::default_nzu64::<{}, {}>", name, value))
+                        Some((
+                            format!("defaults::default_nzu64::<{}, {}>", name, value),
+                            DefaultImpl::NZU64,
+                        ))
                     } else {
-                        Some(format!("defaults::default_u64::<{}, {}>", name, value))
+                        Some((
+                            format!("defaults::default_u64::<{}, {}>", name, value),
+                            DefaultImpl::U64,
+                        ))
                     }
                 } else if let Some(value) = default.as_i64() {
-                    Some(format!("defaults::default_i64::<{}, {}>", name, value))
+                    Some((
+                        format!("defaults::default_i64::<{}, {}>", name, value),
+                        DefaultImpl::I64,
+                    ))
                 } else {
                     panic!()
                 }
@@ -420,8 +419,9 @@ impl TypeEntry {
             _ => None,
         };
 
-        if let Some(fn_name) = maybe_builtin {
-            (fn_name, None)
+        if let Some((fn_name, default_impl)) = maybe_builtin {
+            let key = format!("{default_impl:?}");
+            (fn_name, Some((key, (&default_impl).into())))
         } else {
             let n = self.type_ident(type_space, &Some("super".to_string()));
             let value = self
@@ -441,7 +441,10 @@ impl TypeEntry {
                     #value
                 }
             };
-            (format!("defaults::{}", fn_name), Some(def))
+            (
+                format!("defaults::{}", fn_name),
+                Some((fn_name.to_string(), def)),
+            )
         }
     }
 }
@@ -580,21 +583,29 @@ pub(crate) fn validate_default_for_untagged_enum(
     variants: &[Variant],
     default: &serde_json::Value,
 ) -> Option<DefaultKind> {
-    variants.iter().find_map(|variant| {
-        // The name of the variant is not meaningful; we just need to see
-        // if any of the variants are valid with the given default.
-        match &variant.details {
-            VariantDetails::Simple => {
-                default.as_null()?;
-                Some(DefaultKind::Specific)
-            }
-            VariantDetails::Item(type_id) => validate_type_id(type_id, type_space, default).ok(),
-            VariantDetails::Tuple(tup) => validate_default_tuple(tup, type_space, default),
-            VariantDetails::Struct(props) => {
-                validate_default_struct_props(props, type_space, default)
-            }
+    variants
+        .iter()
+        .find_map(|variant| validate_default_for_untagged_variant(type_space, variant, default))
+}
+
+/// Validate one untagged variant without considering any of its siblings.
+///
+/// Value emission uses the same predicate so it selects the variant that
+/// validation approved rather than merely the first shape it can construct.
+pub(crate) fn validate_default_for_untagged_variant(
+    type_space: &TypeSpace,
+    variant: &Variant,
+    default: &serde_json::Value,
+) -> Option<DefaultKind> {
+    match &variant.details {
+        VariantDetails::Simple => {
+            default.as_null()?;
+            Some(DefaultKind::Specific)
         }
-    })
+        VariantDetails::Item(type_id) => validate_type_id(type_id, type_space, default).ok(),
+        VariantDetails::Tuple(tup) => validate_default_tuple(tup, type_space, default),
+        VariantDetails::Struct(props) => validate_default_struct_props(props, type_space, default),
+    }
 }
 
 fn validate_type_id(
@@ -744,7 +755,7 @@ mod tests {
     use crate::{
         test_util::get_type,
         type_entry::{DefaultKind, TypeEntry},
-        DefaultImpl, TypeSpace,
+        TypeSpace,
     };
 
     #[test]
@@ -858,7 +869,7 @@ mod tests {
         ));
         assert!(matches!(
             type_entry.validate_value(&type_space, &json!(true)),
-            Ok(DefaultKind::Generic(DefaultImpl::Boolean)),
+            Ok(DefaultKind::Generic),
         ));
     }
 
@@ -876,7 +887,7 @@ mod tests {
         ));
         assert!(matches!(
             type_entry.validate_value(&type_space, &json!(42)),
-            Ok(DefaultKind::Generic(DefaultImpl::U64)),
+            Ok(DefaultKind::Generic),
         ));
 
         let (type_space, type_id) = get_type::<String>();

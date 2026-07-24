@@ -14,7 +14,7 @@ use crate::{
     sanitize,
     structs::{generate_serde_attr, DefaultFunction},
     util::{get_type_name, metadata_description, unique, TypePatch},
-    Case, DefaultImpl, Name, Result, TypeId, TypeSpace, TypeSpaceImpl,
+    Case, Name, Result, TypeId, TypeSpace, TypeSpaceImpl,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -226,7 +226,7 @@ pub(crate) enum StructPropertyState {
 pub(crate) enum DefaultKind {
     Intrinsic,
     Specific,
-    Generic(DefaultImpl),
+    Generic,
 }
 
 fn variants_unique(variants: &[Variant]) -> bool {
@@ -1729,7 +1729,7 @@ impl TypeEntry {
                         }
                     }
                 });
-                let min = min_length.map(|v| {
+                let min = min_length.filter(|v| *v != 0).map(|v| {
                     let v = v as usize;
                     let err = format!("shorter than {} characters", v);
                     quote! {

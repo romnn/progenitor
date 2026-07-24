@@ -166,7 +166,7 @@ fn main() -> Result<()> {
                 version = \"{}\"\n\
                 edition = \"2024\"\n\
                 license = \"{}\"\n",
-                name, version, &args.license_name,
+                name, version, args.license_name,
             );
             if let Some(registry_name) = args.registry_name {
                 tomlout.extend(format!("publish = [\"{registry_name}\"]\n").chars());

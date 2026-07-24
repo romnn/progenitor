@@ -25,8 +25,11 @@ pub(crate) fn sanitize(input: &str, case: Case) -> String {
     };
     // If every case was special then none of them would be.
     let out = match input {
-        "+1" => "plus1".to_string(),
-        "-1" => "minus1".to_string(),
+        "+1" => to_case("plus1"),
+        "-1" => to_case("minus1"),
+        // Case conversion turns the micro sign into Greek capital mu, which
+        // is visually confusable with Latin `M` in generated identifiers.
+        "µ" | "μ" => to_case("micro"),
         _ => to_case(
             &input
                 .replace('\'', "")
@@ -136,6 +139,16 @@ pub(crate) fn neutralize_doc_fences(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn sanitize_numeric_signs_respects_case() {
+        assert_eq!(super::sanitize("+1", super::Case::Snake), "plus1");
+        assert_eq!(super::sanitize("-1", super::Case::Snake), "minus1");
+        assert_eq!(super::sanitize("+1", super::Case::Pascal), "Plus1");
+        assert_eq!(super::sanitize("-1", super::Case::Pascal), "Minus1");
+        assert_eq!(super::sanitize("µ", super::Case::Pascal), "Micro");
+        assert_eq!(super::sanitize("μ", super::Case::Pascal), "Micro");
+    }
+
     #[test]
     fn test_neutralize_doc_fences() {
         // A bare fence opener becomes ```text so rustdoc doesn't compile

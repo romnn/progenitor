@@ -45,8 +45,8 @@ mod tests {
         // +1 and -1 are renamed variants — verify the serde rename roundtrips correctly
         conformance_support::assert_wire_enum!(
             types::ReactionContent,
-            "+1" => types::ReactionContent::plus1,
-            "-1" => types::ReactionContent::minus1,
+            "+1" => types::ReactionContent::Plus1,
+            "-1" => types::ReactionContent::Minus1,
             "laugh" => types::ReactionContent::Laugh,
             "heart" => types::ReactionContent::Heart,
         );

@@ -33,7 +33,7 @@ impl Generator {
                         let schema = parameter_schema(parameter);
 
                         let name = sanitize(
-                            &format!("{}-{}", operation_id, &parameter.name),
+                            &format!("{}-{}", operation_id, parameter.name),
                             Case::Pascal,
                         );
                         let type_id = self.type_space.add_type_with_name(&schema, Some(name))?;
@@ -86,7 +86,7 @@ impl Generator {
                         let deep_object_query = *style == ir::QueryStyle::DeepObject;
                         let schema = parameter_schema(parameter);
                         let name = sanitize(
-                            &format!("{}-{}", operation_id, &parameter.name),
+                            &format!("{}-{}", operation_id, parameter.name),
                             Case::Pascal,
                         );
 
@@ -122,7 +122,7 @@ impl Generator {
                     } => {
                         let schema = parameter_schema(parameter);
                         let name = sanitize(
-                            &format!("{}-{}", operation_id, &parameter.name),
+                            &format!("{}-{}", operation_id, parameter.name),
                             Case::Pascal,
                         );
 
@@ -174,7 +174,7 @@ impl Generator {
                     ir::ParameterKind::Cookie => {
                         let schema = parameter_schema(parameter);
                         let name = sanitize(
-                            &format!("{}-{}", operation_id, &parameter.name),
+                            &format!("{}-{}", operation_id, parameter.name),
                             Case::Pascal,
                         );
 
@@ -277,15 +277,7 @@ impl Generator {
         // deterministically so the generated function signature compiles.
         // This must run after every source of parameters — declared, body,
         // and template-synthesized — has been collected.
-        let mut seen_names = std::collections::HashSet::new();
-        for param in &mut params {
-            let base = param.name.clone();
-            let mut counter = 2;
-            while !seen_names.insert(param.name.clone()) {
-                param.name = format!("{base}_{counter}");
-                counter += 1;
-            }
-        }
+        deduplicate_param_names(&mut params);
 
         sort_params(&mut params, &names)?;
 
@@ -628,6 +620,19 @@ fn is_plain_string_schema(schema: &schemars::schema::Schema, format: Option<&str
         && no_value_constraints
 }
 
+fn deduplicate_param_names(params: &mut [OperationParameter]) {
+    let mut seen_names = std::collections::HashSet::new();
+    for param in params {
+        let base = param.name.clone();
+        let mut counter = 2;
+        while !seen_names.insert(param.name.clone()) {
+            let separator = if base.ends_with('_') { "" } else { "_" };
+            param.name = format!("{base}{separator}{counter}");
+            counter += 1;
+        }
+    }
+}
+
 pub(super) fn sort_params(raw_params: &mut [OperationParameter], names: &[String]) -> Result<()> {
     for param in raw_params
         .iter()
@@ -749,7 +754,7 @@ pub(super) fn sort_params(raw_params: &mut [OperationParameter], names: &[String
 
 #[cfg(test)]
 mod tests {
-    use super::sort_params;
+    use super::{deduplicate_param_names, sort_params};
     use crate::Error;
     use crate::operation::{
         BodyContentType, OperationParameter, OperationParameterKind, OperationParameterType,
@@ -797,5 +802,30 @@ mod tests {
         let result = sort_params(&mut params, &[]);
 
         assert!(matches!(result, Err(Error::UnexpectedFormat(_))));
+    }
+
+    #[test]
+    fn deduplicated_keyword_parameter_stays_snake_case() {
+        let mut params = [
+            raw_parameter(
+                "type_",
+                OperationParameterKind::Query {
+                    required: false,
+                    deep_object: false,
+                },
+            ),
+            raw_parameter(
+                "type_",
+                OperationParameterKind::Query {
+                    required: false,
+                    deep_object: false,
+                },
+            ),
+        ];
+
+        deduplicate_param_names(&mut params);
+
+        assert_eq!(params[0].name, "type_");
+        assert_eq!(params[1].name, "type_2");
     }
 }

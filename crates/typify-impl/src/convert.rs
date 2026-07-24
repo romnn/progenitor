@@ -2498,6 +2498,75 @@ mod tests {
     }
 
     #[test]
+    fn test_whole_default_does_not_emit_unused_helper() {
+        let schema_json = r#"
+        {
+            "title": "WholeDefault",
+            "type": "object",
+            "default": { "count": -1 },
+            "properties": {
+                "count": { "type": "integer" }
+            },
+            "required": ["count"]
+        }
+        "#;
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+
+        assert!(
+            actual.contains("impl :: std :: default :: Default for WholeDefault"),
+            "{}",
+            actual
+        );
+        assert!(!actual.contains("default_i64"), "{}", actual);
+    }
+
+    #[test]
+    fn test_property_default_emits_shared_helper() {
+        let schema_json = r#"
+        {
+            "title": "PropertyDefault",
+            "type": "object",
+            "properties": {
+                "count": { "type": "integer", "default": -1 }
+            }
+        }
+        "#;
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+
+        assert!(
+            actual.contains("default = \"defaults::default_i64::<i64, -1>\""),
+            "{}",
+            actual
+        );
+        assert!(actual.contains("pub (super) fn default_i64"), "{}", actual);
+    }
+
+    #[test]
+    fn test_zero_min_length_does_not_emit_impossible_check() {
+        let schema_json = r#"
+        {
+            "title": "BoundedString",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 10
+        }
+        "#;
+        let schema: RootSchema = serde_json::from_str(schema_json).unwrap();
+        let mut type_space = TypeSpace::default();
+        let _ = type_space.add_type(&schema.schema.into()).unwrap();
+        let actual = type_space.to_stream().to_string();
+
+        assert!(actual.contains("longer than 10 characters"), "{}", actual);
+        assert!(!actual.contains("shorter than 0 characters"), "{}", actual);
+    }
+
+    #[test]
     fn test_high_default() {
         // A default that violates the schema's stated bounds converts
         // without error. The bounds (max 256) don't match any integer

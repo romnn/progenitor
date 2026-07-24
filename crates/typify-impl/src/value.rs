@@ -7,6 +7,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     convert::STD_NUM_NONZERO_PREFIX,
+    defaults::validate_default_for_untagged_variant,
     type_entry::{
         EnumTagType, StructProperty, StructPropertyRename, TypeEntry, TypeEntryDetails,
         TypeEntryEnum, TypeEntryNative, TypeEntryNewtype, TypeEntryStruct, Variant, VariantDetails,
@@ -345,6 +346,12 @@ fn value_for_untagged_enum(
 ) -> Option<TokenStream> {
     let type_ident = format_ident!("{}", type_name);
     variants.iter().find_map(|variant| {
+        // Untagged deserialization selects the first variant whose schema
+        // accepts the value. Emission must make the same choice: constructing
+        // an earlier object variant with defaults for missing required fields
+        // can produce code that does not compile or deserialize equivalently.
+        validate_default_for_untagged_variant(type_space, variant, value)?;
+
         let var_ident = format_ident!("{}", &variant.ident_name.as_ref().unwrap());
         match &variant.details {
             VariantDetails::Simple => {

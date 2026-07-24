@@ -570,7 +570,7 @@ impl Generator {
                 s.push_str(ss);
             }
 
-            s.push_str(&format!("\n\nVersion: {}", &document.info.version));
+            s.push_str(&format!("\n\nVersion: {}", document.info.version));
 
             s
         };

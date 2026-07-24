@@ -1609,10 +1609,7 @@ mod tests {
 
         match &type_entry.details {
             TypeEntryDetails::Enum(TypeEntryEnum {
-                tag_type,
-                variants,
-                deny_unknown_fields: _,
-                ..
+                tag_type, variants, ..
             }) => {
                 assert_eq!(tag_type, &EnumTagType::Untagged);
                 //assert_eq!(deny_unknown_fields, &true);

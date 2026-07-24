@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Update",
+  "type": "object",
+  "properties": {
+    "layout": {
+      "default": {
+        "kind": "missing"
+      },
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Layout"
+        },
+        {
+          "$ref": "#/definitions/Missing"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Breakpoints": {
+      "type": "object",
+      "required": [
+        "small"
+      ],
+      "properties": {
+        "small": {
+          "type": "integer"
+        }
+      }
+    },
+    "Layout": {
+      "type": "object",
+      "required": [
+        "breakpoints",
+        "version"
+      ],
+      "properties": {
+        "breakpoints": {
+          "$ref": "#/definitions/Breakpoints"
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        }
+      }
+    },
+    "Missing": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "missing"
+          ]
+        }
+      }
+    }
+  }
+}

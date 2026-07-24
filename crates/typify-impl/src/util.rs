@@ -851,8 +851,11 @@ pub(crate) fn sanitize(input: &str, case: Case) -> String {
 
     // If every case was special then none of them would be.
     let out = match input {
-        "+1" => "plus1".to_string(),
-        "-1" => "minus1".to_string(),
+        "+1" => to_case("plus1"),
+        "-1" => to_case("minus1"),
+        // Case conversion turns the micro sign into Greek capital mu, which
+        // is visually confusable with Latin `M` in unit enums.
+        "µ" | "μ" => to_case("micro"),
         _ => to_case(&input.replace("'", "").replace(|c| !is_xid_continue(c), "-")),
     };
 
@@ -1189,6 +1192,10 @@ mod tests {
         assert_eq!(sanitize("gen", Case::Pascal), "Gen");
         assert_eq!(sanitize("+1", Case::Snake), "plus1");
         assert_eq!(sanitize("-1", Case::Snake), "minus1");
+        assert_eq!(sanitize("+1", Case::Pascal), "Plus1");
+        assert_eq!(sanitize("-1", Case::Pascal), "Minus1");
+        assert_eq!(sanitize("µ", Case::Pascal), "Micro");
+        assert_eq!(sanitize("μ", Case::Pascal), "Micro");
         assert_eq!(sanitize("@timestamp", Case::Pascal), "Timestamp");
         assert_eq!(sanitize("won't and can't", Case::Pascal), "WontAndCant");
         assert_eq!(

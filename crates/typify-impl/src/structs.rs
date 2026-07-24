@@ -439,8 +439,7 @@ pub(crate) fn generate_serde_attr(
                 prop_type.default_fn(value, type_space, type_name, prop_name);
             serde_options.push(quote! { default = #fn_name });
 
-            if let Some(default_fn) = default_fn {
-                let key = fn_name.strip_prefix("defaults::").unwrap_or(&fn_name);
+            if let Some((key, default_fn)) = default_fn {
                 output.add_default_fn(key, default_fn);
             }
             DefaultFunction::Custom(fn_name)

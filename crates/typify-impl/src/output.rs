@@ -31,15 +31,14 @@ impl OutputSpace {
             .extend(stream);
     }
 
-    /// Add a named default function, deduplicating by function name.
+    /// Add a default function, deduplicating by the supplied key.
     ///
-    /// Two different schema types can produce a default function with the same
-    /// sanitized name (e.g. an inline enum variant and a top-level struct both
-    /// named "FooBar"). The second one is silently dropped because the serde
-    /// attribute on both fields will reference the same `defaults::fn_name`.
-    pub fn add_default_fn(&mut self, fn_name: impl ToString, stream: TokenStream) {
+    /// Built-in generic helpers use one key for every specialization. Custom
+    /// helpers use their function name because their serde attributes refer to
+    /// that exact name.
+    pub fn add_default_fn(&mut self, key: impl ToString, stream: TokenStream) {
         self.items
-            .entry((OutputSpaceMod::Defaults, fn_name.to_string()))
+            .entry((OutputSpaceMod::Defaults, key.to_string()))
             .or_insert(stream);
     }
 
