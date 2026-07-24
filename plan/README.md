@@ -20,6 +20,9 @@ references), design, concrete steps, risks, and acceptance criteria.
 | [06-buildrs-and-deps.md](06-buildrs-and-deps.md) | build.rs simplification, `generate_text` everywhere, dep consolidation | 5 |
 | [07-server-generation.md](07-server-generation.md) | Server stub generation (tonic-style traits + axum runtime) — implemented 2026-06-13 | later request |
 | [08-impl-architecture.md](08-impl-architecture.md) | Generator-core architecture: correctness fixes, schema-lowering convergence, backend-model extraction, lint enforcement | architecture review 2026-07-10 |
+| [09-server-multipart.md](09-server-multipart.md) | Typed multipart bodies for server + client generation | request 2026-07-24 |
+| [10-server-rejection-envelope.md](10-server-rejection-envelope.md) | Custom rejection envelope: one error shape for the whole generated server | request 2026-07-24 |
+| [11-server-typed-statuses.md](11-server-typed-statuses.md) | Status-typed responses: remove runtime contract validation from generated servers (land before 10/09) | request 2026-07-24 |
 
 ## The one finding that reorders everything
 
