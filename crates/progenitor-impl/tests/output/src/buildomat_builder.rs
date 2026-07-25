@@ -2282,6 +2282,64 @@ impl Client {
             client,
         }
     }
+
+    /// Run the request through the pre/post hooks and
+    /// [`ClientHooks::exec`], yielding the raw response.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_dispatch<E>(
+        &self,
+        #[allow(unused_mut)] mut request: ::reqwest::Request,
+        info: &OperationInfo,
+    ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+        self.pre(&mut request, info).await?;
+        let result = self.exec(request, info).await;
+        self.post(&result, info).await?;
+        ::std::result::Result::Ok(result?)
+    }
+
+    /// Execute the request and decode the response for the common
+    /// shape: one JSON success status, an optional JSON error status
+    /// or range, and anything else unexpected.
+    ///
+    /// Operations matching that shape call this instead of inlining
+    /// their own `match`, which is worth doing for the same reason as
+    /// [`Self::__progenitor_dispatch`]: the two
+    /// `ResponseValue::from_response` calls are `async`, so inlined
+    /// they cost two more opaque future types per operation.
+    /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+    /// the `if`/`else if` order below reproduces match-arm precedence,
+    /// which is success-before-error-before-catch-all.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_response<T, E>(
+        &self,
+        request: ::reqwest::Request,
+        info: &OperationInfo,
+        success: &[(u16, u16)],
+        error: &[(u16, u16)],
+    ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+    where
+        T: ::serde::de::DeserializeOwned,
+        E: ::serde::de::DeserializeOwned,
+    {
+        let response = self.__progenitor_dispatch(request, info).await?;
+        let status = response.status().as_u16();
+        let matches_window = |windows: &[(u16, u16)]| {
+            windows
+                .iter()
+                .any(|&(low, high)| status >= low && status <= high)
+        };
+        if matches_window(success) {
+            ResponseValue::from_response(response).await
+        } else if matches_window(error) {
+            ::std::result::Result::Err(Error::ErrorResponse(
+                ResponseValue::from_response(response).await?,
+            ))
+        } else {
+            ::std::result::Result::Err(Error::UnexpectedResponse(response))
+        }
+    }
 }
 
 impl ClientInfo<()> for Client {
@@ -2600,14 +2658,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "control_hold",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -2638,10 +2691,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "control_resume",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -2703,14 +2753,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "task_get",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -2749,14 +2794,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "tasks_get",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -2823,14 +2863,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "task_submit",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+                .await
         }
     }
 
@@ -2909,14 +2944,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "task_events_get",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -2976,14 +3006,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "task_outputs_get",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -3051,10 +3076,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "task_output_download",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3125,14 +3147,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "user_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+                .await
         }
     }
 
@@ -3171,14 +3188,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "whoami",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -3234,10 +3246,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "whoami_put_name",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3308,14 +3317,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_bootstrap",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+                .await
         }
     }
 
@@ -3354,14 +3358,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_ping",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -3443,10 +3442,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_task_append",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 201u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3526,14 +3522,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_task_upload_chunk",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+                .await
         }
     }
 
@@ -3615,10 +3606,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_task_complete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3702,10 +3690,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "worker_task_add_output",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 201u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3748,14 +3733,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "workers_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -3786,10 +3766,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "workers_recycle",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -3852,14 +3829,9 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_thing_or_things",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+                .await
         }
     }
 
@@ -3914,10 +3886,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "header_arg",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::ErrorResponse(ResponseValue::empty(response))),

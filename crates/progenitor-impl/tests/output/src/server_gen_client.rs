@@ -210,6 +210,64 @@ impl Client {
             client,
         }
     }
+
+    /// Run the request through the pre/post hooks and
+    /// [`ClientHooks::exec`], yielding the raw response.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_dispatch<E>(
+        &self,
+        #[allow(unused_mut)] mut request: ::reqwest::Request,
+        info: &OperationInfo,
+    ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+        self.pre(&mut request, info).await?;
+        let result = self.exec(request, info).await;
+        self.post(&result, info).await?;
+        ::std::result::Result::Ok(result?)
+    }
+
+    /// Execute the request and decode the response for the common
+    /// shape: one JSON success status, an optional JSON error status
+    /// or range, and anything else unexpected.
+    ///
+    /// Operations matching that shape call this instead of inlining
+    /// their own `match`, which is worth doing for the same reason as
+    /// [`Self::__progenitor_dispatch`]: the two
+    /// `ResponseValue::from_response` calls are `async`, so inlined
+    /// they cost two more opaque future types per operation.
+    /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+    /// the `if`/`else if` order below reproduces match-arm precedence,
+    /// which is success-before-error-before-catch-all.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_response<T, E>(
+        &self,
+        request: ::reqwest::Request,
+        info: &OperationInfo,
+        success: &[(u16, u16)],
+        error: &[(u16, u16)],
+    ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+    where
+        T: ::serde::de::DeserializeOwned,
+        E: ::serde::de::DeserializeOwned,
+    {
+        let response = self.__progenitor_dispatch(request, info).await?;
+        let status = response.status().as_u16();
+        let matches_window = |windows: &[(u16, u16)]| {
+            windows
+                .iter()
+                .any(|&(low, high)| status >= low && status <= high)
+        };
+        if matches_window(success) {
+            ResponseValue::from_response(response).await
+        } else if matches_window(error) {
+            ::std::result::Result::Err(Error::ErrorResponse(
+                ResponseValue::from_response(response).await?,
+            ))
+        } else {
+            ::std::result::Result::Err(Error::UnexpectedResponse(response))
+        }
+    }
 }
 
 impl ClientInfo<()> for Client {
@@ -295,10 +353,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "list_items",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200u16 => ResponseValue::from_response(response).await,
             _ => Err(Error::ErrorResponse(
@@ -334,10 +389,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "create_item",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             201u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::ErrorResponse(
@@ -376,10 +428,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "get_item",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200u16 => ResponseValue::from_response(response).await,
             _ => Err(Error::ErrorResponse(
@@ -422,10 +471,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "update_item",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200u16 => ResponseValue::from_response(response).await,
             _ => Err(Error::ErrorResponse(
@@ -473,14 +519,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "collide",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+            .await
     }
 
     ///Raw octet-stream response body
@@ -498,10 +538,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "download_blob",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200u16 => Ok(ResponseValue::stream(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -526,10 +563,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "multi_kind",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200u16 => Ok(ResponseValue::<types::Message>::from_response(response)
                 .await?
@@ -613,14 +647,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "upload_item",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 
     ///Keep schema-less multipart as a raw body
@@ -650,10 +678,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "upload_raw",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -675,10 +700,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "render_rejection",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -714,14 +736,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "deep_search",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(200u16, 200u16)], &[])
+            .await
     }
 
     ///An upgrade endpoint — generates a 501 route stub, no trait method
@@ -739,10 +755,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "do_upgrade",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             101u16 => ResponseValue::upgrade(response).await,
             _ => Err(Error::UnexpectedResponse(response)),
@@ -771,10 +784,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "suffix_after_param",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -799,10 +809,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "shape_by_first",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -831,10 +838,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "shape_by_second",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -859,10 +863,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "shape_by_third",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -894,10 +895,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "repeated_path_param",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),

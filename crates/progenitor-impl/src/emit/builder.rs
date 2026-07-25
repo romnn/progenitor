@@ -291,7 +291,6 @@ impl Generator {
         prepared: &PreparedIr,
         method: &OperationMethod,
         tag_style: TagStyle,
-        has_inner: bool,
     ) -> Result<(TokenStream, TokenStream)> {
         let struct_name = sanitize(&method.operation_id, Case::Pascal);
         let struct_ident = format_ident!("{}", struct_name);
@@ -322,7 +321,6 @@ impl Generator {
             method,
             quote! { super::Client },
             quote! { #client_ident },
-            has_inner,
         )?;
 
         let send_doc = format!(

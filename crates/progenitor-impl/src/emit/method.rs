@@ -55,6 +55,87 @@ fn success_arm_pattern(is_synth: bool, status: &OperationResponseStatus) -> Toke
     }
 }
 
+/// The status window a non-synth match arm accepts, or `None` for a `default`
+/// response (whose arm is the catch-all `_`, so it has no window).
+///
+/// Deliberately mirrors [`success_arm_pattern`] and [`status_arm_pattern`]
+/// rather than reading the status directly: on the success side those collapse
+/// *any* `Range` to `200 ..= 299`, so reading `Range(r)` as `r * 100 ..=` would
+/// silently widen a 3xx-bucketed success into a range the current code never
+/// matched.
+fn arm_status_window(status: &OperationResponseStatus, is_success: bool) -> Option<(u16, u16)> {
+    match status {
+        OperationResponseStatus::Code(code) => Some((*code, *code)),
+        OperationResponseStatus::Range(_) if is_success => Some((200, 299)),
+        OperationResponseStatus::Range(r) => Some((r * 100, r * 100 + 99)),
+        OperationResponseStatus::Default => None,
+    }
+}
+
+/// The status windows for one side of the response set, or `None` if any member
+/// decodes differently from `ResponseValue::from_response`.
+///
+/// A non-synth side always decodes to a single type — `extract_responses` falls
+/// back to a synthesized sum type precisely when the members disagree — so once
+/// every member is a `Type` the whole side collapses to a list of windows over
+/// one `T`.
+fn side_status_windows(items: &[OperationResponse], is_success: bool) -> Option<Vec<(u16, u16)>> {
+    items
+        .iter()
+        .map(|item| {
+            matches!(item.typ, OperationResponseKind::Type(_))
+                .then(|| arm_status_window(&item.status_code, is_success))
+                .flatten()
+        })
+        .collect()
+}
+
+/// One side of an operation's response set, reduced to what the hoisting
+/// decision needs to look at.
+pub(super) struct ResponseSideShape<'a> {
+    pub items: &'a [OperationResponse],
+    /// The side collapsed to a synthesized sum type because its members decode
+    /// to different Rust types.
+    pub is_synth: bool,
+    /// The side carries a `default` response, whose arm is the catch-all `_`.
+    pub has_default: bool,
+}
+
+/// Status windows to hand `Client::__progenitor_response`, in match-arm
+/// precedence order: success is tried before error, and anything in neither is
+/// `UnexpectedResponse`.
+pub(super) struct ResponseWindows {
+    pub success: Vec<(u16, u16)>,
+    pub error: Vec<(u16, u16)>,
+}
+
+/// Whether an operation's response set is the shape
+/// `Client::__progenitor_response` implements, and if so the status windows to
+/// pass it.
+///
+/// Conservative by construction: anything with a synthesized sum type, a
+/// non-JSON body (`empty`/`stream`/`upgrade` decode differently), or a
+/// `default` response (which replaces the catch-all arm the helper's final
+/// `else` provides) keeps its inlined `match`.
+fn hoistable_response_shape(
+    success: &ResponseSideShape<'_>,
+    error: &ResponseSideShape<'_>,
+) -> Option<ResponseWindows> {
+    if success.is_synth || error.is_synth || success.has_default || error.has_default {
+        return None;
+    }
+
+    let success_windows = side_status_windows(success.items, true)?;
+    if success_windows.is_empty() {
+        return None;
+    }
+
+    Some(ResponseWindows {
+        success: success_windows,
+        error: side_status_windows(error.items, false)?,
+    })
+}
+
 /// Generate the per-arm decode expression that pulls the response body
 /// into a variant of a synthesized response/error enum. The function
 /// signature uses `Result<ResponseValue<#enum>, Error<#enum>>` so the
@@ -205,6 +286,131 @@ pub(super) fn make_stream_doc_comment(method: &OperationMethod) -> String {
 }
 
 impl Generator {
+    /// The one inherent `Client` method that runs the hook/execute/hook
+    /// sequence shared by every operation.
+    ///
+    /// This is emitted once per client rather than inlined into each
+    /// operation, and the reason is compile time rather than tidiness.
+    /// [`ClientHooks::pre`], [`ClientHooks::post`] and [`ClientHooks::exec`]
+    /// are `async fn`s in a trait, so each *call site* introduces its own
+    /// opaque return type for `rustc` to infer and check. Inlined, a spec with
+    /// N operations pays for 3N of those; hoisted, it pays for 3. On a large
+    /// spec that is the difference between most of the client's check time and
+    /// a third of it.
+    ///
+    /// It must be an inherent method on the generated `Client` — not a
+    /// generic helper in `progenitor-client` — to keep the auto-ref
+    /// specialization that lets a consumer override a hook: resolving
+    /// `self.pre(…)` with `self: &Client` prefers an `impl ClientHooks for
+    /// Client` when one exists and falls back to the blanket `impl … for
+    /// &Client` otherwise. Behind a `C: ClientHooks` bound that choice would
+    /// already have been made, and the consumer's override would be skipped.
+    pub(crate) fn dispatch_method(&self, has_inner: bool) -> TokenStream {
+        let request_ident = format_ident!("request");
+        let result_ident = format_ident!("result");
+
+        // Mirrors the `inner` token in `method_sig_body`, but `self` here is
+        // always the `Client` itself rather than a builder's borrow of it.
+        let inner = if has_inner {
+            quote! { &self.inner, }
+        } else {
+            quote! {}
+        };
+        let pre_hook = self.settings.pre_hook.as_ref().map(|hook| {
+            quote! {
+                (#hook)(#inner &#request_ident);
+            }
+        });
+        let pre_hook_async = self.settings.pre_hook_async.as_ref().map(|hook| {
+            quote! {
+                match (#hook)(#inner &mut #request_ident).await {
+                    Ok(_) => (),
+                    Err(e) => return Err(Error::Custom(e.to_string())),
+                }
+            }
+        });
+        let post_hook = self.settings.post_hook.as_ref().map(|hook| {
+            quote! {
+                (#hook)(#inner &#result_ident);
+            }
+        });
+        let post_hook_async = self.settings.post_hook_async.as_ref().map(|hook| {
+            quote! {
+                match (#hook)(#inner &#result_ident).await {
+                    Ok(_) => (),
+                    Err(e) => return Err(Error::Custom(e.to_string())),
+                }
+            }
+        });
+
+        quote! {
+            /// Run the request through the pre/post hooks and
+            /// [`ClientHooks::exec`], yielding the raw response.
+            #[doc(hidden)]
+            #[allow(dead_code, clippy::all)]
+            pub(crate) async fn __progenitor_dispatch<E>(
+                &self,
+                #[allow(unused_mut)]
+                mut #request_ident: ::reqwest::Request,
+                info: &OperationInfo,
+            ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+                #pre_hook
+                #pre_hook_async
+                self.pre(&mut #request_ident, info).await?;
+
+                let #result_ident = self.exec(#request_ident, info).await;
+
+                self.post(&#result_ident, info).await?;
+                #post_hook_async
+                #post_hook
+
+                ::std::result::Result::Ok(#result_ident?)
+            }
+
+            /// Execute the request and decode the response for the common
+            /// shape: one JSON success status, an optional JSON error status
+            /// or range, and anything else unexpected.
+            ///
+            /// Operations matching that shape call this instead of inlining
+            /// their own `match`, which is worth doing for the same reason as
+            /// [`Self::__progenitor_dispatch`]: the two
+            /// `ResponseValue::from_response` calls are `async`, so inlined
+            /// they cost two more opaque future types per operation.
+            /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+            /// the `if`/`else if` order below reproduces match-arm precedence,
+            /// which is success-before-error-before-catch-all.
+            #[doc(hidden)]
+            #[allow(dead_code, clippy::all)]
+            pub(crate) async fn __progenitor_response<T, E>(
+                &self,
+                #request_ident: ::reqwest::Request,
+                info: &OperationInfo,
+                success: &[(u16, u16)],
+                error: &[(u16, u16)],
+            ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+            where
+                T: ::serde::de::DeserializeOwned,
+                E: ::serde::de::DeserializeOwned,
+            {
+                let response = self.__progenitor_dispatch(#request_ident, info).await?;
+                let status = response.status().as_u16();
+                let matches_window = |windows: &[(u16, u16)]| {
+                    windows.iter().any(|&(low, high)| status >= low && status <= high)
+                };
+
+                if matches_window(success) {
+                    ResponseValue::from_response(response).await
+                } else if matches_window(error) {
+                    ::std::result::Result::Err(Error::ErrorResponse(
+                        ResponseValue::from_response(response).await?,
+                    ))
+                } else {
+                    ::std::result::Result::Err(Error::UnexpectedResponse(response))
+                }
+            }
+        }
+    }
+
     /// Common code generation between positional and builder interface-styles.
     /// Returns a struct with the success and error types and the core body
     /// implementation that marshals arguments and executes the request.
@@ -214,7 +420,6 @@ impl Generator {
         method: &OperationMethod,
         client_type: TokenStream,
         client_value: TokenStream,
-        has_inner: bool,
     ) -> Result<MethodSigBody> {
         let param_names = method
             .params
@@ -226,7 +431,6 @@ impl Generator {
         let url_ident = unique_ident_from("url", &param_names);
         let request_ident = unique_ident_from("request", &param_names);
         let response_ident = unique_ident_from("response", &param_names);
-        let result_ident = unique_ident_from("result", &param_names);
 
         // Generate code for query parameters.
         let query_params = method
@@ -612,38 +816,6 @@ impl Generator {
             quote! { _ => Err(Error::UnexpectedResponse(#response_ident)), }
         };
 
-        let inner = if has_inner {
-            quote! { &#client_value.inner, }
-        } else {
-            quote! {}
-        };
-        let pre_hook = self.settings.pre_hook.as_ref().map(|hook| {
-            quote! {
-                (#hook)(#inner &#request_ident);
-            }
-        });
-        let pre_hook_async = self.settings.pre_hook_async.as_ref().map(|hook| {
-            quote! {
-                match (#hook)(#inner &mut #request_ident).await {
-                    Ok(_) => (),
-                    Err(e) => return Err(Error::Custom(e.to_string())),
-                }
-            }
-        });
-        let post_hook = self.settings.post_hook.as_ref().map(|hook| {
-            quote! {
-                (#hook)(#inner &#result_ident);
-            }
-        });
-        let post_hook_async = self.settings.post_hook_async.as_ref().map(|hook| {
-            quote! {
-                match (#hook)(#inner &#result_ident).await {
-                    Ok(_) => (),
-                    Err(e) => return Err(Error::Custom(e.to_string())),
-                }
-            }
-        });
-
         let operation_id = &method.operation_id;
         // reqwest::Client only has convenience helpers for the common
         // verbs; OPTIONS and TRACE operations (Box, Kong) go through
@@ -655,6 +827,78 @@ impl Generator {
                 let method_func = format_ident!("{}", method.method.as_str());
                 quote! { #method_func (#url_ident) }
             }
+        };
+
+        // Operations whose response set is the common shape delegate the
+        // whole execute-and-decode step to one inherent `Client` method;
+        // everything else keeps its inlined `match`. See
+        // `hoistable_response_shape` for what qualifies and `dispatch_method`
+        // for why this is worth the branch.
+        let dispatch_and_decode = match hoistable_response_shape(
+            &ResponseSideShape {
+                items: &success_response_items,
+                is_synth: success_synth_name.is_some(),
+                has_default: success_has_default,
+            },
+            &ResponseSideShape {
+                items: &error_response_items,
+                is_synth: error_synth_name.is_some(),
+                has_default: error_has_default,
+            },
+        ) {
+            Some(windows) => {
+                let window_list = |side: Vec<(u16, u16)>| {
+                    let entries = side.into_iter().map(|(low, high)| quote! { (#low, #high) });
+                    quote! { &[ #(#entries),* ] }
+                };
+                let success_arg = window_list(windows.success);
+                let error_arg = window_list(windows.error);
+                quote! {
+                    #client_value
+                        .__progenitor_response(#request_ident, &info, #success_arg, #error_arg)
+                        .await
+                }
+            }
+            None => quote! {
+                let #response_ident = #client_value
+                    .__progenitor_dispatch(#request_ident, &info)
+                    .await?;
+
+                match #response_ident.status().as_u16() {
+                    // These will be of the form...
+                    // 201 => ResponseValue::from_response(response).await,
+                    // 200..299 => ResponseValue::empty(response),
+                    // TODO this kind of enumerated response isn't implemented
+                    // ... or in the case of an operation with multiple
+                    // successful response types...
+                    // 200 => {
+                    //     ResponseValue::from_response()
+                    //         .await?
+                    //         .map(OperationXResponse::ResponseTypeA)
+                    // }
+                    // 201 => {
+                    //     ResponseValue::from_response()
+                    //         .await?
+                    //         .map(OperationXResponse::ResponseTypeB)
+                    // }
+                    #(#success_response_matches)*
+
+                    // This is almost identical to the success types except
+                    // they are wrapped in Error::ErrorResponse...
+                    // 400 => {
+                    //     Err(Error::ErrorResponse(
+                    //         ResponseValue::from_response(response.await?)
+                    //     ))
+                    // }
+                    #(#error_response_matches)*
+
+                    // The default response is either an Error with a known
+                    // type if the operation defines a default (as above) or
+                    // an Error::UnexpectedResponse...
+                    // _ => Err(Error::UnexpectedResponse(response)),
+                    #default_response
+                }
+            },
         };
 
         let body_impl = quote! {
@@ -676,58 +920,7 @@ impl Generator {
                 operation_id: #operation_id,
             };
 
-            #pre_hook
-            #pre_hook_async
-            #client_value
-                .pre(&mut #request_ident, &info)
-                .await?;
-
-            let #result_ident = #client_value
-                .exec(#request_ident, &info)
-                .await;
-
-            #client_value
-                .post(&#result_ident, &info)
-                .await?;
-            #post_hook_async
-            #post_hook
-
-            let #response_ident = #result_ident?;
-
-            match #response_ident.status().as_u16() {
-                // These will be of the form...
-                // 201 => ResponseValue::from_response(response).await,
-                // 200..299 => ResponseValue::empty(response),
-                // TODO this kind of enumerated response isn't implemented
-                // ... or in the case of an operation with multiple
-                // successful response types...
-                // 200 => {
-                //     ResponseValue::from_response()
-                //         .await?
-                //         .map(OperationXResponse::ResponseTypeA)
-                // }
-                // 201 => {
-                //     ResponseValue::from_response()
-                //         .await?
-                //         .map(OperationXResponse::ResponseTypeB)
-                // }
-                #(#success_response_matches)*
-
-                // This is almost identical to the success types except
-                // they are wrapped in Error::ErrorResponse...
-                // 400 => {
-                //     Err(Error::ErrorResponse(
-                //         ResponseValue::from_response(response.await?)
-                //     ))
-                // }
-                #(#error_response_matches)*
-
-                // The default response is either an Error with a known
-                // type if the operation defines a default (as above) or
-                // an Error::UnexpectedResponse...
-                // _ => Err(Error::UnexpectedResponse(response)),
-                #default_response
-            }
+            #dispatch_and_decode
         };
 
         // Emit per-operation synthesized enum definitions for any side
@@ -962,7 +1155,6 @@ mod tests {
             &method,
             quote! { Self },
             quote! { self },
-            false,
         );
         let Err(Error::UnexpectedFormat(message)) = result else {
             panic!("expected unsupported upgrade response error");

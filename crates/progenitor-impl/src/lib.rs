@@ -569,34 +569,24 @@ impl Generator {
         });
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
-            (InterfaceStyle::Positional, TagStyle::Merged) => self
-                .generate_tokens_positional_merged(
-                    &prepared,
-                    raw_methods,
-                    self.settings.inner_type.is_some(),
-                ),
+            (InterfaceStyle::Positional, TagStyle::Merged) => {
+                self.generate_tokens_positional_merged(&prepared, raw_methods)
+            }
             (InterfaceStyle::Positional, TagStyle::Separate) => {
                 return Err(Error::UnsupportedSettings(
                     "positional arguments with separate tags are currently unsupported".to_string(),
                 ));
             }
-            (InterfaceStyle::Builder, TagStyle::Merged) => self.generate_tokens_builder_merged(
-                &prepared,
-                raw_methods,
-                self.settings.inner_type.is_some(),
-            ),
+            (InterfaceStyle::Builder, TagStyle::Merged) => {
+                self.generate_tokens_builder_merged(&prepared, raw_methods)
+            }
             (InterfaceStyle::Builder, TagStyle::Separate) => {
                 let tag_info = document
                     .tags
                     .iter()
                     .map(|tag| (&tag.name, tag))
                     .collect::<BTreeMap<_, _>>();
-                self.generate_tokens_builder_separate(
-                    &prepared,
-                    raw_methods,
-                    tag_info,
-                    self.settings.inner_type.is_some(),
-                )
+                self.generate_tokens_builder_separate(&prepared, raw_methods, tag_info)
             }
         }?;
 
@@ -622,6 +612,7 @@ impl Generator {
                 inner
             }
         });
+        let dispatch_method = self.dispatch_method(self.settings.inner_type.is_some());
         let client_timeout = self.settings.timeout.unwrap_or(15);
 
         let client_docstring = {
@@ -747,6 +738,8 @@ impl Generator {
                         #inner_value
                     }
                 }
+
+                #dispatch_method
             }
 
             impl ClientInfo<#inner_type> for Client {
@@ -781,11 +774,10 @@ impl Generator {
         &mut self,
         prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
-        has_inner: bool,
     ) -> Result<TokenStream> {
         let pairs = input_methods
             .iter()
-            .map(|method| self.positional_method(prepared, method, has_inner))
+            .map(|method| self.positional_method(prepared, method))
             .collect::<Result<Vec<_>>>()?;
         let (extra_types, methods): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();
@@ -818,7 +810,6 @@ impl Generator {
         &mut self,
         prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
-        has_inner: bool,
     ) -> Result<TokenStream> {
         let multipart_imports = methods_use_multipart(input_methods).then(|| {
             quote! {
@@ -828,7 +819,7 @@ impl Generator {
         });
         let pairs = input_methods
             .iter()
-            .map(|method| self.builder_struct(prepared, method, TagStyle::Merged, has_inner))
+            .map(|method| self.builder_struct(prepared, method, TagStyle::Merged))
             .collect::<Result<Vec<_>>>()?;
         let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();
@@ -882,7 +873,6 @@ impl Generator {
         prepared: &PreparedIr,
         input_methods: &[operation::OperationMethod],
         tag_info: BTreeMap<&String, &ir::Tag>,
-        has_inner: bool,
     ) -> Result<TokenStream> {
         let multipart_imports = methods_use_multipart(input_methods).then(|| {
             quote! {
@@ -892,7 +882,7 @@ impl Generator {
         });
         let pairs = input_methods
             .iter()
-            .map(|method| self.builder_struct(prepared, method, TagStyle::Separate, has_inner))
+            .map(|method| self.builder_struct(prepared, method, TagStyle::Separate))
             .collect::<Result<Vec<_>>>()?;
         let (builder_extra_types, builder_struct): (Vec<TokenStream>, Vec<TokenStream>) =
             pairs.into_iter().unzip();

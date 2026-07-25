@@ -425,6 +425,64 @@ impl Client {
             client,
         }
     }
+
+    /// Run the request through the pre/post hooks and
+    /// [`ClientHooks::exec`], yielding the raw response.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_dispatch<E>(
+        &self,
+        #[allow(unused_mut)] mut request: ::reqwest::Request,
+        info: &OperationInfo,
+    ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+        self.pre(&mut request, info).await?;
+        let result = self.exec(request, info).await;
+        self.post(&result, info).await?;
+        ::std::result::Result::Ok(result?)
+    }
+
+    /// Execute the request and decode the response for the common
+    /// shape: one JSON success status, an optional JSON error status
+    /// or range, and anything else unexpected.
+    ///
+    /// Operations matching that shape call this instead of inlining
+    /// their own `match`, which is worth doing for the same reason as
+    /// [`Self::__progenitor_dispatch`]: the two
+    /// `ResponseValue::from_response` calls are `async`, so inlined
+    /// they cost two more opaque future types per operation.
+    /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+    /// the `if`/`else if` order below reproduces match-arm precedence,
+    /// which is success-before-error-before-catch-all.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_response<T, E>(
+        &self,
+        request: ::reqwest::Request,
+        info: &OperationInfo,
+        success: &[(u16, u16)],
+        error: &[(u16, u16)],
+    ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+    where
+        T: ::serde::de::DeserializeOwned,
+        E: ::serde::de::DeserializeOwned,
+    {
+        let response = self.__progenitor_dispatch(request, info).await?;
+        let status = response.status().as_u16();
+        let matches_window = |windows: &[(u16, u16)]| {
+            windows
+                .iter()
+                .any(|&(low, high)| status >= low && status <= high)
+        };
+        if matches_window(success) {
+            ResponseValue::from_response(response).await
+        } else if matches_window(error) {
+            ::std::result::Result::Err(Error::ErrorResponse(
+                ResponseValue::from_response(response).await?,
+            ))
+        } else {
+            ::std::result::Result::Err(Error::UnexpectedResponse(response))
+        }
+    }
 }
 
 impl ClientInfo<()> for Client {
@@ -475,10 +533,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "enrol",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             201u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
@@ -513,14 +568,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "global_jobs",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 
     ///Sends a `GET` request to `/ping`
@@ -551,14 +600,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ping",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 
     ///Sends a `POST` request to `/report/finish`
@@ -592,14 +635,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "report_finish",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 
     ///Sends a `POST` request to `/report/output`
@@ -633,14 +670,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "report_output",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 
     ///Sends a `POST` request to `/report/start`
@@ -674,14 +705,8 @@ impl Client {
         let info = OperationInfo {
             operation_id: "report_start",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(request, &info, &[(201u16, 201u16)], &[])
+            .await
     }
 }
 

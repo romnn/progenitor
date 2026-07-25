@@ -12147,6 +12147,64 @@ impl Client {
             client,
         }
     }
+
+    /// Run the request through the pre/post hooks and
+    /// [`ClientHooks::exec`], yielding the raw response.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_dispatch<E>(
+        &self,
+        #[allow(unused_mut)] mut request: ::reqwest::Request,
+        info: &OperationInfo,
+    ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+        self.pre(&mut request, info).await?;
+        let result = self.exec(request, info).await;
+        self.post(&result, info).await?;
+        ::std::result::Result::Ok(result?)
+    }
+
+    /// Execute the request and decode the response for the common
+    /// shape: one JSON success status, an optional JSON error status
+    /// or range, and anything else unexpected.
+    ///
+    /// Operations matching that shape call this instead of inlining
+    /// their own `match`, which is worth doing for the same reason as
+    /// [`Self::__progenitor_dispatch`]: the two
+    /// `ResponseValue::from_response` calls are `async`, so inlined
+    /// they cost two more opaque future types per operation.
+    /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+    /// the `if`/`else if` order below reproduces match-arm precedence,
+    /// which is success-before-error-before-catch-all.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_response<T, E>(
+        &self,
+        request: ::reqwest::Request,
+        info: &OperationInfo,
+        success: &[(u16, u16)],
+        error: &[(u16, u16)],
+    ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+    where
+        T: ::serde::de::DeserializeOwned,
+        E: ::serde::de::DeserializeOwned,
+    {
+        let response = self.__progenitor_dispatch(request, info).await?;
+        let status = response.status().as_u16();
+        let matches_window = |windows: &[(u16, u16)]| {
+            windows
+                .iter()
+                .any(|&(low, high)| status >= low && status <= high)
+        };
+        if matches_window(success) {
+            ResponseValue::from_response(response).await
+        } else if matches_window(error) {
+            ::std::result::Result::Err(Error::ErrorResponse(
+                ResponseValue::from_response(response).await?,
+            ))
+        } else {
+            ::std::result::Result::Err(Error::UnexpectedResponse(response))
+        }
+    }
 }
 
 impl ClientInfo<()> for Client {
@@ -12202,20 +12260,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an image by id
@@ -12248,20 +12299,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "image_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an instance by id
@@ -12294,20 +12338,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a network interface by id
@@ -12340,20 +12377,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an organization by id
@@ -12388,20 +12418,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a project by id
@@ -12436,20 +12459,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a snapshot by id
@@ -12482,20 +12498,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "snapshot_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a route by id
@@ -12528,20 +12537,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Get a router by id
@@ -12574,20 +12576,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a subnet by id
@@ -12620,20 +12615,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a VPC
@@ -12666,20 +12654,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Start an OAuth 2.0 Device Authorization Grant
@@ -12709,10 +12690,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "device_auth_request",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200..=299 => Ok(ResponseValue::stream(response)),
             _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
@@ -12751,10 +12729,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "device_auth_confirm",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -12793,10 +12768,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "device_access_token",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200..=299 => Ok(ResponseValue::stream(response)),
             _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
@@ -12843,20 +12815,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "group_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List groups as a Stream
@@ -12923,10 +12888,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "login_spoof",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -12967,10 +12929,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "login_local",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200..=299 => Ok(ResponseValue::stream(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13010,10 +12969,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "login_saml_begin",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200..=299 => Ok(ResponseValue::stream(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13060,10 +13016,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "login_saml",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             200..=299 => Ok(ResponseValue::stream(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13097,10 +13050,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "logout",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13155,20 +13105,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List organizations as a Stream
@@ -13242,20 +13185,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an organization
@@ -13293,20 +13229,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update an organization
@@ -13347,20 +13276,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an organization
@@ -13398,10 +13320,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13449,20 +13368,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_policy_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update an organization's IAM policy
@@ -13503,20 +13415,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_policy_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List projects
@@ -13567,20 +13472,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List projects as a Stream
@@ -13665,20 +13563,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a project
@@ -13720,20 +13611,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a project
@@ -13778,20 +13662,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a project
@@ -13833,10 +13710,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -13901,20 +13775,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List disks as a Stream
@@ -14009,20 +13876,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a disk
@@ -14063,20 +13923,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Use `DELETE /v1/disks/{disk}` instead
@@ -14115,10 +13968,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -14194,20 +14044,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_metrics_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch disk metrics as a Stream
@@ -14332,20 +14175,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "image_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List images as a Stream
@@ -14443,20 +14279,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "image_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an image
@@ -14497,20 +14326,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "image_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an image
@@ -14553,10 +14375,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "image_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -14619,20 +14438,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List instances as a Stream
@@ -14728,20 +14540,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an instance
@@ -14782,20 +14587,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an instance
@@ -14834,10 +14632,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -14906,20 +14701,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List an instance's disks as a Stream
@@ -15024,20 +14812,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_attach",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Detach a disk from an instance
@@ -15080,20 +14861,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_detach",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List external IP addresses
@@ -15132,20 +14906,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_external_ip_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Migrate an instance
@@ -15188,20 +14955,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_migrate",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List network interfaces
@@ -15258,20 +15018,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List network interfaces as a Stream
@@ -15373,20 +15126,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a network interface
@@ -15427,20 +15173,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a network interface
@@ -15483,20 +15222,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a network interface
@@ -15542,10 +15274,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_network_interface_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -15596,20 +15325,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_reboot",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an instance's serial console
@@ -15678,20 +15400,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_serial_console",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Connect to an instance's serial console
@@ -15738,10 +15453,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_serial_console_stream",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             101u16 => ResponseValue::upgrade(response).await,
             _ => Err(Error::UnexpectedResponse(response)),
@@ -15792,10 +15504,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_serial_console_stream_v2",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             101u16 => ResponseValue::upgrade(response).await,
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -15846,20 +15555,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_start",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Halt an instance
@@ -15900,20 +15602,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_stop",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a project's IAM policy
@@ -15955,20 +15650,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_policy_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a project's IAM policy
@@ -16011,20 +15699,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_policy_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List snapshots
@@ -16077,20 +15758,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "snapshot_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List snapshots as a Stream
@@ -16186,20 +15860,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "snapshot_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a snapshot
@@ -16238,20 +15905,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "snapshot_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a snapshot
@@ -16290,10 +15950,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "snapshot_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -16356,20 +16013,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List VPCs as a Stream
@@ -16462,20 +16112,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a VPC
@@ -16514,20 +16157,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a VPC
@@ -16568,20 +16204,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a VPC
@@ -16620,10 +16249,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -16672,20 +16298,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_firewall_rules_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Replace firewall rules
@@ -16726,20 +16345,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_firewall_rules_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List routers
@@ -16796,20 +16408,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List routers as a Stream
@@ -16911,20 +16516,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Get a router
@@ -16965,20 +16563,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a router
@@ -17021,20 +16612,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a router
@@ -17075,10 +16659,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -17150,20 +16731,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List routes as a Stream
@@ -17274,20 +16848,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a route
@@ -17330,20 +16897,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a route
@@ -17388,20 +16948,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a route
@@ -17444,10 +16997,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_router_route_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -17514,20 +17064,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List subnets as a Stream
@@ -17629,20 +17172,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a subnet
@@ -17683,20 +17219,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a subnet
@@ -17739,20 +17268,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a subnet
@@ -17793,10 +17315,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -17866,20 +17385,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "vpc_subnet_list_network_interfaces",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List network interfaces as a Stream
@@ -17973,20 +17485,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "policy_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update the current silo's IAM policy
@@ -18016,20 +17521,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "policy_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List built-in roles
@@ -18069,20 +17567,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "role_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List built-in roles as a Stream
@@ -18155,20 +17646,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "role_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch the user associated with the current session
@@ -18196,20 +17680,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_me",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch the silo groups the current user belongs to
@@ -18252,20 +17729,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_me_groups",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch the silo groups the current user belongs to as a Stream
@@ -18349,20 +17819,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_sshkey_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List SSH public keys as a Stream
@@ -18435,20 +17898,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_sshkey_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an SSH public key
@@ -18484,20 +17940,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_sshkey_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an SSH public key
@@ -18533,10 +17982,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "session_sshkey_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -18579,20 +18025,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_image_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an IP pool by id
@@ -18625,20 +18064,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a silo by id
@@ -18671,20 +18103,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_view_by_id",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List system-wide certificates
@@ -18731,20 +18156,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "certificate_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List system-wide certificates as a Stream
@@ -18821,20 +18239,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "certificate_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a certificate
@@ -18869,20 +18280,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "certificate_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a certificate
@@ -18917,10 +18321,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "certificate_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -18973,20 +18374,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "physical_disk_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List physical disks as a Stream
@@ -19069,20 +18463,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "rack_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List racks as a Stream
@@ -19157,20 +18544,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "rack_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List sleds
@@ -19213,20 +18593,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "sled_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List sleds as a Stream
@@ -19301,20 +18674,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "sled_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List physical disks attached to sleds
@@ -19363,20 +18729,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "sled_physical_disk_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List physical disks attached to sleds as a Stream
@@ -19466,20 +18825,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_image_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List system-wide images as a Stream
@@ -19556,20 +18908,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_image_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a system-wide image
@@ -19604,20 +18949,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_image_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a system-wide image
@@ -19654,10 +18992,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_image_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -19710,20 +19045,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List IP pools as a Stream
@@ -19792,20 +19120,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an IP pool
@@ -19838,20 +19159,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update an IP Pool
@@ -19886,20 +19200,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an IP Pool
@@ -19932,10 +19239,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -19993,20 +19297,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_range_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List ranges for an IP pool as a Stream
@@ -20083,20 +19380,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_range_add",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Remove a range from an IP pool
@@ -20131,10 +19421,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_range_remove",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -20172,20 +19459,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_service_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List ranges for the IP pool used for Oxide services
@@ -20227,20 +19507,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_service_range_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List ranges for the IP pool used for Oxide services as a Stream
@@ -20310,20 +19583,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_service_range_add",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Remove a range from an IP pool used for Oxide services
@@ -20353,10 +19619,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "ip_pool_service_range_remove",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -20424,20 +19687,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_metric",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch the top-level IAM policy
@@ -20465,20 +19721,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_policy_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update the top-level IAM policy
@@ -20508,20 +19757,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_policy_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List sagas
@@ -20564,20 +19806,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "saga_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List sagas as a Stream
@@ -20649,20 +19884,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "saga_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List silos
@@ -20707,20 +19935,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List silos as a Stream
@@ -20791,20 +20012,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a silo
@@ -20842,20 +20056,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a silo
@@ -20893,10 +20100,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -20955,20 +20159,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_identity_provider_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List a silo's IDPs as a Stream
@@ -21055,20 +20252,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "local_idp_user_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a user
@@ -21108,10 +20298,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "local_idp_user_delete",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -21168,10 +20355,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "local_idp_user_set_password",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -21221,20 +20405,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "saml_identity_provider_create",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a SAML IDP
@@ -21274,20 +20451,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "saml_identity_provider_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a silo's IAM policy
@@ -21323,20 +20493,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_policy_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a silo's IAM policy
@@ -21375,20 +20538,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_policy_update",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List users in a silo
@@ -21437,20 +20593,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_users_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List users in a silo as a Stream
@@ -21530,20 +20679,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "silo_user_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List built-in users
@@ -21586,20 +20728,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_user_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List built-in users as a Stream
@@ -21675,20 +20810,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_user_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List timeseries schema
@@ -21728,20 +20856,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "timeseries_schema_get",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List timeseries schema as a Stream
@@ -21822,20 +20943,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "user_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List users as a Stream
@@ -21926,20 +21040,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_list_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List disks as a Stream
@@ -22019,20 +21126,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_create_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a disk
@@ -22072,20 +21172,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a disk
@@ -22125,10 +21218,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "disk_delete_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -22190,20 +21280,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_list_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List instances as a Stream
@@ -22284,20 +21367,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_create_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an instance
@@ -22337,20 +21413,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an instance
@@ -22390,10 +21459,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_delete_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -22461,20 +21527,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_list_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List an instance's disks as a Stream
@@ -22568,20 +21627,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_attach_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Detach a disk from an instance
@@ -22623,20 +21675,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_disk_detach_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Migrate an instance
@@ -22678,20 +21723,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_migrate_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Reboot an instance
@@ -22731,20 +21769,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_reboot_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an instance's serial console
@@ -22812,20 +21843,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_serial_console_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Stream an instance's serial console
@@ -22872,10 +21896,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_serial_console_stream_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             101u16 => ResponseValue::upgrade(response).await,
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -22925,20 +21946,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_start_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Stop an instance
@@ -22978,20 +21992,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "instance_stop_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List organizations
@@ -23034,20 +22041,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_list_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List organizations as a Stream
@@ -23117,20 +22117,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_create_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch an organization
@@ -23163,20 +22156,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update an organization
@@ -23211,20 +22197,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_update_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete an organization
@@ -23257,10 +22236,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_delete_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -23303,20 +22279,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_policy_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update an organization's IAM policy
@@ -23351,20 +22320,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "organization_policy_update_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List projects
@@ -23413,20 +22375,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_list_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List projects as a Stream
@@ -23502,20 +22457,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_create_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            201u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(201u16, 201u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Fetch a project
@@ -23553,20 +22501,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a project
@@ -23606,20 +22547,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_update_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Delete a project
@@ -23657,10 +22591,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_delete_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -23708,20 +22639,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_policy_view_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Update a project's IAM policy
@@ -23761,20 +22685,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "project_policy_update_v1",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///View version and update status of component tree
@@ -23817,20 +22734,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_component_version_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///View version and update status of component tree as a Stream
@@ -23913,20 +22823,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "update_deployments_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List all update deployments as a Stream
@@ -23999,20 +22902,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "update_deployment_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Refresh update data
@@ -24040,10 +22936,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_refresh",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -24083,20 +22976,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_start",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            202u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(202u16, 202u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///Stop system update
@@ -24126,10 +23012,7 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_stop",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
+        let response = self.__progenitor_dispatch(request, &info).await?;
         match response.status().as_u16() {
             204u16 => Ok(ResponseValue::empty(response)),
             400u16..=499u16 => Err(Error::ErrorResponse(
@@ -24182,20 +23065,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///List all updates as a Stream
@@ -24268,20 +23144,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_view",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///View system update component tree
@@ -24315,20 +23184,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_update_components_list",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 
     ///View system version and update status
@@ -24356,20 +23218,13 @@ impl Client {
         let info = OperationInfo {
             operation_id: "system_version",
         };
-        self.pre(&mut request, &info).await?;
-        let result = self.exec(request, &info).await;
-        self.post(&result, &info).await?;
-        let response = result?;
-        match response.status().as_u16() {
-            200u16 => ResponseValue::from_response(response).await,
-            400u16..=499u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            500u16..=599u16 => Err(Error::ErrorResponse(
-                ResponseValue::from_response(response).await?,
-            )),
-            _ => Err(Error::UnexpectedResponse(response)),
-        }
+        self.__progenitor_response(
+            request,
+            &info,
+            &[(200u16, 200u16)],
+            &[(400u16, 499u16), (500u16, 599u16)],
+        )
+        .await
     }
 }
 

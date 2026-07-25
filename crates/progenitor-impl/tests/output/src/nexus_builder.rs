@@ -23526,6 +23526,64 @@ impl Client {
             client,
         }
     }
+
+    /// Run the request through the pre/post hooks and
+    /// [`ClientHooks::exec`], yielding the raw response.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_dispatch<E>(
+        &self,
+        #[allow(unused_mut)] mut request: ::reqwest::Request,
+        info: &OperationInfo,
+    ) -> ::std::result::Result<::reqwest::Response, Error<E>> {
+        self.pre(&mut request, info).await?;
+        let result = self.exec(request, info).await;
+        self.post(&result, info).await?;
+        ::std::result::Result::Ok(result?)
+    }
+
+    /// Execute the request and decode the response for the common
+    /// shape: one JSON success status, an optional JSON error status
+    /// or range, and anything else unexpected.
+    ///
+    /// Operations matching that shape call this instead of inlining
+    /// their own `match`, which is worth doing for the same reason as
+    /// [`Self::__progenitor_dispatch`]: the two
+    /// `ResponseValue::from_response` calls are `async`, so inlined
+    /// they cost two more opaque future types per operation.
+    /// `status_arm_pattern`/`success_arm_pattern` decide eligibility —
+    /// the `if`/`else if` order below reproduces match-arm precedence,
+    /// which is success-before-error-before-catch-all.
+    #[doc(hidden)]
+    #[allow(dead_code, clippy::all)]
+    pub(crate) async fn __progenitor_response<T, E>(
+        &self,
+        request: ::reqwest::Request,
+        info: &OperationInfo,
+        success: &[(u16, u16)],
+        error: &[(u16, u16)],
+    ) -> ::std::result::Result<ResponseValue<T>, Error<E>>
+    where
+        T: ::serde::de::DeserializeOwned,
+        E: ::serde::de::DeserializeOwned,
+    {
+        let response = self.__progenitor_dispatch(request, info).await?;
+        let status = response.status().as_u16();
+        let matches_window = |windows: &[(u16, u16)]| {
+            windows
+                .iter()
+                .any(|&(low, high)| status >= low && status <= high)
+        };
+        if matches_window(success) {
+            ResponseValue::from_response(response).await
+        } else if matches_window(error) {
+            ::std::result::Result::Err(Error::ErrorResponse(
+                ResponseValue::from_response(response).await?,
+            ))
+        } else {
+            ::std::result::Result::Err(Error::UnexpectedResponse(response))
+        }
+    }
 }
 
 impl ClientInfo<()> for Client {
@@ -27271,20 +27329,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27342,20 +27394,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27413,20 +27459,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27486,20 +27526,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27557,20 +27591,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27628,20 +27656,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27699,20 +27721,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "snapshot_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27770,20 +27786,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27841,20 +27851,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27912,20 +27916,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -27983,20 +27981,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -28061,10 +28053,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "device_auth_request",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
@@ -28137,10 +28126,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "device_auth_confirm",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28220,10 +28206,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "device_access_token",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 _ => Err(Error::ErrorResponse(ResponseValue::stream(response))),
@@ -28328,20 +28311,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "group_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/groups`
@@ -28454,10 +28431,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "login_spoof",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28561,10 +28535,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "login_local",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28642,10 +28613,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "login_saml_begin",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28746,10 +28714,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "login_saml",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28798,10 +28763,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "logout",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -28914,20 +28876,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/organizations`
@@ -29042,20 +28998,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29116,20 +29066,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29219,20 +29163,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29293,10 +29231,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -29369,20 +29304,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_policy_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29476,20 +29405,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_policy_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29611,20 +29534,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -29760,20 +29677,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29850,20 +29761,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -29967,20 +29872,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -30057,10 +29956,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -30207,20 +30103,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -30371,20 +30261,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -30477,20 +30361,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -30583,10 +30461,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -30788,20 +30663,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_metrics_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -30987,20 +30856,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -31151,20 +31014,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -31257,20 +31114,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -31363,10 +31214,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -31514,20 +31362,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -31680,20 +31522,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -31786,20 +31622,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -31892,10 +31722,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -32058,20 +31885,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -32239,20 +32060,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_attach",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -32372,20 +32187,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_detach",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -32480,20 +32289,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_external_ip_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -32613,20 +32416,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_migrate",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -32780,20 +32577,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -32967,20 +32758,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -33090,20 +32875,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -33244,20 +33023,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -33365,10 +33138,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_network_interface_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -33471,20 +33241,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_reboot",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -33633,20 +33397,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_serial_console",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -33745,10 +33503,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_serial_console_stream",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 101u16 => ResponseValue::upgrade(response).await,
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -33851,10 +33606,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_serial_console_stream_v2",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 101u16 => ResponseValue::upgrade(response).await,
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -33957,20 +33709,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_start",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34063,20 +33809,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_stop",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34155,20 +33895,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_policy_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34276,20 +34010,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_policy_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34427,20 +34155,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "snapshot_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -34593,20 +34315,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "snapshot_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34699,20 +34415,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "snapshot_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -34805,10 +34515,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "snapshot_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -34955,20 +34662,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -35119,20 +34820,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -35225,20 +34920,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -35358,20 +35047,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -35464,10 +35147,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -35572,20 +35252,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_firewall_rules_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -35717,20 +35391,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_firewall_rules_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -35883,20 +35551,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -36064,20 +35726,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -36185,20 +35841,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -36333,20 +35983,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -36454,10 +36098,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -36635,20 +36276,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -36837,20 +36472,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -36973,20 +36602,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -37142,20 +36765,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -37278,10 +36895,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_router_route_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -37444,20 +37058,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -37625,20 +37233,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -37746,20 +37348,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -37894,20 +37490,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -38015,10 +37605,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -38197,20 +37784,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "vpc_subnet_list_network_interfaces",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -38299,20 +37880,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "policy_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -38381,20 +37956,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "policy_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -38478,20 +38047,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "role_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/roles`
@@ -38594,20 +38157,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "role_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -38646,20 +38203,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_me",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -38760,20 +38311,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_me_groups",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/session/me/groups`
@@ -38922,20 +38467,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_sshkey_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/session/me/sshkeys`
@@ -39048,20 +38587,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_sshkey_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39122,20 +38655,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_sshkey_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39196,10 +38723,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "session_sshkey_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -39267,20 +38791,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_image_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39338,20 +38856,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39409,20 +38921,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_view_by_id",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39525,20 +39031,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "certificate_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/certificates`
@@ -39653,20 +39153,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "certificate_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39727,20 +39221,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "certificate_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -39801,10 +39289,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "certificate_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -39915,20 +39400,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "physical_disk_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/hardware/disks`
@@ -40075,20 +39554,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rack_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/hardware/racks`
@@ -40192,20 +39665,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rack_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -40306,20 +39773,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "sled_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/hardware/sleds`
@@ -40423,20 +39884,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "sled_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -40555,20 +40010,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "sled_physical_disk_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/hardware/sleds/{sled_id}/disks`
@@ -40717,20 +40166,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_image_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/images`
@@ -40845,20 +40288,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_image_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -40916,20 +40353,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_image_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -40987,10 +40418,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_image_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -41103,20 +40531,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/ip-pools`
@@ -41229,20 +40651,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -41300,20 +40716,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -41401,20 +40811,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -41472,10 +40876,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -41587,20 +40988,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_range_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/ip-pools/{pool_name}/ranges`
@@ -41721,20 +41116,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_range_add",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -41811,10 +41200,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_range_remove",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -41863,20 +41249,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_service_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -41960,20 +41340,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_service_range_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/ip-pools-service/ranges`
@@ -42073,20 +41447,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_service_range_add",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42141,10 +41509,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ip_pool_service_range_remove",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -42314,20 +41679,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_metric",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42368,20 +41727,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_policy_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42450,20 +41803,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_policy_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42564,20 +41911,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "saga_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/sagas`
@@ -42681,20 +42022,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "saga_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42797,20 +42132,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/silos`
@@ -42923,20 +42252,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -42994,20 +42317,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -43065,10 +42382,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -43201,20 +42515,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_identity_provider_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to
@@ -43350,20 +42658,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "local_idp_user_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -43440,10 +42742,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "local_idp_user_delete",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -43546,10 +42845,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "local_idp_user_set_password",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -43660,20 +42956,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "saml_identity_provider_create",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -43752,20 +43042,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "saml_identity_provider_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -43825,20 +43109,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_policy_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -43928,20 +43206,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_policy_update",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -44060,20 +43332,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_users_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/silos/{silo_name}/users/all`
@@ -44196,20 +43462,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "silo_user_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -44312,20 +43572,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_user_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/system/user`
@@ -44429,20 +43683,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_user_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -44527,20 +43775,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "timeseries_schema_get",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/timeseries/schema`
@@ -44686,20 +43928,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "user_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/users`
@@ -44885,20 +44121,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_list_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/disks`
@@ -45051,20 +44281,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_create_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -45162,20 +44386,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -45273,10 +44491,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disk_delete_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -45426,20 +44641,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_list_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/instances`
@@ -45592,20 +44801,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_create_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -45703,20 +44906,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -45814,10 +45011,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_delete_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -45985,20 +45179,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_list_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/instances/{instance}/disks`
@@ -46171,20 +45359,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_attach_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -46309,20 +45491,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_disk_detach_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -46447,20 +45623,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_migrate_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -46558,20 +45728,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_reboot_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -46725,20 +45889,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_serial_console_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -46843,10 +46001,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_serial_console_stream_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 101u16 => ResponseValue::upgrade(response).await,
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -46954,20 +46109,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_start_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47065,20 +46214,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "instance_stop_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47181,20 +46324,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_list_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/organizations`
@@ -47309,20 +46446,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_create_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47383,20 +46514,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47486,20 +46611,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_update_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47560,10 +46679,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_delete_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -47636,20 +46752,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_policy_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47743,20 +46853,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "organization_policy_update_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -47879,20 +46983,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_list_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/projects`
@@ -48027,20 +47125,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_create_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(201u16, 201u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -48121,20 +47213,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -48242,20 +47328,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_update_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -48336,10 +47416,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_delete_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -48432,20 +47509,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_policy_view_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -48557,20 +47628,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "project_policy_update_v1",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -48672,20 +47737,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_component_version_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/system/update/components`
@@ -48834,20 +47893,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_deployments_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/system/update/deployments`
@@ -48953,20 +48006,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_deployment_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -49005,10 +48052,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_refresh",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -49089,20 +48133,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_start",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(202u16, 202u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -49141,10 +48179,7 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_stop",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
+            let response = client.__progenitor_dispatch(request, &info).await?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
                 400u16..=499u16 => Err(Error::ErrorResponse(
@@ -49255,20 +48290,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
 
         ///Streams `GET` requests to `/v1/system/update/updates`
@@ -49372,20 +48401,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_view",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -49446,20 +48469,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_update_components_list",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 
@@ -49500,20 +48517,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "system_version",
             };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16..=499u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16..=599u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
+            client
+                .__progenitor_response(
+                    request,
+                    &info,
+                    &[(200u16, 200u16)],
+                    &[(400u16, 499u16), (500u16, 599u16)],
+                )
+                .await
         }
     }
 }

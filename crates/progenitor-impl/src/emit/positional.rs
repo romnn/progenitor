@@ -23,7 +23,6 @@ impl Generator {
         &mut self,
         prepared: &PreparedIr,
         method: &OperationMethod,
-        has_inner: bool,
     ) -> Result<(TokenStream, TokenStream)> {
         let operation_id = format_ident!("{}", method.operation_id);
 
@@ -93,13 +92,7 @@ impl Generator {
             error: error_type,
             body,
             extra_types,
-        } = self.method_sig_body(
-            prepared,
-            method,
-            quote! { Self },
-            quote! { self },
-            has_inner,
-        )?;
+        } = self.method_sig_body(prepared, method, quote! { Self }, quote! { self })?;
 
         let method_impl = quote! {
             #[doc = #doc_comment]
