@@ -26,23 +26,7 @@ pub mod error {
     }
 }
 #[doc = "`ObjectWithNoExtra`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"required\": ["]
-#[doc = "    \"foo\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"foo\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  },"]
-#[doc = "  \"additionalProperties\": false"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"required\": [\n    \"foo\"\n  ],\n  \"properties\": {\n    \"foo\": {\n      \"type\": \"string\"\n    }\n  },\n  \"additionalProperties\": false\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectWithNoExtra {
@@ -54,22 +38,7 @@ impl ObjectWithNoExtra {
     }
 }
 #[doc = "`ObjectWithOkExtra`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"required\": ["]
-#[doc = "    \"foo\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"foo\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  }"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"required\": [\n    \"foo\"\n  ],\n  \"properties\": {\n    \"foo\": {\n      \"type\": \"string\"\n    }\n  }\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub struct ObjectWithOkExtra {
     pub foo: ::std::string::String,
@@ -80,25 +49,7 @@ impl ObjectWithOkExtra {
     }
 }
 #[doc = "`ObjectWithStringExtra`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"required\": ["]
-#[doc = "    \"foo\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"foo\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  },"]
-#[doc = "  \"additionalProperties\": {"]
-#[doc = "    \"type\": \"string\""]
-#[doc = "  }"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"required\": [\n    \"foo\"\n  ],\n  \"properties\": {\n    \"foo\": {\n      \"type\": \"string\"\n    }\n  },\n  \"additionalProperties\": {\n    \"type\": \"string\"\n  }\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub struct ObjectWithStringExtra {
     pub foo: ::std::string::String,
@@ -111,23 +62,7 @@ impl ObjectWithStringExtra {
     }
 }
 #[doc = "`ObjectWithWhichExtra`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"required\": ["]
-#[doc = "    \"foo\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"foo\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  },"]
-#[doc = "  \"additionalProperties\": {}"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"required\": [\n    \"foo\"\n  ],\n  \"properties\": {\n    \"foo\": {\n      \"type\": \"string\"\n    }\n  },\n  \"additionalProperties\": {}\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub struct ObjectWithWhichExtra {
     pub foo: ::std::string::String,
@@ -140,32 +75,8 @@ impl ObjectWithWhichExtra {
     }
 }
 #[doc = "`ObjectWithYesExtra`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"required\": ["]
-#[doc = "    \"foo\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"foo\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  },"]
-#[doc = "  \"additionalProperties\": true"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-pub struct ObjectWithYesExtra {
-    pub foo: ::std::string::String,
-}
-impl ObjectWithYesExtra {
-    pub fn builder() -> builder::ObjectWithYesExtra {
-        ::std::default::Default::default()
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"required\": [\n    \"foo\"\n  ],\n  \"properties\": {\n    \"foo\": {\n      \"type\": \"string\"\n    }\n  },\n  \"additionalProperties\": true\n}\n ```\n </details>"]
+pub use self::ObjectWithOkExtra as ObjectWithYesExtra;
 #[doc = r" Types for composing complex structures."]
 pub mod builder {
     #[derive(Clone, Debug)]
@@ -358,41 +269,6 @@ pub mod builder {
             }
         }
     }
-    #[derive(Clone, Debug)]
-    pub struct ObjectWithYesExtra {
-        foo: ::std::result::Result<::std::string::String, ::std::string::String>,
-    }
-    impl ::std::default::Default for ObjectWithYesExtra {
-        fn default() -> Self {
-            Self {
-                foo: Err("no value supplied for foo".to_string()),
-            }
-        }
-    }
-    impl ObjectWithYesExtra {
-        pub fn foo<T>(mut self, value: T) -> Self
-        where
-            T: ::std::convert::TryInto<::std::string::String>,
-            T::Error: ::std::fmt::Display,
-        {
-            self.foo = value
-                .try_into()
-                .map_err(|e| format!("error converting supplied value for foo: {e}"));
-            self
-        }
-    }
-    impl ::std::convert::TryFrom<ObjectWithYesExtra> for super::ObjectWithYesExtra {
-        type Error = super::error::ConversionError;
-        fn try_from(
-            value: ObjectWithYesExtra,
-        ) -> ::std::result::Result<Self, super::error::ConversionError> {
-            Ok(Self { foo: value.foo? })
-        }
-    }
-    impl ::std::convert::From<super::ObjectWithYesExtra> for ObjectWithYesExtra {
-        fn from(value: super::ObjectWithYesExtra) -> Self {
-            Self { foo: Ok(value.foo) }
-        }
-    }
+    pub use self::ObjectWithOkExtra as ObjectWithYesExtra;
 }
 fn main() {}

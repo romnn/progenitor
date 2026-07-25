@@ -4,7 +4,7 @@
 
 #![deny(missing_docs)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use conversions::SchemaCache;
 use log::{debug, info};
@@ -304,6 +304,44 @@ impl From<syn::Type> for MapType {
     }
 }
 
+/// How much provenance to put in each generated type's doc comment.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaDocs {
+    /// The schema's description followed by a collapsible `<details>` block
+    /// containing the type's full JSON schema.
+    #[default]
+    Full,
+    /// The schema's description only.
+    ///
+    /// The `<details>` block is emitted as one `#[doc]` attribute per line of
+    /// pretty-printed JSON, so for a large document it dominates both the size
+    /// of the generated source and the number of AST nodes rustc builds from
+    /// it. Suppressing it is worthwhile for generated crates that are compiled
+    /// but never rendered with rustdoc.
+    DescriptionOnly,
+}
+
+/// What to do about two named types that differ only in their name.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypeDedup {
+    /// Emit one definition per distinct structure. Every other name that
+    /// resolved to that structure becomes a `pub type` alias for it.
+    ///
+    /// Real-world documents repeat the same inline object under hundreds of
+    /// generated names, and each copy otherwise carries its own derives and
+    /// impls — the dominant cost when compiling a large generated crate.
+    ///
+    /// The names, doc comments and public paths are all preserved, but the
+    /// collapsed names denote the *same* type rather than distinct ones, so
+    /// `Debug` output, [`std::any::type_name`] and serde's error messages
+    /// report the surviving name.
+    #[default]
+    Collapse,
+    /// Emit a full definition for every named type, even when two are
+    /// structurally identical.
+    PerName,
+}
+
 /// Settings that alter type generation.
 #[derive(Default, Debug, Clone)]
 pub struct TypeSpaceSettings {
@@ -311,6 +349,8 @@ pub struct TypeSpaceSettings {
     extra_derives: Vec<String>,
     extra_attrs: Vec<String>,
     struct_builder: bool,
+    schema_docs: SchemaDocs,
+    type_dedup: TypeDedup,
 
     unknown_crates: UnknownPolicy,
     crates: BTreeMap<String, CrateSpec>,
@@ -448,6 +488,20 @@ impl TypeSpaceSettings {
     /// For structs, include a "builder" type that can be used to construct it.
     pub fn with_struct_builder(&mut self, struct_builder: bool) -> &mut Self {
         self.struct_builder = struct_builder;
+        self
+    }
+
+    /// Choose how much of each type's schema ends up in its doc comment.
+    /// Defaults to [`SchemaDocs::Full`].
+    pub fn with_schema_docs(&mut self, schema_docs: SchemaDocs) -> &mut Self {
+        self.schema_docs = schema_docs;
+        self
+    }
+
+    /// Choose whether structurally identical named types share one definition.
+    /// Defaults to [`TypeDedup::Collapse`].
+    pub fn with_type_dedup(&mut self, type_dedup: TypeDedup) -> &mut Self {
+        self.type_dedup = type_dedup;
         self
     }
 
@@ -964,12 +1018,159 @@ impl TypeSpace {
             },
         );
 
-        // Add all types.
-        self.id_to_entry
-            .values()
-            .for_each(|type_entry| type_entry.output(self, &mut output));
+        // Add all types, replacing every type that collapsed onto a
+        // structurally identical sibling with an alias to it.
+        let collapsed = self.collapsed_types();
+        self.id_to_entry.iter().for_each(|(type_id, type_entry)| {
+            match collapsed
+                .get(type_id)
+                .and_then(|id| self.id_to_entry.get(id))
+            {
+                Some(target) => type_entry.output_alias(self, target, &mut output),
+                None => type_entry.output(self, &mut output),
+            }
+        });
 
         output.into_stream()
+    }
+
+    /// Group named types that differ only in their name, returning
+    /// `collapsed id -> surviving id`.
+    ///
+    /// Callers emit a `pub type` alias for each collapsed type, which is why no
+    /// reference anywhere needs rewriting: every original name stays resolvable
+    /// and denotes the surviving type. That keeps this a read-only pass, so ids
+    /// handed out earlier — `TypeSpace::get_type`, and the ids progenitor stores
+    /// per schema and per operation parameter — all remain valid.
+    fn collapsed_types(&self) -> BTreeMap<TypeId, TypeId> {
+        if self.settings.type_dedup == TypeDedup::PerName {
+            return BTreeMap::new();
+        }
+
+        // An enum emits `impl From<Payload> for Enum` once per variant, so two
+        // variants whose payloads collapsed onto one type would produce two
+        // identical impls — and no answer to which variant a `From` should
+        // build. Collapse, look for that, force the offenders to keep their own
+        // definition, and try again; each round pins down at least one more
+        // type, so this settles.
+        let mut pinned = BTreeSet::new();
+        loop {
+            let collapsed = self.collapse_round(&pinned);
+            let conflicts = self.variant_payload_conflicts(&collapsed);
+            if conflicts.is_empty() {
+                return collapsed;
+            }
+            pinned.extend(conflicts);
+        }
+    }
+
+    /// Collapsed types that two variants of one enum would both name, which the
+    /// generated `From` impls cannot express.
+    fn variant_payload_conflicts(&self, collapsed: &BTreeMap<TypeId, TypeId>) -> BTreeSet<TypeId> {
+        let mut conflicts = BTreeSet::new();
+        for entry in self.id_to_entry.values() {
+            let TypeEntryDetails::Enum(details) = &entry.details else {
+                continue;
+            };
+            // Key on the whole `From` source type: an `Item` variant converts
+            // from the payload itself while a `Tuple` variant converts from a
+            // tuple of payloads, so the two shapes never collide with each
+            // other. A `String` payload gets no `From` impl at all.
+            let mut claimed: BTreeMap<(bool, Vec<&TypeId>), Vec<&TypeId>> = BTreeMap::new();
+            for variant in &details.variants {
+                let (is_tuple, payloads) = match &variant.details {
+                    type_entry::VariantDetails::Item(id) => {
+                        let is_string = self
+                            .id_to_entry
+                            .get(id)
+                            .is_some_and(|entry| entry.is_plain_string());
+                        if is_string {
+                            continue;
+                        }
+                        (false, vec![id])
+                    }
+                    type_entry::VariantDetails::Tuple(ids) => (true, ids.iter().collect()),
+                    // Struct variants are inlined into the enum, so they
+                    // contribute no `From` impl and cannot collide.
+                    type_entry::VariantDetails::Simple | type_entry::VariantDetails::Struct(_) => {
+                        continue
+                    }
+                };
+
+                let key = (
+                    is_tuple,
+                    payloads
+                        .iter()
+                        .map(|id| collapsed.get(*id).unwrap_or(id))
+                        .collect::<Vec<_>>(),
+                );
+                match claimed.get(&key) {
+                    Some(first) if *first != payloads => {
+                        // Pin whichever of the two collided types was the one
+                        // collapsed away.
+                        for id in payloads.iter().chain(first.iter()) {
+                            if collapsed.contains_key(*id) {
+                                conflicts.insert((*id).clone());
+                            }
+                        }
+                    }
+                    _ => {
+                        claimed.insert(key, payloads);
+                    }
+                }
+            }
+        }
+        conflicts
+    }
+
+    /// One pass of the collapse fixed point, treating `pinned` types as
+    /// un-collapsible.
+    fn collapse_round(&self, pinned: &BTreeSet<TypeId>) -> BTreeMap<TypeId, TypeId> {
+        let mut collapsed = BTreeMap::new();
+
+        // BTreeMap iteration is by ascending TypeId, i.e. assignment order, so
+        // the surviving type of each group is the one defined first and the
+        // result is stable across runs.
+        let named = self
+            .id_to_entry
+            .iter()
+            .filter(|(_, entry)| entry.alias_parts().is_some())
+            .collect::<Vec<_>>();
+
+        // Two types are interchangeable only once their children are known to
+        // be, so keep re-grouping until nothing new merges. Each round can only
+        // add to `collapsed` — merging children never separates parents — and
+        // there are finitely many types, so this converges; the bound is a
+        // backstop, not the expected exit.
+        for _ in 0..=named.len() {
+            // The `Ord` on `TypeEntryDetails` ignores schemas and JSON values,
+            // so it is only a cheap bucketing pre-filter: it can group types
+            // that are not really equal, never separate ones that are. Exact
+            // `==` inside the bucket decides.
+            let mut buckets: BTreeMap<TypeEntryDetails, Vec<(&TypeId, TypeEntry)>> =
+                BTreeMap::new();
+            let mut next = BTreeMap::new();
+
+            for (type_id, entry) in &named {
+                let key = entry.dedup_key(&collapsed);
+                let bucket = buckets.entry(key.details.clone()).or_default();
+                match bucket.iter().find(|(_, survivor)| *survivor == key) {
+                    // A pinned type keeps its own definition, but may still be
+                    // the one others collapse onto.
+                    Some((survivor_id, _)) if !pinned.contains(*type_id) => {
+                        next.insert((*type_id).clone(), (*survivor_id).clone());
+                    }
+                    _ => bucket.push((type_id, key)),
+                }
+            }
+
+            if next == collapsed {
+                break;
+            }
+            collapsed = next;
+        }
+
+        collapsed
     }
 
     /// Allocated the next TypeId.

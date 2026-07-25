@@ -14,7 +14,7 @@ use crate::{
     sanitize,
     structs::{generate_serde_attr, DefaultFunction},
     util::{get_type_name, metadata_description, unique, TypePatch},
-    Case, Name, Result, TypeId, TypeSpace, TypeSpaceImpl,
+    Case, Name, Result, SchemaDocs, TypeId, TypeSpace, TypeSpaceImpl,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -937,7 +937,7 @@ impl TypeEntry {
             schema: SchemaWrapper(schema),
         } = enum_details;
 
-        let doc = make_doc(name, description.as_ref(), schema);
+        let doc = make_doc(type_space, name, description.as_ref(), schema);
 
         // TODO this is a one-off for some useful traits; this should move into
         // the creation of the enum type.
@@ -1284,7 +1284,7 @@ impl TypeEntry {
             deny_unknown_fields,
             schema: SchemaWrapper(schema),
         } = struct_details;
-        let doc = make_doc(name, description.as_ref(), schema);
+        let doc = make_doc(type_space, name, description.as_ref(), schema);
 
         // Generate the serde directives as needed.
         let mut serde_options = Vec::new();
@@ -1530,7 +1530,7 @@ impl TypeEntry {
             constraints,
             schema: SchemaWrapper(schema),
         } = newtype_details;
-        let doc = make_doc(name, description.as_ref(), schema);
+        let doc = make_doc(type_space, name, description.as_ref(), schema);
 
         let type_name = format_ident!("{}", name);
         let inner_type = type_space.id_to_entry.get(type_id).unwrap();
@@ -2163,24 +2163,215 @@ impl TypeEntry {
     }
 }
 
-fn make_doc(name: &str, description: Option<&String>, schema: &Schema) -> TokenStream {
+impl TypeEntryDetails {
+    /// Rewrite every referenced [`TypeId`] through `canonical`.
+    ///
+    /// Used only on a throwaway clone while computing dedup groups: two parents
+    /// are interchangeable when their children are, so the children have to be
+    /// named by their surviving id before the parents are compared.
+    fn canonicalize_ids(&mut self, canonical: &BTreeMap<TypeId, TypeId>) {
+        fn fix(id: &mut TypeId, canonical: &BTreeMap<TypeId, TypeId>) {
+            if let Some(target) = canonical.get(id) {
+                *id = target.clone();
+            }
+        }
+        fn fix_props(props: &mut [StructProperty], canonical: &BTreeMap<TypeId, TypeId>) {
+            for prop in props {
+                fix(&mut prop.type_id, canonical);
+            }
+        }
+
+        match self {
+            TypeEntryDetails::Enum(details) => {
+                for variant in &mut details.variants {
+                    match &mut variant.details {
+                        VariantDetails::Simple => {}
+                        VariantDetails::Item(id) => fix(id, canonical),
+                        VariantDetails::Tuple(ids) => {
+                            ids.iter_mut().for_each(|id| fix(id, canonical));
+                        }
+                        VariantDetails::Struct(props) => fix_props(props, canonical),
+                    }
+                }
+            }
+            TypeEntryDetails::Struct(details) => fix_props(&mut details.properties, canonical),
+            TypeEntryDetails::Newtype(details) => fix(&mut details.type_id, canonical),
+            TypeEntryDetails::Native(details) => {
+                details
+                    .parameters
+                    .iter_mut()
+                    .for_each(|id| fix(id, canonical));
+            }
+            TypeEntryDetails::Option(id)
+            | TypeEntryDetails::Box(id)
+            | TypeEntryDetails::Vec(id)
+            | TypeEntryDetails::Set(id)
+            | TypeEntryDetails::Array(id, _)
+            | TypeEntryDetails::Reference(id) => fix(id, canonical),
+            TypeEntryDetails::Map(key, value) => {
+                fix(key, canonical);
+                fix(value, canonical);
+            }
+            TypeEntryDetails::Tuple(ids) => {
+                ids.iter_mut().for_each(|id| fix(id, canonical));
+            }
+            TypeEntryDetails::Unit
+            | TypeEntryDetails::Boolean
+            | TypeEntryDetails::Integer(_)
+            | TypeEntryDetails::Float(_)
+            | TypeEntryDetails::String
+            | TypeEntryDetails::JsonValue => {}
+        }
+    }
+}
+
+impl TypeEntry {
+    /// Whether this is the bare `String` type, which an enum variant treats
+    /// specially: it gets no `From` impl, to stay clear of `TryFrom<String>`.
+    pub(crate) fn is_plain_string(&self) -> bool {
+        self.details == TypeEntryDetails::String
+    }
+
+    /// The name, description and schema of a named type, if it has them.
+    ///
+    /// These are exactly the three things a `pub type` alias can carry, which is
+    /// why [`Self::dedup_key`] erases them.
+    pub(crate) fn alias_parts(&self) -> Option<(&String, Option<&String>, &Schema)> {
+        match &self.details {
+            TypeEntryDetails::Enum(TypeEntryEnum {
+                name,
+                description,
+                schema: SchemaWrapper(schema),
+                ..
+            })
+            | TypeEntryDetails::Struct(TypeEntryStruct {
+                name,
+                description,
+                schema: SchemaWrapper(schema),
+                ..
+            })
+            | TypeEntryDetails::Newtype(TypeEntryNewtype {
+                name,
+                description,
+                schema: SchemaWrapper(schema),
+                ..
+            }) => Some((name, description.as_ref(), schema)),
+            _ => None,
+        }
+    }
+
+    /// A copy of this entry stripped of everything a `pub type` alias re-states,
+    /// with referenced ids canonicalized — the key two named types must agree on
+    /// to share a definition.
+    ///
+    /// Erased: the type name, its description, and the retained schema (which
+    /// only feeds the doc comment). Everything that reaches generated code is
+    /// kept, including `rename`, defaults, `deny_unknown_fields`, the tag type,
+    /// newtype constraints, per-property and per-variant names/renames/
+    /// descriptions, and the extra derives and attributes.
+    ///
+    /// Compare these with `==`, not `Ord`: [`WrappedValue`] and [`SchemaWrapper`]
+    /// both order as `Equal` unconditionally, so an ordering-based comparison
+    /// silently ignores default values and a newtype's permitted enum values.
+    pub(crate) fn dedup_key(&self, canonical: &BTreeMap<TypeId, TypeId>) -> Self {
+        let mut key = self.clone();
+        let erased = SchemaWrapper(Schema::Bool(true));
+        match &mut key.details {
+            TypeEntryDetails::Enum(details) => {
+                details.name = String::new();
+                details.description = None;
+                details.schema = erased;
+            }
+            TypeEntryDetails::Struct(details) => {
+                details.name = String::new();
+                details.description = None;
+                details.schema = erased;
+            }
+            TypeEntryDetails::Newtype(details) => {
+                details.name = String::new();
+                details.description = None;
+                details.schema = erased;
+            }
+            _ => (),
+        }
+        key.details.canonicalize_ids(canonical);
+        key
+    }
+
+    /// Emit an alias to `target` in place of this type's definition.
+    ///
+    /// This is a `pub use` rather than a `pub type` because a tuple struct's
+    /// constructor lives in the value namespace: `Name(value)` — which the
+    /// `defaults` module emits for newtypes — does not resolve through a type
+    /// alias, but a re-export carries both namespaces.
+    ///
+    /// The target is named through `self::` because a schema may define a type
+    /// called `Box` or `Option`, and a bare path to one of those is ambiguous
+    /// with the prelude.
+    pub(crate) fn output_alias(
+        &self,
+        type_space: &TypeSpace,
+        target: &TypeEntry,
+        output: &mut OutputSpace,
+    ) {
+        let Some((name, description, schema)) = self.alias_parts() else {
+            return;
+        };
+        let doc = make_doc(type_space, name, description, schema);
+        let alias_ident = format_ident!("{}", name);
+        let target_ident = target.type_ident(type_space, &None);
+        output.add_item(
+            OutputSpaceMod::Crate,
+            name,
+            quote! {
+                #doc
+                pub use self::#target_ident as #alias_ident;
+            },
+        );
+
+        // Structs also get a builder type of the same name in its own module;
+        // alias that too so `builder::Name` keeps resolving.
+        if type_space.settings.struct_builder
+            && matches!(self.details, TypeEntryDetails::Struct(_))
+            && matches!(target.details, TypeEntryDetails::Struct(_))
+        {
+            output.add_item(
+                OutputSpaceMod::Builder,
+                name,
+                quote! {
+                    pub use self::#target_ident as #alias_ident;
+                },
+            );
+        }
+    }
+}
+
+fn make_doc(
+    type_space: &TypeSpace,
+    name: &str,
+    description: Option<&String>,
+    schema: &Schema,
+) -> TokenStream {
     let desc = match description {
         Some(desc) => desc,
         None => &format!("`{}`", name),
     };
+    if type_space.settings.schema_docs == SchemaDocs::DescriptionOnly {
+        return quote! {
+            #[doc = #desc]
+        };
+    }
     let schema_json = serde_json::to_string_pretty(schema).unwrap();
-    let schema_lines = schema_json.lines();
+    // One `#[doc]` for the whole block rather than one per line of JSON. Doc
+    // fragments are joined with newlines, so the rendered documentation is
+    // unchanged, but a type with a 300-line schema now costs rustc one AST
+    // attribute, one span and one interned symbol instead of three hundred.
+    let schema_block = format!(
+        "\n <details><summary>JSON schema</summary>\n\n ```json\n{schema_json}\n ```\n </details>"
+    );
     quote! {
         #[doc = #desc]
-        ///
-        /// <details><summary>JSON schema</summary>
-        ///
-        /// ```json
-        #(
-            #[doc = #schema_lines]
-        )*
-        /// ```
-        /// </details>
+        #[doc = #schema_block]
     }
 }
 

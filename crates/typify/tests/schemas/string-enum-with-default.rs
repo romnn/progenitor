@@ -26,21 +26,7 @@ pub mod error {
     }
 }
 #[doc = "`TestEnum`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"default\": \"failure\","]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"failure\","]
-#[doc = "    \"skipped\","]
-#[doc = "    \"success\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"default\": \"failure\",\n  \"type\": \"string\",\n  \"enum\": [\n    \"failure\",\n    \"skipped\",\n    \"success\"\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,

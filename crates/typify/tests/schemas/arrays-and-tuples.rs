@@ -26,17 +26,7 @@ pub mod error {
     }
 }
 #[doc = "`ArraySansItems`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"minItems\": 1,"]
-#[doc = "  \"uniqueItems\": true"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"minItems\": 1,\n  \"uniqueItems\": true\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct ArraySansItems(pub ::std::vec::Vec<::serde_json::Value>);
@@ -57,28 +47,7 @@ impl ::std::convert::From<::std::vec::Vec<::serde_json::Value>> for ArraySansIte
     }
 }
 #[doc = "`LessSimpleTwoTuple`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"items\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  ],"]
-#[doc = "  \"maxItems\": 2,"]
-#[doc = "  \"minItems\": 2"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"items\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"string\"\n    }\n  ],\n  \"maxItems\": 2,\n  \"minItems\": 2\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct LessSimpleTwoTuple(pub (::std::string::String, ::std::string::String));
@@ -99,20 +68,7 @@ impl ::std::convert::From<(::std::string::String, ::std::string::String)> for Le
     }
 }
 #[doc = "`SimpleTwoArray`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"items\": {"]
-#[doc = "    \"type\": \"string\""]
-#[doc = "  },"]
-#[doc = "  \"maxItems\": 2,"]
-#[doc = "  \"minItems\": 2"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"items\": {\n    \"type\": \"string\"\n  },\n  \"maxItems\": 2,\n  \"minItems\": 2\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct SimpleTwoArray(pub [::std::string::String; 2usize]);
@@ -133,99 +89,13 @@ impl ::std::convert::From<[::std::string::String; 2usize]> for SimpleTwoArray {
     }
 }
 #[doc = "`SimpleTwoTuple`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"items\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  ],"]
-#[doc = "  \"maxItems\": 2,"]
-#[doc = "  \"minItems\": 2"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct SimpleTwoTuple(pub (::std::string::String, ::std::string::String));
-impl ::std::ops::Deref for SimpleTwoTuple {
-    type Target = (::std::string::String, ::std::string::String);
-    fn deref(&self) -> &(::std::string::String, ::std::string::String) {
-        &self.0
-    }
-}
-impl ::std::convert::From<SimpleTwoTuple> for (::std::string::String, ::std::string::String) {
-    fn from(value: SimpleTwoTuple) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<(::std::string::String, ::std::string::String)> for SimpleTwoTuple {
-    fn from(value: (::std::string::String, ::std::string::String)) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"items\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"string\"\n    }\n  ],\n  \"maxItems\": 2,\n  \"minItems\": 2\n}\n ```\n </details>"]
+pub use self::LessSimpleTwoTuple as SimpleTwoTuple;
 #[doc = "`UnsimpleTwoTuple`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"items\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  ],"]
-#[doc = "  \"additionalItems\": {"]
-#[doc = "    \"type\": \"string\""]
-#[doc = "  },"]
-#[doc = "  \"maxItems\": 2,"]
-#[doc = "  \"minItems\": 2"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct UnsimpleTwoTuple(pub (::std::string::String, ::std::string::String));
-impl ::std::ops::Deref for UnsimpleTwoTuple {
-    type Target = (::std::string::String, ::std::string::String);
-    fn deref(&self) -> &(::std::string::String, ::std::string::String) {
-        &self.0
-    }
-}
-impl ::std::convert::From<UnsimpleTwoTuple> for (::std::string::String, ::std::string::String) {
-    fn from(value: UnsimpleTwoTuple) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<(::std::string::String, ::std::string::String)> for UnsimpleTwoTuple {
-    fn from(value: (::std::string::String, ::std::string::String)) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"items\": [\n    {\n      \"type\": \"string\"\n    }\n  ],\n  \"additionalItems\": {\n    \"type\": \"string\"\n  },\n  \"maxItems\": 2,\n  \"minItems\": 2\n}\n ```\n </details>"]
+pub use self::LessSimpleTwoTuple as UnsimpleTwoTuple;
 #[doc = "`YoloTwoArray`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"array\","]
-#[doc = "  \"additionalItems\": {"]
-#[doc = "    \"type\": \"string\","]
-#[doc = "    \"$comment\": \"ignored\""]
-#[doc = "  },"]
-#[doc = "  \"maxItems\": 2,"]
-#[doc = "  \"minItems\": 2"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"array\",\n  \"additionalItems\": {\n    \"type\": \"string\",\n    \"$comment\": \"ignored\"\n  },\n  \"maxItems\": 2,\n  \"minItems\": 2\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct YoloTwoArray(pub [::serde_json::Value; 2usize]);

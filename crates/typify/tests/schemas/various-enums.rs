@@ -26,21 +26,7 @@ pub mod error {
     }
 }
 #[doc = "`AlternativeEnum`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"default\": \"Choice2\","]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"Choice1\","]
-#[doc = "    \"Choice2\","]
-#[doc = "    \"Choice3\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"default\": \"Choice2\",\n  \"type\": \"string\",\n  \"enum\": [\n    \"Choice1\",\n    \"Choice2\",\n    \"Choice3\"\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -106,16 +92,7 @@ impl ::std::default::Default for AlternativeEnum {
     }
 }
 #[doc = "`AnyOfNoStrings`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"enum\": []"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\",\n  \"enum\": []\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -131,56 +108,10 @@ impl ::std::default::Default for AlternativeEnum {
 #[serde(deny_unknown_fields)]
 pub enum AnyOfNoStrings {}
 #[doc = "`AnyOfNothing`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"enum\": []"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(
-    :: serde :: Deserialize,
-    :: serde :: Serialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-)]
-#[serde(deny_unknown_fields)]
-pub enum AnyOfNothing {}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"enum\": []\n}\n ```\n </details>"]
+pub use self::AnyOfNoStrings as AnyOfNothing;
 #[doc = "`CommentedVariants`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"description\": \"An A\","]
-#[doc = "      \"enum\": ["]
-#[doc = "        \"A\""]
-#[doc = "      ]"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"description\": \"A B\","]
-#[doc = "      \"enum\": ["]
-#[doc = "        \"B\""]
-#[doc = "      ]"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"description\": \"a pirate's favorite letter\","]
-#[doc = "      \"const\": \"C\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"description\": \"An A\",\n      \"enum\": [\n        \"A\"\n      ]\n    },\n    {\n      \"description\": \"A B\",\n      \"enum\": [\n        \"B\"\n      ]\n    },\n    {\n      \"description\": \"a pirate's favorite letter\",\n      \"const\": \"C\"\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -244,33 +175,7 @@ impl ::std::convert::TryFrom<::std::string::String> for CommentedVariants {
     }
 }
 #[doc = "`DiskAttachment`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"required\": ["]
-#[doc = "    \"alternate\","]
-#[doc = "    \"state\""]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"alternate\": {"]
-#[doc = "      \"$ref\": \"#/components/schemas/AlternativeEnum\""]
-#[doc = "    },"]
-#[doc = "    \"state\": {"]
-#[doc = "      \"default\": \"Detached\","]
-#[doc = "      \"type\": \"string\","]
-#[doc = "      \"enum\": ["]
-#[doc = "        \"Detached\","]
-#[doc = "        \"Destroyed\","]
-#[doc = "        \"Faulted\""]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  }"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"required\": [\n    \"alternate\",\n    \"state\"\n  ],\n  \"properties\": {\n    \"alternate\": {\n      \"$ref\": \"#/components/schemas/AlternativeEnum\"\n    },\n    \"state\": {\n      \"default\": \"Detached\",\n      \"type\": \"string\",\n      \"enum\": [\n        \"Detached\",\n        \"Destroyed\",\n        \"Faulted\"\n      ]\n    }\n  }\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub struct DiskAttachment {
     pub alternate: AlternativeEnum,
@@ -282,21 +187,7 @@ impl DiskAttachment {
     }
 }
 #[doc = "`DiskAttachmentState`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"default\": \"Detached\","]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"Detached\","]
-#[doc = "    \"Destroyed\","]
-#[doc = "    \"Faulted\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"default\": \"Detached\",\n  \"type\": \"string\",\n  \"enum\": [\n    \"Detached\",\n    \"Destroyed\",\n    \"Faulted\"\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -362,23 +253,7 @@ impl ::std::default::Default for DiskAttachmentState {
     }
 }
 #[doc = "`EmptyObject`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"prop\": {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"enum\": ["]
-#[doc = "        {}"]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  }"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"prop\": {\n      \"type\": \"object\",\n      \"enum\": [\n        {}\n      ]\n    }\n  }\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub struct EmptyObject {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -397,18 +272,7 @@ impl EmptyObject {
     }
 }
 #[doc = "`EmptyObjectProp`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    {}"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"enum\": [\n    {}\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct EmptyObjectProp(::serde_json::Map<::std::string::String, ::serde_json::Value>);
@@ -452,82 +316,7 @@ impl<'de> ::serde::Deserialize<'de> for EmptyObjectProp {
     }
 }
 #[doc = "`EnumAndConstant`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"required\": ["]
-#[doc = "        \"bark\","]
-#[doc = "        \"petType\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"bark\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        },"]
-#[doc = "        \"petType\": {"]
-#[doc = "          \"type\": \"string\","]
-#[doc = "          \"enum\": ["]
-#[doc = "            \"dog\""]
-#[doc = "          ]"]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"required\": ["]
-#[doc = "        \"petType\","]
-#[doc = "        \"purr\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"petType\": {"]
-#[doc = "          \"type\": \"string\","]
-#[doc = "          \"const\": \"cat\""]
-#[doc = "        },"]
-#[doc = "        \"purr\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"required\": ["]
-#[doc = "        \"help\","]
-#[doc = "        \"petType\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"help\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        },"]
-#[doc = "        \"petType\": {"]
-#[doc = "          \"const\": \"monkey\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"required\": ["]
-#[doc = "        \"float\","]
-#[doc = "        \"petType\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"float\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        },"]
-#[doc = "        \"petType\": {"]
-#[doc = "          \"enum\": ["]
-#[doc = "            \"fish\""]
-#[doc = "          ]"]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"type\": \"object\",\n      \"required\": [\n        \"bark\",\n        \"petType\"\n      ],\n      \"properties\": {\n        \"bark\": {\n          \"type\": \"string\"\n        },\n        \"petType\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"dog\"\n          ]\n        }\n      }\n    },\n    {\n      \"type\": \"object\",\n      \"required\": [\n        \"petType\",\n        \"purr\"\n      ],\n      \"properties\": {\n        \"petType\": {\n          \"type\": \"string\",\n          \"const\": \"cat\"\n        },\n        \"purr\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    {\n      \"type\": \"object\",\n      \"required\": [\n        \"help\",\n        \"petType\"\n      ],\n      \"properties\": {\n        \"help\": {\n          \"type\": \"string\"\n        },\n        \"petType\": {\n          \"const\": \"monkey\"\n        }\n      }\n    },\n    {\n      \"type\": \"object\",\n      \"required\": [\n        \"float\",\n        \"petType\"\n      ],\n      \"properties\": {\n        \"float\": {\n          \"type\": \"string\"\n        },\n        \"petType\": {\n          \"enum\": [\n            \"fish\"\n          ]\n        }\n      }\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(tag = "petType")]
 pub enum EnumAndConstant {
@@ -541,33 +330,7 @@ pub enum EnumAndConstant {
     Fish { float: ::std::string::String },
 }
 #[doc = "`IpNet`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"title\": \"V4\","]
-#[doc = "      \"allOf\": ["]
-#[doc = "        {"]
-#[doc = "          \"$ref\": \"#/components/schemas/Ipv4Net\""]
-#[doc = "        }"]
-#[doc = "      ]"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"title\": \"V6\","]
-#[doc = "      \"allOf\": ["]
-#[doc = "        {"]
-#[doc = "          \"$ref\": \"#/components/schemas/Ipv6Net\""]
-#[doc = "        }"]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  ],"]
-#[doc = "  \"$comment\": \"we want to see *nice* variant names in the output\""]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"title\": \"V4\",\n      \"allOf\": [\n        {\n          \"$ref\": \"#/components/schemas/Ipv4Net\"\n        }\n      ]\n    },\n    {\n      \"title\": \"V6\",\n      \"allOf\": [\n        {\n          \"$ref\": \"#/components/schemas/Ipv6Net\"\n        }\n      ]\n    }\n  ],\n  \"$comment\": \"we want to see *nice* variant names in the output\"\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum IpNet {
@@ -627,16 +390,7 @@ impl ::std::convert::From<Ipv6Net> for IpNet {
     }
 }
 #[doc = "`Ipv4Net`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"pattern\": \".*\""]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\",\n  \"pattern\": \".*\"\n}\n ```\n </details>"]
 #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[serde(transparent)]
 pub struct Ipv4Net(::std::string::String);
@@ -697,16 +451,7 @@ impl<'de> ::serde::Deserialize<'de> for Ipv4Net {
     }
 }
 #[doc = "`Ipv6Net`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"pattern\": \".*\""]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\",\n  \"pattern\": \".*\"\n}\n ```\n </details>"]
 #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[serde(transparent)]
 pub struct Ipv6Net(::std::string::String);
@@ -767,37 +512,7 @@ impl<'de> ::serde::Deserialize<'de> for Ipv6Net {
     }
 }
 #[doc = "`JankNames`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"title\": \"Animation Specification\","]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"title\": \"Animation Specification\","]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"maxProperties\": 1,"]
-#[doc = "      \"minProperties\": 1,"]
-#[doc = "      \"additionalProperties\": {"]
-#[doc = "        \"type\": \"string\""]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"maxProperties\": 2,"]
-#[doc = "      \"minProperties\": 2,"]
-#[doc = "      \"additionalProperties\": {"]
-#[doc = "        \"type\": \"integer\""]
-#[doc = "      }"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"title\": \"Animation Specification\",\n      \"type\": \"string\"\n    },\n    {\n      \"title\": \"Animation Specification\",\n      \"type\": \"object\",\n      \"maxProperties\": 1,\n      \"minProperties\": 1,\n      \"additionalProperties\": {\n        \"type\": \"string\"\n      }\n    },\n    {\n      \"type\": \"object\",\n      \"maxProperties\": 2,\n      \"minProperties\": 2,\n      \"additionalProperties\": {\n        \"type\": \"integer\"\n      }\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum JankNames {
@@ -820,90 +535,16 @@ impl ::std::convert::From<::std::collections::HashMap<::std::string::String, i64
     }
 }
 #[doc = "`Never`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "false"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(
-    :: serde :: Deserialize,
-    :: serde :: Serialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-)]
-#[serde(deny_unknown_fields)]
-pub enum Never {}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\nfalse\n ```\n </details>"]
+pub use self::AnyOfNoStrings as Never;
 #[doc = "`NeverEver`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "false"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(
-    :: serde :: Deserialize,
-    :: serde :: Serialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-)]
-#[serde(deny_unknown_fields)]
-pub enum NeverEver {}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\nfalse\n ```\n </details>"]
+pub use self::AnyOfNoStrings as NeverEver;
 #[doc = "`NeverEverForever`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "false"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(
-    :: serde :: Deserialize,
-    :: serde :: Serialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-)]
-#[serde(deny_unknown_fields)]
-pub enum NeverEverForever {}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\nfalse\n ```\n </details>"]
+pub use self::AnyOfNoStrings as NeverEverForever;
 #[doc = "`NullStringEnumWithUnknownFormat`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": ["]
-#[doc = "    \"string\","]
-#[doc = "    \"null\""]
-#[doc = "  ],"]
-#[doc = "  \"format\": \"?\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"a\","]
-#[doc = "    \"b\","]
-#[doc = "    \"c\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": [\n    \"string\",\n    \"null\"\n  ],\n  \"format\": \"?\",\n  \"enum\": [\n    \"a\",\n    \"b\",\n    \"c\"\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct NullStringEnumWithUnknownFormat(
@@ -930,21 +571,7 @@ impl ::std::convert::From<::std::option::Option<NullStringEnumWithUnknownFormatI
     }
 }
 #[doc = "`NullStringEnumWithUnknownFormatInner`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\","]
-#[doc = "  \"format\": \"?\","]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"a\","]
-#[doc = "    \"b\","]
-#[doc = "    \"c\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\",\n  \"format\": \"?\",\n  \"enum\": [\n    \"a\",\n    \"b\",\n    \"c\"\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -1008,43 +635,7 @@ impl ::std::convert::TryFrom<::std::string::String> for NullStringEnumWithUnknow
     }
 }
 #[doc = "`OneOfMissingTitle`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"title\": \"A\","]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"foo\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"title\": \"B\","]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"bar\": {"]
-#[doc = "          \"type\": \"integer\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"bar\": {"]
-#[doc = "          \"type\": \"integer\""]
-#[doc = "        },"]
-#[doc = "        \"baz\": {"]
-#[doc = "          \"type\": \"integer\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"oneOf\": [\n    {\n      \"title\": \"A\",\n      \"properties\": {\n        \"foo\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    {\n      \"title\": \"B\",\n      \"properties\": {\n        \"bar\": {\n          \"type\": \"integer\"\n        }\n      }\n    },\n    {\n      \"properties\": {\n        \"bar\": {\n          \"type\": \"integer\"\n        },\n        \"baz\": {\n          \"type\": \"integer\"\n        }\n      }\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum OneOfMissingTitle {
@@ -1064,22 +655,7 @@ pub enum OneOfMissingTitle {
     },
 }
 #[doc = "`OneOfRawType`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"integer\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"integer\"\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum OneOfRawType {
@@ -1100,37 +676,7 @@ impl ::std::convert::From<i64> for OneOfRawType {
     }
 }
 #[doc = "`OneOfTypes`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"required\": ["]
-#[doc = "        \"bar\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"bar\": {"]
-#[doc = "          \"type\": \"integer\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"required\": ["]
-#[doc = "        \"foo\""]
-#[doc = "      ],"]
-#[doc = "      \"properties\": {"]
-#[doc = "        \"foo\": {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        }"]
-#[doc = "      }"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"oneOf\": [\n    {\n      \"required\": [\n        \"bar\"\n      ],\n      \"properties\": {\n        \"bar\": {\n          \"type\": \"integer\"\n        }\n      }\n    },\n    {\n      \"required\": [\n        \"foo\"\n      ],\n      \"properties\": {\n        \"foo\": {\n          \"type\": \"string\"\n        }\n      }\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 pub enum OneOfTypes {
     #[serde(rename = "bar")]
@@ -1144,22 +690,7 @@ impl ::std::convert::From<i64> for OneOfTypes {
     }
 }
 #[doc = "`OptionAnyofConst`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"anyOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"const\": null"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"anyOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"const\": null\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct OptionAnyofConst(pub ::std::option::Option<::std::string::String>);
@@ -1180,199 +711,22 @@ impl ::std::convert::From<::std::option::Option<::std::string::String>> for Opti
     }
 }
 #[doc = "`OptionAnyofEnum`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"anyOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"enum\": ["]
-#[doc = "        null"]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct OptionAnyofEnum(pub ::std::option::Option<::std::string::String>);
-impl ::std::ops::Deref for OptionAnyofEnum {
-    type Target = ::std::option::Option<::std::string::String>;
-    fn deref(&self) -> &::std::option::Option<::std::string::String> {
-        &self.0
-    }
-}
-impl ::std::convert::From<OptionAnyofEnum> for ::std::option::Option<::std::string::String> {
-    fn from(value: OptionAnyofEnum) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<::std::option::Option<::std::string::String>> for OptionAnyofEnum {
-    fn from(value: ::std::option::Option<::std::string::String>) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"anyOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"enum\": [\n        null\n      ]\n    }\n  ]\n}\n ```\n </details>"]
+pub use self::OptionAnyofConst as OptionAnyofEnum;
 #[doc = "`OptionAnyofNull`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"anyOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"null\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct OptionAnyofNull(pub ::std::option::Option<::std::string::String>);
-impl ::std::ops::Deref for OptionAnyofNull {
-    type Target = ::std::option::Option<::std::string::String>;
-    fn deref(&self) -> &::std::option::Option<::std::string::String> {
-        &self.0
-    }
-}
-impl ::std::convert::From<OptionAnyofNull> for ::std::option::Option<::std::string::String> {
-    fn from(value: OptionAnyofNull) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<::std::option::Option<::std::string::String>> for OptionAnyofNull {
-    fn from(value: ::std::option::Option<::std::string::String>) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"anyOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"null\"\n    }\n  ]\n}\n ```\n </details>"]
+pub use self::OptionAnyofConst as OptionAnyofNull;
 #[doc = "`OptionOneofConst`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"const\": null"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct OptionOneofConst(pub ::std::option::Option<::std::string::String>);
-impl ::std::ops::Deref for OptionOneofConst {
-    type Target = ::std::option::Option<::std::string::String>;
-    fn deref(&self) -> &::std::option::Option<::std::string::String> {
-        &self.0
-    }
-}
-impl ::std::convert::From<OptionOneofConst> for ::std::option::Option<::std::string::String> {
-    fn from(value: OptionOneofConst) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<::std::option::Option<::std::string::String>> for OptionOneofConst {
-    fn from(value: ::std::option::Option<::std::string::String>) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"const\": null\n    }\n  ]\n}\n ```\n </details>"]
+pub use self::OptionAnyofConst as OptionOneofConst;
 #[doc = "`OptionOneofEnum`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"enum\": ["]
-#[doc = "        null"]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct OptionOneofEnum(pub ::std::option::Option<::std::string::String>);
-impl ::std::ops::Deref for OptionOneofEnum {
-    type Target = ::std::option::Option<::std::string::String>;
-    fn deref(&self) -> &::std::option::Option<::std::string::String> {
-        &self.0
-    }
-}
-impl ::std::convert::From<OptionOneofEnum> for ::std::option::Option<::std::string::String> {
-    fn from(value: OptionOneofEnum) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<::std::option::Option<::std::string::String>> for OptionOneofEnum {
-    fn from(value: ::std::option::Option<::std::string::String>) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"enum\": [\n        null\n      ]\n    }\n  ]\n}\n ```\n </details>"]
+pub use self::OptionAnyofConst as OptionOneofEnum;
 #[doc = "`OptionOneofNull`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"null\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
-#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-#[serde(transparent)]
-pub struct OptionOneofNull(pub ::std::option::Option<::std::string::String>);
-impl ::std::ops::Deref for OptionOneofNull {
-    type Target = ::std::option::Option<::std::string::String>;
-    fn deref(&self) -> &::std::option::Option<::std::string::String> {
-        &self.0
-    }
-}
-impl ::std::convert::From<OptionOneofNull> for ::std::option::Option<::std::string::String> {
-    fn from(value: OptionOneofNull) -> Self {
-        value.0
-    }
-}
-impl ::std::convert::From<::std::option::Option<::std::string::String>> for OptionOneofNull {
-    fn from(value: ::std::option::Option<::std::string::String>) -> Self {
-        Self(value)
-    }
-}
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"type\": \"string\"\n    },\n    {\n      \"type\": \"null\"\n    }\n  ]\n}\n ```\n </details>"]
+pub use self::OptionAnyofConst as OptionOneofNull;
 #[doc = "`ReferenceDef`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\""]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\"\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -1414,37 +768,7 @@ impl ::std::fmt::Display for ReferenceDef {
     }
 }
 #[doc = "issue 280"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"description\": \"issue 280\","]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"type\": \"array\","]
-#[doc = "      \"items\": {"]
-#[doc = "        \"type\": \"string\""]
-#[doc = "      }"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"type\": \"object\","]
-#[doc = "      \"additionalProperties\": {"]
-#[doc = "        \"oneOf\": ["]
-#[doc = "          {"]
-#[doc = "            \"$ref\": \"#/definitions/StringVersion\""]
-#[doc = "          },"]
-#[doc = "          {"]
-#[doc = "            \"$ref\": \"#/definitions/ReferenceDef\""]
-#[doc = "          }"]
-#[doc = "        ]"]
-#[doc = "      },"]
-#[doc = "      \"$comment\": \"Mapping of mod name to the desired version\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"description\": \"issue 280\",\n  \"oneOf\": [\n    {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    {\n      \"type\": \"object\",\n      \"additionalProperties\": {\n        \"oneOf\": [\n          {\n            \"$ref\": \"#/definitions/StringVersion\"\n          },\n          {\n            \"$ref\": \"#/definitions/ReferenceDef\"\n          }\n        ]\n      },\n      \"$comment\": \"Mapping of mod name to the desired version\"\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum References {
@@ -1466,22 +790,7 @@ impl ::std::convert::From<::std::collections::HashMap<::std::string::String, Ref
     }
 }
 #[doc = "`ReferencesObjectValue`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"$ref\": \"#/definitions/StringVersion\""]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"$ref\": \"#/definitions/ReferenceDef\""]
-#[doc = "    }"]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"oneOf\": [\n    {\n      \"$ref\": \"#/definitions/StringVersion\"\n    },\n    {\n      \"$ref\": \"#/definitions/ReferenceDef\"\n    }\n  ]\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum ReferencesObjectValue {
@@ -1507,35 +816,7 @@ impl ::std::convert::From<ReferenceDef> for ReferencesObjectValue {
     }
 }
 #[doc = "`ShouldBeExclusive`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"object\","]
-#[doc = "  \"oneOf\": ["]
-#[doc = "    {"]
-#[doc = "      \"required\": ["]
-#[doc = "        \"id\""]
-#[doc = "      ]"]
-#[doc = "    },"]
-#[doc = "    {"]
-#[doc = "      \"required\": ["]
-#[doc = "        \"reference\""]
-#[doc = "      ]"]
-#[doc = "    }"]
-#[doc = "  ],"]
-#[doc = "  \"properties\": {"]
-#[doc = "    \"id\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    },"]
-#[doc = "    \"reference\": {"]
-#[doc = "      \"type\": \"string\""]
-#[doc = "    }"]
-#[doc = "  }"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"object\",\n  \"oneOf\": [\n    {\n      \"required\": [\n        \"id\"\n      ]\n    },\n    {\n      \"required\": [\n        \"reference\"\n      ]\n    }\n  ],\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"reference\": {\n      \"type\": \"string\"\n    }\n  }\n}\n ```\n </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum ShouldBeExclusive {
@@ -1543,15 +824,7 @@ pub enum ShouldBeExclusive {
     Variant1 { reference: ::std::string::String },
 }
 #[doc = "`StringVersion`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"type\": \"string\""]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"type\": \"string\"\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
@@ -1593,19 +866,7 @@ impl ::std::fmt::Display for StringVersion {
     }
 }
 #[doc = "`VariantsDifferByPunct`"]
-#[doc = r""]
-#[doc = r" <details><summary>JSON schema</summary>"]
-#[doc = r""]
-#[doc = r" ```json"]
-#[doc = "{"]
-#[doc = "  \"enum\": ["]
-#[doc = "    \"2.5GBASE-T\","]
-#[doc = "    \"25GBASE-T\","]
-#[doc = "    \"2,5,GBASE,T\""]
-#[doc = "  ]"]
-#[doc = "}"]
-#[doc = r" ```"]
-#[doc = r" </details>"]
+#[doc = "\n <details><summary>JSON schema</summary>\n\n ```json\n{\n  \"enum\": [\n    \"2.5GBASE-T\",\n    \"25GBASE-T\",\n    \"2,5,GBASE,T\"\n  ]\n}\n ```\n </details>"]
 #[derive(
     :: serde :: Deserialize,
     :: serde :: Serialize,
