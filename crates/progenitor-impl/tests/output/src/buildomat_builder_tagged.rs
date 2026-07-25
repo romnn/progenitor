@@ -40,7 +40,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "string"
@@ -52,7 +52,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -73,14 +73,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "default": "en",
     ///  "type": "string",
     ///  "enum": [
     ///    "de",
     ///    "en"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -158,7 +158,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "stranger-things",
@@ -203,7 +203,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -224,7 +224,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -253,7 +253,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -276,7 +276,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "payload",
@@ -301,7 +301,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -323,7 +323,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -343,7 +343,7 @@ pub mod types {
     ///      "minimum": 0.0
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -364,7 +364,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "default",
@@ -388,7 +388,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -411,7 +411,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id"
@@ -421,7 +421,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -440,7 +440,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id"
@@ -450,26 +450,16 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct UploadedChunk {
-        pub id: ::std::string::String,
-    }
-
-    impl UploadedChunk {
-        pub fn builder() -> builder::UploadedChunk {
-            ::std::default::Default::default()
-        }
-    }
-
+    pub use self::TaskSubmitResult as UploadedChunk;
     ///`UserCreate`
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "name"
@@ -479,7 +469,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -498,7 +488,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -516,7 +506,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -537,7 +527,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -551,7 +541,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -571,7 +561,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "deleted",
@@ -603,7 +593,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -629,7 +619,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "chunks",
@@ -651,7 +641,7 @@ pub mod types {
     ///      "format": "int64"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -672,7 +662,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "payload",
@@ -691,7 +681,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -712,7 +702,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "bootstrap",
@@ -726,7 +716,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -746,7 +736,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id"
@@ -756,26 +746,16 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct WorkerBootstrapResult {
-        pub id: ::std::string::String,
-    }
-
-    impl WorkerBootstrapResult {
-        pub fn builder() -> builder::WorkerBootstrapResult {
-            ::std::default::Default::default()
-        }
-    }
-
+    pub use self::TaskSubmitResult as WorkerBootstrapResult;
     ///`WorkerCompleteTask`
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "failed"
@@ -785,7 +765,7 @@ pub mod types {
     ///      "type": "boolean"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -804,7 +784,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "poweroff"
@@ -817,7 +797,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/WorkerPingTask"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -838,7 +818,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -859,7 +839,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -880,7 +860,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -898,7 +878,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -919,7 +899,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "workers"
@@ -932,7 +912,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1409,47 +1389,7 @@ pub mod types {
             }
         }
 
-        #[derive(Clone, Debug)]
-        pub struct UploadedChunk {
-            id: ::std::result::Result<::std::string::String, ::std::string::String>,
-        }
-
-        impl ::std::default::Default for UploadedChunk {
-            fn default() -> Self {
-                Self {
-                    id: Err("no value supplied for id".to_string()),
-                }
-            }
-        }
-
-        impl UploadedChunk {
-            pub fn id<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.id = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for id: {e}"));
-                self
-            }
-        }
-
-        impl ::std::convert::TryFrom<UploadedChunk> for super::UploadedChunk {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: UploadedChunk,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self { id: value.id? })
-            }
-        }
-
-        impl ::std::convert::From<super::UploadedChunk> for UploadedChunk {
-            fn from(value: super::UploadedChunk) -> Self {
-                Self { id: Ok(value.id) }
-            }
-        }
-
+        pub use self::TaskSubmitResult as UploadedChunk;
         #[derive(Clone, Debug)]
         pub struct UserCreate {
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -1959,47 +1899,7 @@ pub mod types {
             }
         }
 
-        #[derive(Clone, Debug)]
-        pub struct WorkerBootstrapResult {
-            id: ::std::result::Result<::std::string::String, ::std::string::String>,
-        }
-
-        impl ::std::default::Default for WorkerBootstrapResult {
-            fn default() -> Self {
-                Self {
-                    id: Err("no value supplied for id".to_string()),
-                }
-            }
-        }
-
-        impl WorkerBootstrapResult {
-            pub fn id<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.id = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for id: {e}"));
-                self
-            }
-        }
-
-        impl ::std::convert::TryFrom<WorkerBootstrapResult> for super::WorkerBootstrapResult {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: WorkerBootstrapResult,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self { id: value.id? })
-            }
-        }
-
-        impl ::std::convert::From<super::WorkerBootstrapResult> for WorkerBootstrapResult {
-            fn from(value: super::WorkerBootstrapResult) -> Self {
-                Self { id: Ok(value.id) }
-            }
-        }
-
+        pub use self::TaskSubmitResult as WorkerBootstrapResult;
         #[derive(Clone, Debug)]
         pub struct WorkerCompleteTask {
             failed: ::std::result::Result<bool, ::std::string::String>,

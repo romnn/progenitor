@@ -40,7 +40,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "EnrolBody",
     ///  "type": "object",
     ///  "required": [
@@ -55,7 +55,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -69,7 +69,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "GlobalJobsResult",
     ///  "type": "object",
     ///  "required": [
@@ -83,7 +83,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -96,7 +96,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "msg",
@@ -115,7 +115,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -130,7 +130,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "PingResult",
     ///  "type": "object",
     ///  "required": [
@@ -145,7 +145,7 @@ pub mod types {
     ///      "type": "boolean"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -159,7 +159,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "ReportFinishBody",
     ///  "type": "object",
     ///  "required": [
@@ -185,7 +185,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/ReportId"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -201,7 +201,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "host",
@@ -230,7 +230,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -247,7 +247,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "ReportOutputBody",
     ///  "type": "object",
     ///  "required": [
@@ -262,7 +262,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/OutputRecord"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -276,7 +276,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "ReportResult",
     ///  "type": "object",
     ///  "required": [
@@ -287,7 +287,7 @@ pub mod types {
     ///      "type": "boolean"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -300,7 +300,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "ReportStartBody",
     ///  "type": "object",
     ///  "required": [
@@ -320,7 +320,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -335,7 +335,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "age_seconds",
@@ -369,7 +369,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]

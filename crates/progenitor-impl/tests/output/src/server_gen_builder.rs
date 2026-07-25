@@ -42,7 +42,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///true
+    /// true
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -72,7 +72,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "code",
@@ -87,7 +87,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -107,7 +107,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -121,7 +121,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -141,12 +141,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "array",
     ///  "items": {
     ///    "$ref": "#/components/schemas/Item"
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -176,31 +176,10 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///true
+    /// true
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    #[serde(transparent)]
-    pub struct Message(pub ::serde_json::Value);
-    impl ::std::ops::Deref for Message {
-        type Target = ::serde_json::Value;
-        fn deref(&self) -> &::serde_json::Value {
-            &self.0
-        }
-    }
-
-    impl ::std::convert::From<Message> for ::serde_json::Value {
-        fn from(value: Message) -> Self {
-            value.0
-        }
-    }
-
-    impl ::std::convert::From<::serde_json::Value> for Message {
-        fn from(value: ::serde_json::Value) -> Self {
-            Self(value)
-        }
-    }
-
+    pub use self::DoesNotExist as Message;
     /// Types for composing complex structures.
     pub mod builder {
         #[derive(Clone, Debug)]
@@ -554,6 +533,77 @@ impl Client {
     /// ```
     pub fn do_upgrade(&self) -> builder::DoUpgrade<'_> {
         builder::DoUpgrade::new(self)
+    }
+
+    ///Path axum cannot route: literal suffix after a parameter
+    ///
+    ///Sends a `GET` request to `/files/{fileId}.json`
+    ///
+    ///```ignore
+    /// let response = client.suffix_after_param()
+    ///    .file_id(file_id)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn suffix_after_param(&self) -> builder::SuffixAfterParam<'_> {
+        builder::SuffixAfterParam::new(self)
+    }
+
+    ///Shape shared with /shape/{second} via a different method
+    ///
+    ///Sends a `GET` request to `/shape/{first}`
+    ///
+    ///```ignore
+    /// let response = client.shape_by_first()
+    ///    .first(first)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn shape_by_first(&self) -> builder::ShapeByFirst<'_> {
+        builder::ShapeByFirst::new(self)
+    }
+
+    ///Same shape as /shape/{first}, different method: merges
+    ///
+    ///Sends a `POST` request to `/shape/{second}`
+    ///
+    ///```ignore
+    /// let response = client.shape_by_second()
+    ///    .second(second)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn shape_by_second(&self) -> builder::ShapeBySecond<'_> {
+        builder::ShapeBySecond::new(self)
+    }
+
+    ///Same shape AND method as /shape/{first}: dropped
+    ///
+    ///Sends a `GET` request to `/shape/{third}`
+    ///
+    ///```ignore
+    /// let response = client.shape_by_third()
+    ///    .third(third)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn shape_by_third(&self) -> builder::ShapeByThird<'_> {
+        builder::ShapeByThird::new(self)
+    }
+
+    ///Template names the same path parameter twice
+    ///
+    ///Sends a `GET` request to `/repeat/{outer}/mid/{inner}/tail/{outer}`
+    ///
+    ///```ignore
+    /// let response = client.repeated_path_param()
+    ///    .inner(inner)
+    ///    .outer(outer)
+    ///    .send()
+    ///    .await;
+    /// ```
+    pub fn repeated_path_param(&self) -> builder::RepeatedPathParam<'_> {
+        builder::RepeatedPathParam::new(self)
     }
 }
 
@@ -1510,6 +1560,310 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 101u16 => ResponseValue::upgrade(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    ///Builder for [`Client::suffix_after_param`]
+    ///
+    ///[`Client::suffix_after_param`]: super::Client::suffix_after_param
+    #[derive(Debug, Clone)]
+    pub struct SuffixAfterParam<'a> {
+        client: &'a super::Client,
+        file_id: ::std::result::Result<::std::string::String, ::std::string::String>,
+    }
+
+    impl<'a> SuffixAfterParam<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                file_id: Err("file_id was not initialized".to_string()),
+            }
+        }
+
+        pub fn file_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.file_id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for file_id failed".to_string()
+            });
+            self
+        }
+
+        ///Sends a `GET` request to `/files/{fileId}.json`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, file_id } = self;
+            let file_id = file_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/files/{}.json",
+                client.baseurl,
+                encode_path(&file_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.get(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "suffix_after_param",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    ///Builder for [`Client::shape_by_first`]
+    ///
+    ///[`Client::shape_by_first`]: super::Client::shape_by_first
+    #[derive(Debug, Clone)]
+    pub struct ShapeByFirst<'a> {
+        client: &'a super::Client,
+        first: ::std::result::Result<::std::string::String, ::std::string::String>,
+    }
+
+    impl<'a> ShapeByFirst<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                first: Err("first was not initialized".to_string()),
+            }
+        }
+
+        pub fn first<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.first = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for first failed".to_string()
+            });
+            self
+        }
+
+        ///Sends a `GET` request to `/shape/{first}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, first } = self;
+            let first = first.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/shape/{}",
+                client.baseurl,
+                encode_path(&first.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.get(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "shape_by_first",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    ///Builder for [`Client::shape_by_second`]
+    ///
+    ///[`Client::shape_by_second`]: super::Client::shape_by_second
+    #[derive(Debug, Clone)]
+    pub struct ShapeBySecond<'a> {
+        client: &'a super::Client,
+        second: ::std::result::Result<::std::string::String, ::std::string::String>,
+    }
+
+    impl<'a> ShapeBySecond<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                second: Err("second was not initialized".to_string()),
+            }
+        }
+
+        pub fn second<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.second = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for second failed".to_string()
+            });
+            self
+        }
+
+        ///Sends a `POST` request to `/shape/{second}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, second } = self;
+            let second = second.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/shape/{}",
+                client.baseurl,
+                encode_path(&second.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.post(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "shape_by_second",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    ///Builder for [`Client::shape_by_third`]
+    ///
+    ///[`Client::shape_by_third`]: super::Client::shape_by_third
+    #[derive(Debug, Clone)]
+    pub struct ShapeByThird<'a> {
+        client: &'a super::Client,
+        third: ::std::result::Result<::std::string::String, ::std::string::String>,
+    }
+
+    impl<'a> ShapeByThird<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                third: Err("third was not initialized".to_string()),
+            }
+        }
+
+        pub fn third<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.third = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for third failed".to_string()
+            });
+            self
+        }
+
+        ///Sends a `GET` request to `/shape/{third}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, third } = self;
+            let third = third.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/shape/{}",
+                client.baseurl,
+                encode_path(&third.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.get(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "shape_by_third",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+
+    ///Builder for [`Client::repeated_path_param`]
+    ///
+    ///[`Client::repeated_path_param`]: super::Client::repeated_path_param
+    #[derive(Debug, Clone)]
+    pub struct RepeatedPathParam<'a> {
+        client: &'a super::Client,
+        inner: ::std::result::Result<::std::string::String, ::std::string::String>,
+        outer: ::std::result::Result<::std::string::String, ::std::string::String>,
+    }
+
+    impl<'a> RepeatedPathParam<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                inner: Err("inner was not initialized".to_string()),
+                outer: Err("outer was not initialized".to_string()),
+            }
+        }
+
+        pub fn inner<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.inner = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for inner failed".to_string()
+            });
+            self
+        }
+
+        pub fn outer<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.outer = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for outer failed".to_string()
+            });
+            self
+        }
+
+        ///Sends a `GET` request to `/repeat/{outer}/mid/{inner}/tail/{outer}`
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self {
+                client,
+                inner,
+                outer,
+            } = self;
+            let inner = inner.map_err(Error::InvalidRequest)?;
+            let outer = outer.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/repeat/{}/mid/{}/tail/{}",
+                client.baseurl,
+                encode_path(&outer.to_string()),
+                encode_path(&inner.to_string()),
+                encode_path(&outer.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.get(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "repeated_path_param",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }

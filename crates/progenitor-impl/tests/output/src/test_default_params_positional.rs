@@ -40,7 +40,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "s"
@@ -67,7 +67,7 @@ pub mod types {
     ///      "type": "boolean"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]

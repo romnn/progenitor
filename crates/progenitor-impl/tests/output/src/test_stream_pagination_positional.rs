@@ -40,7 +40,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Error information from a response.",
     ///  "type": "object",
     ///  "required": [
@@ -58,7 +58,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -74,7 +74,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -91,15 +91,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]

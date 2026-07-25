@@ -17,11 +17,11 @@
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use typify::TypeDetails;
 
 use crate::{
-    Generator, OpenApiDocument, PreparedIr, Result,
+    Error, Generator, OpenApiDocument, PreparedIr, Result,
     ir::Document,
     operation::{
         BodyContentType, MultipartFieldKind, MultipartSpec, OperationMethod,
@@ -47,6 +47,74 @@ struct ServerOp {
     trait_method: TokenStream,
     /// The route + responder fns on the adapter (empty for skipped ops).
     adapter_fns: TokenStream,
+    /// `false` when [`Self::axum_path`] is one axum refuses to register, so this
+    /// op contributes no route at all. [`axum::Router::route`] panics rather
+    /// than erroring, so an unroutable path left in would take down
+    /// `into_router()` for the whole API.
+    routable: bool,
+}
+
+/// Why axum cannot register `path`, if it cannot.
+///
+/// Mirrors `matchit`'s `find_wildcard`: a parameter has to run to the end of its
+/// path segment, its name must be non-empty, and it may not contain `/` or `*`.
+/// A literal prefix *before* a parameter is fine (`/v{version}` routes), only a
+/// suffix after one is rejected. Note `matchit` reports these as `InsertError`,
+/// but `axum` unwraps that into a panic.
+fn axum_route_rejection(path: &str) -> Option<String> {
+    let bytes = path.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'}' {
+            return Some(format!("`{path}` has an unmatched `}}`"));
+        }
+        if bytes[i] != b'{' {
+            i += 1;
+            continue;
+        }
+        let Some(len) = bytes[i + 1..].iter().position(|&c| c == b'}') else {
+            return Some(format!("`{path}` has an unmatched `{{`"));
+        };
+        let name = &path[i + 1..i + 1 + len];
+        if name.is_empty() {
+            return Some(format!("`{path}` has an empty parameter name"));
+        }
+        if name.contains('/') || name.contains('*') {
+            return Some(format!(
+                "parameter `{{{name}}}` in `{path}` contains `/` or `*`"
+            ));
+        }
+        let close = i + 1 + len;
+        match bytes.get(close + 1) {
+            None | Some(b'/') => {}
+            Some(_) => {
+                return Some(format!(
+                    "`{path}` puts text after the `{{{name}}}` parameter; axum \
+                     requires a parameter to span a whole path segment"
+                ));
+            }
+        }
+        i = close + 1;
+    }
+    None
+}
+
+/// A path with every parameter name erased, which is how `matchit` compares
+/// routes: it normalizes parameter names, so `/x/{a}` and `/x/{b}` are the same
+/// route to it even though `axum` keys its own table by the literal string.
+fn axum_path_shape(path: &str) -> String {
+    let mut shape = String::with_capacity(path.len());
+    let mut rest = path;
+    while let Some(open) = rest.find('{') {
+        shape.push_str(&rest[..open]);
+        shape.push_str("{}");
+        match rest[open..].find('}') {
+            Some(close) => rest = &rest[open + close + 1..],
+            None => return shape,
+        }
+    }
+    shape.push_str(rest);
+    shape
 }
 
 impl Generator {
@@ -60,6 +128,18 @@ impl Generator {
         let prepared = self.prepare(spec)?;
         let document = &spec.0;
         self.server_body(&prepared, document, crate_path)
+    }
+
+    /// [`Generator::server`] as formatted Rust source, for the same reason
+    /// [`Generator::generate_text`](crate::Generator::generate_text) exists: a
+    /// token-stream `to_string` puts the whole module on one line, and a spec
+    /// with thousands of operations then yields a multi-megabyte single line
+    /// that every rustc diagnostic quotes in full.
+    pub fn server_text(&mut self, spec: &OpenApiDocument, crate_path: &str) -> Result<String> {
+        let tokens = self.server(spec, crate_path)?;
+        let file = syn::parse2::<syn::File>(tokens)
+            .map_err(|e| Error::InternalError(format!("generated server does not parse: {e}")))?;
+        Ok(prettyplease::unparse(&file))
     }
 
     /// Shared core used by both [`Generator::server`] and `generate_tokens`.
@@ -88,12 +168,13 @@ impl Generator {
             .iter()
             .map(|method| method.operation_id.as_str())
             .collect::<HashSet<_>>();
+        let unroutable = self.unroutable_operations(&prepared.raw_methods);
         let ops = prepared
             .raw_methods
             .iter()
             .map(|method| {
                 let op_ident = server_operation_ident(method, &operation_names);
-                self.server_op(method, &trait_ident, &op_ident)
+                self.server_op(method, &trait_ident, &op_ident, &unroutable)
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -101,24 +182,34 @@ impl Generator {
         let trait_methods = ops.iter().map(|o| &o.trait_method);
         let adapter_fns = ops.iter().map(|o| &o.adapter_fns);
 
-        // Group all operations (supported and skipped) by path so methods that
-        // share a path land in one `MethodRouter` — axum panics on two `.route`
-        // calls for the same path otherwise.
-        let mut by_path: IndexMap<String, Vec<(proc_macro2::Ident, TokenStream)>> = IndexMap::new();
-        for op in &ops {
+        // Group routable operations (supported and 501-stubbed alike) by path
+        // *shape* so methods that share a path land in one `MethodRouter` —
+        // axum panics on two `.route` calls that matchit considers the same
+        // route. Registering the first template of each shape is safe because
+        // path parameters are extracted positionally, so the parameter names in
+        // the registered template are not load-bearing.
+        let mut by_path: IndexMap<String, (String, Vec<(proc_macro2::Ident, TokenStream)>)> =
+            IndexMap::new();
+        for op in ops.iter().filter(|op| op.routable) {
             by_path
-                .entry(op.axum_path.clone())
-                .or_default()
+                .entry(axum_path_shape(&op.axum_path))
+                .or_insert_with(|| (op.axum_path.clone(), Vec::new()))
+                .1
                 .push((op.routing_fn.clone(), op.handler.clone()));
         }
-        let route_calls = by_path.iter().map(|(path, methods)| {
+        // One statement per path rather than one long `.route(…).route(…)`
+        // chain: a spec with thousands of paths would otherwise put the whole
+        // router in a single expression nested as deeply as it has paths, which
+        // every recursive pass over the AST — syn, prettyplease, and rustc
+        // alike — has to descend in one go.
+        let route_calls = by_path.values().map(|(path, methods)| {
             let mut iter = methods.iter();
             let (first_fn, first_handler) = iter.next().unwrap();
             let mut method_router = quote! { axum::routing::#first_fn(#first_handler) };
             for (routing_fn, handler) in iter {
                 method_router = quote! { #method_router.#routing_fn(#handler) };
             }
-            quote! { .route(#path, #method_router) }
+            quote! { let __progenitor_router = __progenitor_router.route(#path, #method_router); }
         });
 
         Ok(quote! {
@@ -168,9 +259,9 @@ impl Generator {
 
                 /// Build the fully-wired router.
                 pub fn into_router(self) -> axum::Router {
-                    axum::Router::new()
-                        #(#route_calls)*
-                        .with_state(self.0)
+                    let __progenitor_router = axum::Router::new();
+                    #(#route_calls)*
+                    __progenitor_router.with_state(self.0)
                 }
 
                 fn render_rejection(
@@ -195,11 +286,67 @@ impl Generator {
         })
     }
 
+    /// Decide up front which operations axum is able to route, keyed by
+    /// operation id with the reason it cannot be routed.
+    ///
+    /// This has to be a pre-pass rather than a per-operation check because the
+    /// second class of failure is a collision *between* two operations, which is
+    /// only visible once every path is known.
+    fn unroutable_operations(&mut self, methods: &[OperationMethod]) -> BTreeMap<String, String> {
+        let mut unroutable = BTreeMap::new();
+        // shape -> HTTP method -> the path template that claimed it.
+        let mut claimed: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+
+        for method in methods {
+            let path = method.path.as_axum_path();
+            if let Some(reason) = axum_route_rejection(&path) {
+                unroutable.insert(method.operation_id.clone(), reason);
+                continue;
+            }
+            let verb = method.method.as_str().to_string();
+            let claimant = claimed
+                .entry(axum_path_shape(&path))
+                .or_default()
+                .entry(verb.clone());
+            match claimant {
+                std::collections::btree_map::Entry::Vacant(slot) => {
+                    slot.insert(path);
+                }
+                std::collections::btree_map::Entry::Occupied(slot) => {
+                    // Same shape and same verb as an earlier operation. matchit
+                    // normalizes parameter names, so these are one route to it
+                    // and only one of them can be served.
+                    unroutable.insert(
+                        method.operation_id.clone(),
+                        format!(
+                            "`{verb} {path}` differs from `{verb} {}` only in its \
+                             parameter names, which axum treats as the same route",
+                            slot.get()
+                        ),
+                    );
+                }
+            }
+        }
+
+        for (operation_id, reason) in &unroutable {
+            let diagnostic = format!(
+                "progenitor: server generation skipped operation `{operation_id}`: {reason}; \
+                 it gets no trait method and no route, because registering it would panic \
+                 in `axum::Router::route` and take down `into_router()` for the whole API"
+            );
+            eprintln!("{diagnostic}");
+            self.diagnostics.push(diagnostic);
+        }
+
+        unroutable
+    }
+
     fn server_op(
         &mut self,
         method: &OperationMethod,
         trait_ident: &proc_macro2::Ident,
         op_ident: &proc_macro2::Ident,
+        unroutable: &BTreeMap<String, String>,
     ) -> Result<ServerOp> {
         let route_ident = format_ident!("{}_route", method.operation_id);
         let respond_ident = format_ident!("{}_respond", method.operation_id);
@@ -240,6 +387,21 @@ impl Generator {
             None
         };
 
+        // An op axum cannot route is dropped entirely; `unroutable_operations`
+        // has already recorded why. It cannot even get the 501 stub below, since
+        // the stub still needs `.route(path, …)` to succeed.
+        if unroutable.contains_key(&method.operation_id) {
+            return Ok(ServerOp {
+                axum_path,
+                routing_fn,
+                handler: quote! {},
+                module_items: quote! {},
+                trait_method: quote! {},
+                adapter_fns: quote! {},
+                routable: false,
+            });
+        }
+
         if let Some(reason) = unsupported_reason {
             // A skipped op still gets a 501 route so routing stays complete; it
             // gets no trait method. The skip is surfaced at generation time
@@ -261,6 +423,7 @@ impl Generator {
                 module_items: quote! {},
                 trait_method: quote! {},
                 adapter_fns: quote! {},
+                routable: true,
             });
         }
 
@@ -384,6 +547,7 @@ impl Generator {
             axum_path,
             routing_fn,
             handler,
+            routable: true,
             module_items,
             trait_method,
             adapter_fns,
@@ -715,13 +879,19 @@ impl Generator {
         // Path params, in path-template order, for the (possibly tuple) Path<…>.
         let mut path_idents: Vec<proc_macro2::Ident> = Vec::new();
         let mut path_types: Vec<TokenStream> = Vec::new();
-        for wire in method.path.names() {
+        // A template may name the same parameter twice, e.g. cloudflare's
+        // `/accounts/{account_id}/addressing/address_maps/{address_map_id}/accounts/{account_id}`.
+        // `Path` extracts one value per segment positionally, so every occurrence
+        // needs a slot in the tuple, but the request struct gets one field and
+        // the repeats bind to throwaway names — the client substitutes the same
+        // value into every occurrence, so they carry no extra information.
+        let mut bound_path_params: HashSet<&str> = HashSet::new();
+        for (position, wire) in method.path.names().iter().enumerate() {
             if let Some(param) = method
                 .params
                 .iter()
-                .find(|p| matches!(p.kind, OperationParameterKind::Path) && p.api_name == wire)
+                .find(|p| matches!(p.kind, OperationParameterKind::Path) && &p.api_name == wire)
             {
-                let ident = format_ident!("{}", param.name);
                 let ty = match &param.typ {
                     OperationParameterType::Type(id) => {
                         self.type_space.get_type(id).unwrap().ident()
@@ -729,10 +899,15 @@ impl Generator {
                     OperationParameterType::RawBody => quote! { String },
                     OperationParameterType::Multipart(_) => quote! { String },
                 };
-                let field_ty = ty.clone();
-                request_fields.extend(quote! { pub #ident: #field_ty, });
-                field_inits.push(quote! { #ident });
-                path_idents.push(ident);
+                if bound_path_params.insert(&param.api_name) {
+                    let ident = format_ident!("{}", param.name);
+                    let field_ty = ty.clone();
+                    request_fields.extend(quote! { pub #ident: #field_ty, });
+                    field_inits.push(quote! { #ident });
+                    path_idents.push(ident);
+                } else {
+                    path_idents.push(format_ident!("_progenitor_repeated_{}", position));
+                }
                 path_types.push(ty);
             }
         }
@@ -1381,7 +1556,9 @@ fn raw_content_type(items: &[OperationResponse]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_server_responses, server_operation_ident};
+    use super::{
+        axum_path_shape, axum_route_rejection, extract_server_responses, server_operation_ident,
+    };
     use crate::operation::{
         HttpMethod, OperationMethod, OperationResponse, OperationResponseKind,
         OperationResponseStatus, ResponseSide,
@@ -1445,5 +1622,61 @@ mod tests {
         let ident = server_operation_ident(&method, &operation_names);
 
         assert_eq!(ident.to_string(), "render_rejection_3");
+    }
+
+    #[test]
+    fn axum_accepts_parameters_that_span_a_whole_segment() {
+        for path in [
+            "/pets",
+            "/pets/{petId}",
+            "/one/{two}/three",
+            "/a/{b}/c/{d}",
+            // A literal prefix before a parameter is fine; only a suffix is not.
+            "/v{version}/things",
+        ] {
+            assert_eq!(
+                axum_route_rejection(path),
+                None,
+                "{path} should be routable"
+            );
+        }
+    }
+
+    #[test]
+    fn axum_rejects_parameters_followed_by_more_of_the_same_segment() {
+        // Every one of these appears verbatim in the conformance corpus, and
+        // each made `axum::Router::route` panic before it was filtered out.
+        for path in [
+            "/2010-04-01/Accounts/{Sid}.json",
+            "/points/{latitude},{longitude}",
+            "/{foo}-{bar}-{baz}",
+            "/v1/files/{fileId}:completeUpload",
+            "/{start_date}..{end_date}",
+            "/screenshots/{scan_id}.png",
+        ] {
+            assert!(
+                axum_route_rejection(path).is_some(),
+                "{path} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn axum_rejects_malformed_parameters() {
+        assert!(axum_route_rejection("/a/{}").is_some());
+        assert!(axum_route_rejection("/a/{b").is_some());
+        assert!(axum_route_rejection("/a/b}").is_some());
+        assert!(axum_route_rejection("/a/{b*}").is_some());
+    }
+
+    #[test]
+    fn path_shape_erases_parameter_names_so_matchit_collisions_are_visible() {
+        assert_eq!(axum_path_shape("/x/{a}"), axum_path_shape("/x/{b}"));
+        assert_eq!(
+            axum_path_shape("/orgs/{org}/attestations/{attestation_id}"),
+            axum_path_shape("/orgs/{org}/attestations/{subject_digest}")
+        );
+        assert_ne!(axum_path_shape("/x/{a}"), axum_path_shape("/x/{a}/y"));
+        assert_eq!(axum_path_shape("/plain/path"), "/plain/path");
     }
 }

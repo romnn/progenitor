@@ -247,6 +247,31 @@ pub type RenderRejectionError = ::progenitor_server::ServerError<::std::convert:
 #[doc = "Bundled, typed request for the `render_rejection` operation."]
 #[derive(Debug, Clone)]
 pub struct RenderRejectionRequest {}
+#[doc = "Error type for the `shape_by_first` operation."]
+pub type ShapeByFirstError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `shape_by_first` operation."]
+#[derive(Debug, Clone)]
+pub struct ShapeByFirstRequest {
+    pub first: ::std::string::String,
+}
+
+#[doc = "Error type for the `shape_by_second` operation."]
+pub type ShapeBySecondError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `shape_by_second` operation."]
+#[derive(Debug, Clone)]
+pub struct ShapeBySecondRequest {
+    pub second: ::std::string::String,
+}
+
+#[doc = "Error type for the `repeated_path_param` operation."]
+pub type RepeatedPathParamError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `repeated_path_param` operation."]
+#[derive(Debug, Clone)]
+pub struct RepeatedPathParamRequest {
+    pub outer: ::std::string::String,
+    pub inner: ::std::string::String,
+}
+
 #[doc = r" The service trait. Implement it, then mount the generated server"]
 #[doc = r" adapter via the `progenitor-server` runtime (or `into_router()`"]
 #[doc = r" to compose it into your own axum app)."]
@@ -315,6 +340,21 @@ pub trait ServerGen: Send + Sync + 'static {
         &self,
         request: ::progenitor_server::Request<RenderRejectionRequest>,
     ) -> ::std::result::Result<::progenitor_server::Response<()>, RenderRejectionError>;
+    #[doc = "Shape shared with /shape/{second} via a different method."]
+    async fn shape_by_first(
+        &self,
+        request: ::progenitor_server::Request<ShapeByFirstRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<()>, ShapeByFirstError>;
+    #[doc = "Same shape as /shape/{first}, different method: merges."]
+    async fn shape_by_second(
+        &self,
+        request: ::progenitor_server::Request<ShapeBySecondRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<()>, ShapeBySecondError>;
+    #[doc = "Template names the same path parameter twice."]
+    async fn repeated_path_param(
+        &self,
+        request: ::progenitor_server::Request<RepeatedPathParamRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<()>, RepeatedPathParamError>;
 }
 
 #[doc = r" Adapter that turns an implementation of the service trait into an"]
@@ -333,36 +373,48 @@ impl<T: ServerGen> ServerGenServer<T> {
 
     #[doc = r" Build the fully-wired router."]
     pub fn into_router(self) -> axum::Router {
-        axum::Router::new()
-            .route(
-                "/items",
-                axum::routing::get(Self::list_items_route).post(Self::create_item_route),
-            )
-            .route(
-                "/items/{itemId}",
-                axum::routing::get(Self::get_item_route).put(Self::update_item_route),
-            )
-            .route("/collide/{inner}", axum::routing::get(Self::collide_route))
-            .route("/blob", axum::routing::get(Self::download_blob_route))
-            .route("/multi/{mode}", axum::routing::get(Self::multi_kind_route))
-            .route(
-                "/upload/{file}",
-                axum::routing::post(Self::upload_item_route),
-            )
-            .route("/upload-raw", axum::routing::post(Self::upload_raw_route))
-            .route(
-                "/render-rejection",
-                axum::routing::post(Self::render_rejection_route),
-            )
-            .route(
-                "/search",
-                axum::routing::get(|| async { http::StatusCode::NOT_IMPLEMENTED }),
-            )
-            .route(
-                "/upgrade",
-                axum::routing::get(|| async { http::StatusCode::NOT_IMPLEMENTED }),
-            )
-            .with_state(self.0)
+        let __progenitor_router = axum::Router::new();
+        let __progenitor_router = __progenitor_router.route(
+            "/items",
+            axum::routing::get(Self::list_items_route).post(Self::create_item_route),
+        );
+        let __progenitor_router = __progenitor_router.route(
+            "/items/{itemId}",
+            axum::routing::get(Self::get_item_route).put(Self::update_item_route),
+        );
+        let __progenitor_router =
+            __progenitor_router.route("/collide/{inner}", axum::routing::get(Self::collide_route));
+        let __progenitor_router =
+            __progenitor_router.route("/blob", axum::routing::get(Self::download_blob_route));
+        let __progenitor_router =
+            __progenitor_router.route("/multi/{mode}", axum::routing::get(Self::multi_kind_route));
+        let __progenitor_router = __progenitor_router.route(
+            "/upload/{file}",
+            axum::routing::post(Self::upload_item_route),
+        );
+        let __progenitor_router =
+            __progenitor_router.route("/upload-raw", axum::routing::post(Self::upload_raw_route));
+        let __progenitor_router = __progenitor_router.route(
+            "/render-rejection",
+            axum::routing::post(Self::render_rejection_route),
+        );
+        let __progenitor_router = __progenitor_router.route(
+            "/search",
+            axum::routing::get(|| async { http::StatusCode::NOT_IMPLEMENTED }),
+        );
+        let __progenitor_router = __progenitor_router.route(
+            "/upgrade",
+            axum::routing::get(|| async { http::StatusCode::NOT_IMPLEMENTED }),
+        );
+        let __progenitor_router = __progenitor_router.route(
+            "/shape/{first}",
+            axum::routing::get(Self::shape_by_first_route).post(Self::shape_by_second_route),
+        );
+        let __progenitor_router = __progenitor_router.route(
+            "/repeat/{outer}/mid/{inner}/tail/{outer}",
+            axum::routing::get(Self::repeated_path_param_route),
+        );
+        __progenitor_router.with_state(self.0)
     }
 
     fn render_rejection(
@@ -1051,6 +1103,155 @@ impl<T: ServerGen> ServerGenServer<T> {
     fn render_rejection_respond(
         __progenitor_inner: &T,
         result: ::std::result::Result<::progenitor_server::Response<()>, RenderRejectionError>,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::NO_CONTENT;
+                {
+                    let _ = __body;
+                    ::progenitor_server::respond::empty(__status, __headers)
+                }
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn shape_by_first_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
+    ) -> axum::response::Response {
+        let ::progenitor_server::Path(first) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let message = ShapeByFirstRequest { first };
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::shape_by_first(&__progenitor_inner, request).await;
+        Self::shape_by_first_respond(&__progenitor_inner, result)
+    }
+
+    fn shape_by_first_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<::progenitor_server::Response<()>, ShapeByFirstError>,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::NO_CONTENT;
+                {
+                    let _ = __body;
+                    ::progenitor_server::respond::empty(__status, __headers)
+                }
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn shape_by_second_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
+    ) -> axum::response::Response {
+        let ::progenitor_server::Path(second) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let message = ShapeBySecondRequest { second };
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::shape_by_second(&__progenitor_inner, request).await;
+        Self::shape_by_second_respond(&__progenitor_inner, result)
+    }
+
+    fn shape_by_second_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<::progenitor_server::Response<()>, ShapeBySecondError>,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::NO_CONTENT;
+                {
+                    let _ = __body;
+                    ::progenitor_server::respond::empty(__status, __headers)
+                }
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn repeated_path_param_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<(
+                ::std::string::String,
+                ::std::string::String,
+                ::std::string::String,
+            )>,
+            ::progenitor_server::Rejection,
+        >,
+    ) -> axum::response::Response {
+        let ::progenitor_server::Path((outer, inner, _progenitor_repeated_2)) =
+            match __progenitor_path_extractor {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+        let message = RepeatedPathParamRequest { outer, inner };
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::repeated_path_param(&__progenitor_inner, request).await;
+        Self::repeated_path_param_respond(&__progenitor_inner, result)
+    }
+
+    fn repeated_path_param_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<::progenitor_server::Response<()>, RepeatedPathParamError>,
     ) -> axum::response::Response {
         match result {
             Ok(response) => {

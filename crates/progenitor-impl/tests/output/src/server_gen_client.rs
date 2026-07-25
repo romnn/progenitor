@@ -42,7 +42,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///true
+    /// true
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -72,7 +72,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "code",
@@ -87,7 +87,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -101,7 +101,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -115,7 +115,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -129,12 +129,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "array",
     ///  "items": {
     ///    "$ref": "#/components/schemas/Item"
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -164,30 +164,10 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///true
+    /// true
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    #[serde(transparent)]
-    pub struct Message(pub ::serde_json::Value);
-    impl ::std::ops::Deref for Message {
-        type Target = ::serde_json::Value;
-        fn deref(&self) -> &::serde_json::Value {
-            &self.0
-        }
-    }
-
-    impl ::std::convert::From<Message> for ::serde_json::Value {
-        fn from(value: Message) -> Self {
-            value.0
-        }
-    }
-
-    impl ::std::convert::From<::serde_json::Value> for Message {
-        fn from(value: ::serde_json::Value) -> Self {
-            Self(value)
-        }
-    }
+    pub use self::DoesNotExist as Message;
 }
 
 #[derive(Clone, Debug)]
@@ -765,6 +745,161 @@ impl Client {
         let response = result?;
         match response.status().as_u16() {
             101u16 => ResponseValue::upgrade(response).await,
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Path axum cannot route: literal suffix after a parameter
+    ///
+    ///Sends a `GET` request to `/files/{fileId}.json`
+    pub async fn suffix_after_param<'a>(
+        &'a self,
+        file_id: &'a str,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!(
+            "{}/files/{}.json",
+            self.baseurl,
+            encode_path(&file_id.to_string()),
+        );
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.get(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "suffix_after_param",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Shape shared with /shape/{second} via a different method
+    ///
+    ///Sends a `GET` request to `/shape/{first}`
+    pub async fn shape_by_first<'a>(
+        &'a self,
+        first: &'a str,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!("{}/shape/{}", self.baseurl, encode_path(&first.to_string()),);
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.get(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "shape_by_first",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Same shape as /shape/{first}, different method: merges
+    ///
+    ///Sends a `POST` request to `/shape/{second}`
+    pub async fn shape_by_second<'a>(
+        &'a self,
+        second: &'a str,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!(
+            "{}/shape/{}",
+            self.baseurl,
+            encode_path(&second.to_string()),
+        );
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.post(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "shape_by_second",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Same shape AND method as /shape/{first}: dropped
+    ///
+    ///Sends a `GET` request to `/shape/{third}`
+    pub async fn shape_by_third<'a>(
+        &'a self,
+        third: &'a str,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!("{}/shape/{}", self.baseurl, encode_path(&third.to_string()),);
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.get(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "shape_by_third",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Template names the same path parameter twice
+    ///
+    ///Sends a `GET` request to `/repeat/{outer}/mid/{inner}/tail/{outer}`
+    pub async fn repeated_path_param<'a>(
+        &'a self,
+        inner: &'a str,
+        outer: &'a str,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!(
+            "{}/repeat/{}/mid/{}/tail/{}",
+            self.baseurl,
+            encode_path(&outer.to_string()),
+            encode_path(&inner.to_string()),
+            encode_path(&outer.to_string()),
+        );
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self.client.get(url).headers(header_map).build()?;
+        let info = OperationInfo {
+            operation_id: "repeated_path_param",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
             _ => Err(Error::UnexpectedResponse(response)),
         }
     }

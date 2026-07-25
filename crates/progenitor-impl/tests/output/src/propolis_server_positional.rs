@@ -40,7 +40,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -104,7 +104,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -132,7 +132,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "disk_id",
@@ -153,7 +153,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/DiskAttachmentState"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -168,7 +168,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "string",
@@ -192,7 +192,7 @@ pub mod types {
     ///      "additionalProperties": false
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -214,7 +214,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "device",
@@ -246,7 +246,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/VolumeConstructionRequest"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -265,7 +265,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Error information from a response.",
     ///  "type": "object",
     ///  "required": [
@@ -283,7 +283,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -299,7 +299,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "disks",
@@ -327,7 +327,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/InstanceState"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -343,7 +343,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "properties"
@@ -370,8 +370,7 @@ pub mod types {
     ///        {
     ///          "allOf": [
     ///            {
-    ///              "$ref":
-    /// "#/components/schemas/InstanceMigrateInitiateRequest"
+    ///              "$ref": "#/components/schemas/InstanceMigrateInitiateRequest"
     ///            }
     ///          ]
     ///        }
@@ -388,7 +387,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/InstanceProperties"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -409,7 +408,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "properties": {
     ///    "migrate": {
@@ -420,15 +419,14 @@ pub mod types {
     ///        {
     ///          "allOf": [
     ///            {
-    ///              "$ref":
-    /// "#/components/schemas/InstanceMigrateInitiateResponse"
+    ///              "$ref": "#/components/schemas/InstanceMigrateInitiateResponse"
     ///            }
     ///          ]
     ///        }
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -450,7 +448,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "instance"
@@ -460,7 +458,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Instance"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -473,7 +471,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "migration_id",
@@ -493,7 +491,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -508,7 +506,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "migration_id"
@@ -519,7 +517,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -532,7 +530,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "migration_id"
@@ -543,20 +541,16 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct InstanceMigrateStatusRequest {
-        pub migration_id: ::uuid::Uuid,
-    }
-
+    pub use self::InstanceMigrateInitiateResponse as InstanceMigrateStatusRequest;
     ///`InstanceMigrateStatusResponse`
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "state"
@@ -566,7 +560,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/MigrationState"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -579,7 +573,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "bootrom_id",
@@ -592,8 +586,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "bootrom_id": {
-    ///      "description": "ID of the bootrom used to initialize this
-    /// Instance.",
+    ///      "description": "ID of the bootrom used to initialize this Instance.",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -628,7 +621,7 @@ pub mod types {
     ///      "minimum": 0.0
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -654,7 +647,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Current state of an Instance.",
     ///  "type": "string",
     ///  "enum": [
@@ -669,7 +662,7 @@ pub mod types {
     ///    "Failed",
     ///    "Destroyed"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -763,7 +756,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "gen"
@@ -775,7 +768,7 @@ pub mod types {
     ///      "minimum": 0.0
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -789,7 +782,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "gen",
@@ -805,7 +798,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/InstanceState"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -820,7 +813,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "Run",
@@ -828,7 +821,7 @@ pub mod types {
     ///    "Reboot",
     ///    "MigrateStart"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -904,7 +897,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "Sync",
@@ -918,7 +911,7 @@ pub mod types {
     ///    "Finish",
     ///    "Error"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -1012,7 +1005,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "attachment",
@@ -1026,7 +1019,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1040,7 +1033,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "string",
@@ -1062,7 +1055,7 @@ pub mod types {
     ///      "additionalProperties": false
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1083,7 +1076,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "name",
@@ -1097,7 +1090,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Slot"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1112,13 +1105,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A stable index which is translated by Propolis into a
-    /// PCI BDF, visible to the guest.",
+    /// {
+    ///  "description": "A stable index which is translated by Propolis into a PCI BDF, visible to the guest.",
     ///  "type": "integer",
     ///  "format": "uint8",
     ///  "minimum": 0.0
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -1185,7 +1177,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -1213,8 +1205,7 @@ pub mod types {
     ///            {
     ///              "allOf": [
     ///                {
-    ///                  "$ref":
-    /// "#/components/schemas/VolumeConstructionRequest"
+    ///                  "$ref": "#/components/schemas/VolumeConstructionRequest"
     ///                }
     ///              ]
     ///            }
@@ -1323,7 +1314,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]

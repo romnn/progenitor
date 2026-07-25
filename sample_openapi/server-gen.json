@@ -14,13 +14,18 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "format": "int32" }
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           },
           {
             "name": "x-trace",
             "in": "header",
             "required": false,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -28,7 +33,9 @@
             "description": "items",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ItemList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList"
+                }
               }
             }
           },
@@ -36,7 +43,9 @@
             "description": "error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -49,17 +58,23 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Item" }
+              "schema": {
+                "$ref": "#/components/schemas/Item"
+              }
             }
           }
         },
         "responses": {
-          "201": { "description": "created" },
+          "201": {
+            "description": "created"
+          },
           "default": {
             "description": "error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -75,7 +90,9 @@
             "name": "itemId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -83,7 +100,9 @@
             "description": "item",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Item" }
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
               }
             }
           },
@@ -91,7 +110,9 @@
             "description": "error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -105,20 +126,26 @@
             "name": "itemId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "dryRun",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean" }
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Item" }
+              "schema": {
+                "$ref": "#/components/schemas/Item"
+              }
             }
           }
         },
@@ -127,7 +154,9 @@
             "description": "item",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Item" }
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
               }
             }
           },
@@ -135,7 +164,9 @@
             "description": "error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -151,25 +182,36 @@
             "name": "inner",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "meta",
             "in": "header",
             "required": false,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "query",
             "in": "query",
             "required": false,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "tags",
             "in": "query",
             "required": true,
-            "schema": { "type": "array", "items": { "type": "string" } }
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         ],
         "responses": {
@@ -177,7 +219,9 @@
             "description": "ok",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Message" }
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
               }
             }
           }
@@ -193,7 +237,10 @@
             "description": "bytes",
             "content": {
               "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           }
@@ -209,7 +256,9 @@
             "name": "mode",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -217,7 +266,9 @@
             "description": "message",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Message" }
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
               }
             }
           },
@@ -225,7 +276,10 @@
             "description": "bytes",
             "content": {
               "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },
@@ -233,7 +287,9 @@
             "description": "exact typed error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -241,7 +297,9 @@
             "description": "typed error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -249,7 +307,9 @@
             "description": "raw error",
             "content": {
               "text/plain": {
-                "schema": { "type": "string" }
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -265,13 +325,17 @@
             "name": "file",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "multipart_file_part",
             "in": "query",
             "required": false,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -280,7 +344,10 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file", "rating"],
+                "required": [
+                  "file",
+                  "rating"
+                ],
                 "properties": {
                   "file": {
                     "description": "The primary upload.",
@@ -323,7 +390,9 @@
             "description": "uploaded",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Message" }
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
               }
             }
           }
@@ -341,7 +410,9 @@
           }
         },
         "responses": {
-          "204": { "description": "uploaded" }
+          "204": {
+            "description": "uploaded"
+          }
         }
       }
     },
@@ -350,7 +421,9 @@
         "operationId": "render_rejection",
         "summary": "An operation whose name collides with the service rejection hook.",
         "responses": {
-          "204": { "description": "rendered" }
+          "204": {
+            "description": "rendered"
+          }
         }
       }
     },
@@ -367,7 +440,9 @@
             "explode": true,
             "schema": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -376,7 +451,9 @@
             "description": "items",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ItemList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList"
+                }
               }
             }
           }
@@ -386,9 +463,124 @@
     "/upgrade": {
       "get": {
         "operationId": "do_upgrade",
-        "summary": "An upgrade endpoint — generates a 501 route stub, no trait method.",
+        "summary": "An upgrade endpoint \u2014 generates a 501 route stub, no trait method.",
         "responses": {
-          "101": { "description": "switching protocols" }
+          "101": {
+            "description": "switching protocols"
+          }
+        }
+      }
+    },
+    "/files/{fileId}.json": {
+      "get": {
+        "operationId": "suffix_after_param",
+        "summary": "Path axum cannot route: literal suffix after a parameter.",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/shape/{first}": {
+      "get": {
+        "operationId": "shape_by_first",
+        "summary": "Shape shared with /shape/{second} via a different method.",
+        "parameters": [
+          {
+            "name": "first",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/shape/{second}": {
+      "post": {
+        "operationId": "shape_by_second",
+        "summary": "Same shape as /shape/{first}, different method: merges.",
+        "parameters": [
+          {
+            "name": "second",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/shape/{third}": {
+      "get": {
+        "operationId": "shape_by_third",
+        "summary": "Same shape AND method as /shape/{first}: dropped.",
+        "parameters": [
+          {
+            "name": "third",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/repeat/{outer}/mid/{inner}/tail/{outer}": {
+      "get": {
+        "operationId": "repeated_path_param",
+        "summary": "Template names the same path parameter twice.",
+        "parameters": [
+          {
+            "name": "outer",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "inner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
         }
       }
     }
@@ -397,22 +589,39 @@
     "schemas": {
       "Item": {
         "type": "object",
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
         }
       },
       "ItemList": {
         "type": "array",
-        "items": { "$ref": "#/components/schemas/Item" }
+        "items": {
+          "$ref": "#/components/schemas/Item"
+        }
       },
       "Error": {
         "type": "object",
-        "required": ["code", "message"],
+        "required": [
+          "code",
+          "message"
+        ],
         "properties": {
-          "code": { "type": "integer", "format": "int32" },
-          "message": { "type": "string" }
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
         }
       }
     }

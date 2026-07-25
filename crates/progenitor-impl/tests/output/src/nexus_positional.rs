@@ -40,9 +40,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes properties that should uniquely identify a
-    /// Gimlet.",
+    /// {
+    ///  "description": "Describes properties that should uniquely identify a Gimlet.",
     ///  "type": "object",
     ///  "required": [
     ///    "part",
@@ -61,7 +60,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -80,15 +79,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A type storing a range over `T`.\n\nThis type supports
-    /// ranges similar to the `RangeTo`, `Range` and `RangeFrom` types in the
-    /// standard library. Those cover `(..end)`, `(start..end)`, and `(start..)`
-    /// respectively.",
+    /// {
+    ///  "description": "A type storing a range over `T`.\n\nThis type supports ranges similar to the `RangeTo`, `Range` and `RangeFrom` types in the standard library. Those cover `(..end)`, `(start..end)`, and `(start..)` respectively.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "A range unbounded below and exclusively above,
-    /// `..end`.",
+    ///      "description": "A range unbounded below and exclusively above, `..end`.",
     ///      "type": "object",
     ///      "required": [
     ///        "end",
@@ -108,8 +103,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "A range bounded inclusively below and exclusively
-    /// above, `start..end`.",
+    ///      "description": "A range bounded inclusively below and exclusively above, `start..end`.",
     ///      "type": "object",
     ///      "required": [
     ///        "end",
@@ -134,8 +128,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "A range bounded inclusively below and unbounded
-    /// above, `start..`.",
+    ///      "description": "A range bounded inclusively below and unbounded above, `start..`.",
     ///      "type": "object",
     ///      "required": [
     ///        "start",
@@ -155,7 +148,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -182,15 +175,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A type storing a range over `T`.\n\nThis type supports
-    /// ranges similar to the `RangeTo`, `Range` and `RangeFrom` types in the
-    /// standard library. Those cover `(..end)`, `(start..end)`, and `(start..)`
-    /// respectively.",
+    /// {
+    ///  "description": "A type storing a range over `T`.\n\nThis type supports ranges similar to the `RangeTo`, `Range` and `RangeFrom` types in the standard library. Those cover `(..end)`, `(start..end)`, and `(start..)` respectively.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "A range unbounded below and exclusively above,
-    /// `..end`.",
+    ///      "description": "A range unbounded below and exclusively above, `..end`.",
     ///      "type": "object",
     ///      "required": [
     ///        "end",
@@ -210,8 +199,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "A range bounded inclusively below and exclusively
-    /// above, `start..end`.",
+    ///      "description": "A range bounded inclusively below and exclusively above, `start..end`.",
     ///      "type": "object",
     ///      "required": [
     ///        "end",
@@ -236,8 +224,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "A range bounded inclusively below and unbounded
-    /// above, `start..`.",
+    ///      "description": "A range bounded inclusively below and unbounded above, `start..`.",
     ///      "type": "object",
     ///      "required": [
     ///        "start",
@@ -257,7 +244,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -280,9 +267,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Type storing bin edges and a count of samples within
-    /// it.",
+    /// {
+    ///  "description": "Type storing bin edges and a count of samples within it.",
     ///  "type": "object",
     ///  "required": [
     ///    "count",
@@ -304,7 +290,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -320,9 +306,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Type storing bin edges and a count of samples within
-    /// it.",
+    /// {
+    ///  "description": "Type storing bin edges and a count of samples within it.",
     ///  "type": "object",
     ///  "required": [
     ///    "count",
@@ -344,7 +329,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -360,7 +345,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "disk block size in bytes",
     ///  "type": "integer",
     ///  "enum": [
@@ -368,7 +353,7 @@ pub mod types {
     ///    2048,
     ///    4096
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -419,18 +404,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A count of bytes, typically used either for memory or
-    /// storage capacity\n\nThe maximum supported byte count is [`i64::MAX`].
-    /// This makes it somewhat inconvenient to define constructors: a u32
-    /// constructor can be infallible, but an i64 constructor can fail (if the
-    /// value is negative) and a u64 constructor can fail (if the value is
-    /// larger than i64::MAX).  We provide all of these for consumers'
-    /// convenience.",
+    /// {
+    ///  "description": "A count of bytes, typically used either for memory or storage capacity\n\nThe maximum supported byte count is [`i64::MAX`].  This makes it somewhat inconvenient to define constructors: a u32 constructor can be infallible, but an i64 constructor can fail (if the value is negative) and a u64 constructor can fail (if the value is larger than i64::MAX).  We provide all of these for consumers' convenience.",
     ///  "type": "integer",
     ///  "format": "uint64",
     ///  "minimum": 0.0
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -497,7 +476,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Certificate`]",
     ///  "type": "object",
     ///  "required": [
@@ -514,14 +493,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -542,7 +519,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -566,9 +543,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Certificate`](crate::external_api::views::Certificate)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Certificate`](crate::external_api::views::Certificate)",
     ///  "type": "object",
     ///  "required": [
     ///    "cert",
@@ -611,7 +587,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -631,7 +607,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -646,15 +622,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -672,9 +647,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in \"asset\"
-    /// public API objects (which generally have no name or description)",
+    /// {
+    ///  "description": "Identity-related metadata that's included in \"asset\" public API objects (which generally have no name or description)",
     ///  "type": "object",
     ///  "required": [
     ///    "component_type",
@@ -688,8 +662,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/UpdateableComponentType"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -707,7 +680,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -727,7 +700,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -742,15 +715,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -767,7 +739,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A cumulative or counter data type.",
     ///  "type": "object",
     ///  "required": [
@@ -784,7 +756,7 @@ pub mod types {
     ///      "format": "double"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -798,7 +770,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A cumulative or counter data type.",
     ///  "type": "object",
     ///  "required": [
@@ -815,7 +787,7 @@ pub mod types {
     ///      "format": "int64"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -829,9 +801,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `Datum` is a single sampled data point from a
-    /// metric.",
+    /// {
+    ///  "description": "A `Datum` is a single sampled data point from a metric.",
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -1003,7 +974,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1082,7 +1053,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The type of an individual datum of a metric.",
     ///  "type": "string",
     ///  "enum": [
@@ -1096,7 +1067,7 @@ pub mod types {
     ///    "histogram_i64",
     ///    "histogram_f64"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -1196,7 +1167,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "private_key",
@@ -1204,17 +1175,15 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "private_key": {
-    ///      "description": "request signing private key (base64 encoded der
-    /// file)",
+    ///      "description": "request signing private key (base64 encoded der file)",
     ///      "type": "string"
     ///    },
     ///    "public_cert": {
-    ///      "description": "request signing public certificate (base64 encoded
-    /// der file)",
+    ///      "description": "request signing public certificate (base64 encoded der file)",
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1230,7 +1199,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "client_id",
@@ -1249,7 +1218,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1264,7 +1233,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "client_id"
@@ -1275,7 +1244,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1288,7 +1257,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "user_code"
@@ -1298,7 +1267,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1311,7 +1280,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -1332,7 +1301,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1347,7 +1316,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Disk`]",
     ///  "type": "object",
     ///  "required": [
@@ -1374,8 +1343,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -1387,8 +1355,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -1423,7 +1390,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1455,9 +1422,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Disk`](omicron_common::api::external::Disk)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Disk`](omicron_common::api::external::Disk)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -1489,7 +1455,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1509,10 +1475,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "TODO-v1: Delete this Parameters for the
-    /// [`Disk`](omicron_common::api::external::Disk) to be attached or detached
-    /// to an instance",
+    /// {
+    ///  "description": "TODO-v1: Delete this Parameters for the [`Disk`](omicron_common::api::external::Disk) to be attached or detached to an instance",
     ///  "type": "object",
     ///  "required": [
     ///    "name"
@@ -1522,7 +1486,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1535,7 +1499,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "activated",
@@ -1545,7 +1509,7 @@ pub mod types {
     ///    "write",
     ///    "write_bytes"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -1633,7 +1597,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "disk"
@@ -1643,7 +1607,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/NameOrId"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1656,7 +1620,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -1671,15 +1635,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1696,7 +1659,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Different sources for a disk",
     ///  "oneOf": [
     ///    {
@@ -1708,8 +1671,7 @@ pub mod types {
     ///      ],
     ///      "properties": {
     ///        "block_size": {
-    ///          "description": "size of blocks for this Disk. valid values are:
-    /// 512, 2048, or 4096",
+    ///          "description": "size of blocks for this Disk. valid values are: 512, 2048, or 4096",
     ///          "allOf": [
     ///            {
     ///              "$ref": "#/components/schemas/BlockSize"
@@ -1785,7 +1747,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1814,7 +1776,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "State of a Disk (primarily: attached or not)",
     ///  "oneOf": [
     ///    {
@@ -1938,7 +1900,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -1968,7 +1930,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "OS image distribution",
     ///  "type": "object",
     ///  "required": [
@@ -1977,8 +1939,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "name": {
-    ///      "description": "The name of the distribution (e.g. \"alpine\" or
-    /// \"ubuntu\")",
+    ///      "description": "The name of the distribution (e.g. \"alpine\" or \"ubuntu\")",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -1986,12 +1947,11 @@ pub mod types {
     ///      ]
     ///    },
     ///    "version": {
-    ///      "description": "The version of the distribution (e.g. \"3.10\" or
-    /// \"18.04\")",
+    ///      "description": "The version of the distribution (e.g. \"3.10\" or \"18.04\")",
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2007,7 +1967,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Error information from a response.",
     ///  "type": "object",
     ///  "required": [
@@ -2025,7 +1985,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2041,7 +2001,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "ip",
@@ -2056,7 +2016,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/IpKind"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2070,14 +2030,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Parameters for creating an external IP address for
-    /// instances.",
+    /// {
+    ///  "description": "Parameters for creating an external IP address for instances.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "An IP address providing both inbound and outbound
-    /// access. The address is automatically-assigned from the provided IP Pool,
-    /// or all available pools if not specified.",
+    ///      "description": "An IP address providing both inbound and outbound access. The address is automatically-assigned from the provided IP Pool, or all available pools if not specified.",
     ///      "type": "object",
     ///      "required": [
     ///        "type"
@@ -2106,7 +2063,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2127,7 +2084,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -2142,15 +2099,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2167,9 +2123,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The name and type information for a field of a
-    /// timeseries schema.",
+    /// {
+    ///  "description": "The name and type information for a field of a timeseries schema.",
     ///  "type": "object",
     ///  "required": [
     ///    "name",
@@ -2187,7 +2142,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/FieldType"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2202,15 +2157,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The source from which a field is derived, the target or
-    /// metric.",
+    /// {
+    ///  "description": "The source from which a field is derived, the target or metric.",
     ///  "type": "string",
     ///  "enum": [
     ///    "target",
     ///    "metric"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -2282,9 +2236,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The `FieldType` identifies the data type of a target or
-    /// metric field.",
+    /// {
+    ///  "description": "The `FieldType` identifies the data type of a target or metric field.",
     ///  "type": "string",
     ///  "enum": [
     ///    "string",
@@ -2293,7 +2246,7 @@ pub mod types {
     ///    "uuid",
     ///    "bool"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -2377,14 +2330,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "admin",
     ///    "collaborator",
     ///    "viewer"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -2465,11 +2418,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Client view of a [`Policy`], which describes how this
-    /// resource may be accessed\n\nNote that the Policy only describes access
-    /// granted explicitly for this resource.  The policies of parent resources
-    /// can also cause a user to have access to this resource.",
+    /// {
+    ///  "description": "Client view of a [`Policy`], which describes how this resource may be accessed\n\nNote that the Policy only describes access granted explicitly for this resource.  The policies of parent resources can also cause a user to have access to this resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "role_assignments"
@@ -2483,7 +2433,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2502,12 +2452,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes the assignment of a particular role on a
-    /// particular resource to a particular identity (user, group, etc.)\n\nThe
-    /// resource is not part of this structure.  Rather, [`RoleAssignment`]s are
-    /// put into a [`Policy`] and that Policy is applied to a particular
-    /// resource.",
+    /// {
+    ///  "description": "Describes the assignment of a particular role on a particular resource to a particular identity (user, group, etc.)\n\nThe resource is not part of this structure.  Rather, [`RoleAssignment`]s are put into a [`Policy`] and that Policy is applied to a particular resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "identity_id",
@@ -2526,7 +2472,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/FleetRole"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2541,7 +2487,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of global Images",
     ///  "type": "object",
     ///  "required": [
@@ -2588,14 +2534,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -2632,7 +2576,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2669,9 +2613,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an
-    /// [`GlobalImage`](crate::external_api::views::GlobalImage)",
+    /// {
+    ///  "description": "Create-time parameters for an [`GlobalImage`](crate::external_api::views::GlobalImage)",
     ///  "type": "object",
     ///  "required": [
     ///    "block_size",
@@ -2712,7 +2655,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2732,7 +2675,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -2747,15 +2690,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2772,7 +2714,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Group`]",
     ///  "type": "object",
     ///  "required": [
@@ -2795,7 +2737,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2812,7 +2754,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -2827,15 +2769,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -2893,39 +2834,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A simple type for managing a histogram metric.\n\nA
-    /// histogram maintains the count of any number of samples, over a set of
-    /// bins. Bins are specified on construction via their _left_ edges,
-    /// inclusive. There can't be any \"gaps\" in the bins, and an additional
-    /// bin may be added to the left, right, or both so that the bins extend to
-    /// the entire range of the support.\n\nNote that any gaps, unsorted bins,
-    /// or non-finite values will result in an error.\n\nExample ------- ```rust
-    /// use oximeter::histogram::{BinRange, Histogram};\n\nlet edges = [0i64,
-    /// 10, 20]; let mut hist = Histogram::new(&edges).unwrap();
-    /// assert_eq!(hist.n_bins(), 4); // One additional bin for the range (20..)
-    /// assert_eq!(hist.n_samples(), 0); hist.sample(4); hist.sample(100);
-    /// assert_eq!(hist.n_samples(), 2);\n\nlet data =
-    /// hist.iter().collect::<Vec<_>>(); assert_eq!(data[0].range,
-    /// BinRange::range(i64::MIN, 0)); // An additional bin for `..0`
-    /// assert_eq!(data[0].count, 0); // Nothing is in this
-    /// bin\n\nassert_eq!(data[1].range, BinRange::range(0, 10)); // The range
-    /// `0..10` assert_eq!(data[1].count, 1); // 4 is sampled into this bin
-    /// ```\n\nNotes -----\n\nHistograms may be constructed either from their
-    /// left bin edges, or from a sequence of ranges. In either case, the
-    /// left-most bin may be converted upon construction. In particular, if the
-    /// left-most value is not equal to the minimum of the support, a new bin
-    /// will be added from the minimum to that provided value. If the left-most
-    /// value _is_ the support's minimum, because the provided bin was unbounded
-    /// below, such as `(..0)`, then that bin will be converted into one bounded
-    /// below, `(MIN..0)` in this case.\n\nThe short of this is that, most of
-    /// the time, it shouldn't matter. If one specifies the extremes of the
-    /// support as their bins, be aware that the left-most may be converted from
-    /// a `BinRange::RangeTo` into a `BinRange::Range`. In other words, the
-    /// first bin of a histogram is _always_ a `Bin::Range` or a
-    /// `Bin::RangeFrom` after construction. In fact, every bin is one of those
-    /// variants, the `BinRange::RangeTo` is only provided as a convenience
-    /// during construction.",
+    /// {
+    ///  "description": "A simple type for managing a histogram metric.\n\nA histogram maintains the count of any number of samples, over a set of bins. Bins are specified on construction via their _left_ edges, inclusive. There can't be any \"gaps\" in the bins, and an additional bin may be added to the left, right, or both so that the bins extend to the entire range of the support.\n\nNote that any gaps, unsorted bins, or non-finite values will result in an error.\n\nExample ------- ```rust use oximeter::histogram::{BinRange, Histogram};\n\nlet edges = [0i64, 10, 20]; let mut hist = Histogram::new(&edges).unwrap(); assert_eq!(hist.n_bins(), 4); // One additional bin for the range (20..) assert_eq!(hist.n_samples(), 0); hist.sample(4); hist.sample(100); assert_eq!(hist.n_samples(), 2);\n\nlet data = hist.iter().collect::<Vec<_>>(); assert_eq!(data[0].range, BinRange::range(i64::MIN, 0)); // An additional bin for `..0` assert_eq!(data[0].count, 0); // Nothing is in this bin\n\nassert_eq!(data[1].range, BinRange::range(0, 10)); // The range `0..10` assert_eq!(data[1].count, 1); // 4 is sampled into this bin ```\n\nNotes -----\n\nHistograms may be constructed either from their left bin edges, or from a sequence of ranges. In either case, the left-most bin may be converted upon construction. In particular, if the left-most value is not equal to the minimum of the support, a new bin will be added from the minimum to that provided value. If the left-most value _is_ the support's minimum, because the provided bin was unbounded below, such as `(..0)`, then that bin will be converted into one bounded below, `(MIN..0)` in this case.\n\nThe short of this is that, most of the time, it shouldn't matter. If one specifies the extremes of the support as their bins, be aware that the left-most may be converted from a `BinRange::RangeTo` into a `BinRange::Range`. In other words, the first bin of a histogram is _always_ a `Bin::Range` or a `Bin::RangeFrom` after construction. In fact, every bin is one of those variants, the `BinRange::RangeTo` is only provided as a convenience during construction.",
     ///  "type": "object",
     ///  "required": [
     ///    "bins",
@@ -2949,7 +2859,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3005,39 +2915,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A simple type for managing a histogram metric.\n\nA
-    /// histogram maintains the count of any number of samples, over a set of
-    /// bins. Bins are specified on construction via their _left_ edges,
-    /// inclusive. There can't be any \"gaps\" in the bins, and an additional
-    /// bin may be added to the left, right, or both so that the bins extend to
-    /// the entire range of the support.\n\nNote that any gaps, unsorted bins,
-    /// or non-finite values will result in an error.\n\nExample ------- ```rust
-    /// use oximeter::histogram::{BinRange, Histogram};\n\nlet edges = [0i64,
-    /// 10, 20]; let mut hist = Histogram::new(&edges).unwrap();
-    /// assert_eq!(hist.n_bins(), 4); // One additional bin for the range (20..)
-    /// assert_eq!(hist.n_samples(), 0); hist.sample(4); hist.sample(100);
-    /// assert_eq!(hist.n_samples(), 2);\n\nlet data =
-    /// hist.iter().collect::<Vec<_>>(); assert_eq!(data[0].range,
-    /// BinRange::range(i64::MIN, 0)); // An additional bin for `..0`
-    /// assert_eq!(data[0].count, 0); // Nothing is in this
-    /// bin\n\nassert_eq!(data[1].range, BinRange::range(0, 10)); // The range
-    /// `0..10` assert_eq!(data[1].count, 1); // 4 is sampled into this bin
-    /// ```\n\nNotes -----\n\nHistograms may be constructed either from their
-    /// left bin edges, or from a sequence of ranges. In either case, the
-    /// left-most bin may be converted upon construction. In particular, if the
-    /// left-most value is not equal to the minimum of the support, a new bin
-    /// will be added from the minimum to that provided value. If the left-most
-    /// value _is_ the support's minimum, because the provided bin was unbounded
-    /// below, such as `(..0)`, then that bin will be converted into one bounded
-    /// below, `(MIN..0)` in this case.\n\nThe short of this is that, most of
-    /// the time, it shouldn't matter. If one specifies the extremes of the
-    /// support as their bins, be aware that the left-most may be converted from
-    /// a `BinRange::RangeTo` into a `BinRange::Range`. In other words, the
-    /// first bin of a histogram is _always_ a `Bin::Range` or a
-    /// `Bin::RangeFrom` after construction. In fact, every bin is one of those
-    /// variants, the `BinRange::RangeTo` is only provided as a convenience
-    /// during construction.",
+    /// {
+    ///  "description": "A simple type for managing a histogram metric.\n\nA histogram maintains the count of any number of samples, over a set of bins. Bins are specified on construction via their _left_ edges, inclusive. There can't be any \"gaps\" in the bins, and an additional bin may be added to the left, right, or both so that the bins extend to the entire range of the support.\n\nNote that any gaps, unsorted bins, or non-finite values will result in an error.\n\nExample ------- ```rust use oximeter::histogram::{BinRange, Histogram};\n\nlet edges = [0i64, 10, 20]; let mut hist = Histogram::new(&edges).unwrap(); assert_eq!(hist.n_bins(), 4); // One additional bin for the range (20..) assert_eq!(hist.n_samples(), 0); hist.sample(4); hist.sample(100); assert_eq!(hist.n_samples(), 2);\n\nlet data = hist.iter().collect::<Vec<_>>(); assert_eq!(data[0].range, BinRange::range(i64::MIN, 0)); // An additional bin for `..0` assert_eq!(data[0].count, 0); // Nothing is in this bin\n\nassert_eq!(data[1].range, BinRange::range(0, 10)); // The range `0..10` assert_eq!(data[1].count, 1); // 4 is sampled into this bin ```\n\nNotes -----\n\nHistograms may be constructed either from their left bin edges, or from a sequence of ranges. In either case, the left-most bin may be converted upon construction. In particular, if the left-most value is not equal to the minimum of the support, a new bin will be added from the minimum to that provided value. If the left-most value _is_ the support's minimum, because the provided bin was unbounded below, such as `(..0)`, then that bin will be converted into one bounded below, `(MIN..0)` in this case.\n\nThe short of this is that, most of the time, it shouldn't matter. If one specifies the extremes of the support as their bins, be aware that the left-most may be converted from a `BinRange::RangeTo` into a `BinRange::Range`. In other words, the first bin of a histogram is _always_ a `Bin::Range` or a `Bin::RangeFrom` after construction. In fact, every bin is one of those variants, the `BinRange::RangeTo` is only provided as a convenience during construction.",
     ///  "type": "object",
     ///  "required": [
     ///    "bins",
@@ -3061,7 +2940,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3078,9 +2957,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Supported set of sort modes for scanning by id
-    /// only.\n\nCurrently, we only support scanning in ascending order.",
+    /// {
+    ///  "description": "Supported set of sort modes for scanning by id only.\n\nCurrently, we only support scanning in ascending order.",
     ///  "oneOf": [
     ///    {
     ///      "description": "sort in increasing order of \"id\"",
@@ -3090,7 +2968,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -3159,7 +3037,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of an [`IdentityProvider`]",
     ///  "type": "object",
     ///  "required": [
@@ -3176,14 +3054,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -3209,7 +3085,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3233,7 +3109,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -3248,15 +3124,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3273,7 +3148,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "description": "SAML identity provider",
@@ -3283,7 +3158,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -3352,14 +3227,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Describes what kind of identity is described by an id",
     ///  "type": "string",
     ///  "enum": [
     ///    "silo_user",
     ///    "silo_group"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -3431,7 +3306,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -3470,7 +3345,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3487,7 +3362,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of project Images",
     ///  "type": "object",
     ///  "required": [
@@ -3529,14 +3404,12 @@ pub mod types {
     ///      ]
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -3581,7 +3454,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3619,9 +3492,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an
-    /// [`Image`](crate::external_api::views::Image)",
+    /// {
+    ///  "description": "Create-time parameters for an [`Image`](crate::external_api::views::Image)",
     ///  "type": "object",
     ///  "required": [
     ///    "block_size",
@@ -3653,7 +3525,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3671,7 +3543,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -3686,15 +3558,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3711,7 +3582,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The source of the underlying image.",
     ///  "oneOf": [
     ///    {
@@ -3752,8 +3623,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "Boot the Alpine ISO that ships with the Propolis
-    /// zone. Intended for development purposes only.",
+    ///      "description": "Boot the Alpine ISO that ships with the Propolis zone. Intended for development purposes only.",
     ///      "type": "object",
     ///      "required": [
     ///        "type"
@@ -3768,7 +3638,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3787,7 +3657,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of an [`Instance`]",
     ///  "type": "object",
     ///  "required": [
@@ -3813,8 +3683,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -3827,8 +3696,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -3866,7 +3734,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -3898,12 +3766,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The number of CPUs in an Instance",
     ///  "type": "integer",
     ///  "format": "uint16",
     ///  "minimum": 0.0
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -3971,9 +3839,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an
-    /// [`Instance`](omicron_common::api::external::Instance)",
+    /// {
+    ///  "description": "Create-time parameters for an [`Instance`](omicron_common::api::external::Instance)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -3987,8 +3854,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "disks": {
-    ///      "description": "The disks to be created or attached for this
-    /// instance.",
+    ///      "description": "The disks to be created or attached for this instance.",
     ///      "default": [],
     ///      "type": "array",
     ///      "items": {
@@ -3996,11 +3862,7 @@ pub mod types {
     ///      }
     ///    },
     ///    "external_ips": {
-    ///      "description": "The external IP addresses provided to this
-    /// instance.\n\nBy default, all instances have outbound connectivity, but
-    /// no inbound connectivity. These external addresses can be used to provide
-    /// a fixed, known IP address for making inbound connections to the
-    /// instance.",
+    ///      "description": "The external IP addresses provided to this instance.\n\nBy default, all instances have outbound connectivity, but no inbound connectivity. These external addresses can be used to provide a fixed, known IP address for making inbound connections to the instance.",
     ///      "default": [],
     ///      "type": "array",
     ///      "items": {
@@ -4020,35 +3882,29 @@ pub mod types {
     ///      "$ref": "#/components/schemas/InstanceCpuCount"
     ///    },
     ///    "network_interfaces": {
-    ///      "description": "The network interfaces to be created for this
-    /// instance.",
+    ///      "description": "The network interfaces to be created for this instance.",
     ///      "default": {
     ///        "type": "default"
     ///      },
     ///      "allOf": [
     ///        {
-    ///          "$ref":
-    /// "#/components/schemas/InstanceNetworkInterfaceAttachment"
+    ///          "$ref": "#/components/schemas/InstanceNetworkInterfaceAttachment"
     ///        }
     ///      ]
     ///    },
     ///    "start": {
-    ///      "description": "Should this instance be started upon creation; true
-    /// by default.",
+    ///      "description": "Should this instance be started upon creation; true by default.",
     ///      "default": true,
     ///      "type": "boolean"
     ///    },
     ///    "user_data": {
-    ///      "description": "User data for instance initialization systems (such
-    /// as cloud-init). Must be a Base64-encoded string, as specified in RFC
-    /// 4648 § 4 (+ and / characters with padding). Maximum 32 KiB unencoded
-    /// data.",
+    ///      "description": "User data for instance initialization systems (such as cloud-init). Must be a Base64-encoded string, as specified in RFC 4648 § 4 (+ and / characters with padding). Maximum 32 KiB unencoded data.",
     ///      "default": "",
     ///      "type": "string",
     ///      "format": "byte"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4087,7 +3943,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Describe the instance's disks at creation time",
     ///  "oneOf": [
     ///    {
@@ -4156,7 +4012,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4186,9 +4042,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Migration parameters for an
-    /// [`Instance`](omicron_common::api::external::Instance)",
+    /// {
+    ///  "description": "Migration parameters for an [`Instance`](omicron_common::api::external::Instance)",
     ///  "type": "object",
     ///  "required": [
     ///    "dst_sled_id"
@@ -4199,7 +4054,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4213,14 +4068,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes an attachment of a `NetworkInterface` to an
-    /// `Instance`, at the time the instance is created.",
+    /// {
+    ///  "description": "Describes an attachment of a `NetworkInterface` to an `Instance`, at the time the instance is created.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "Create one or more `NetworkInterface`s for the
-    /// `Instance`.\n\nIf more than one interface is provided, then the first
-    /// will be designated the primary interface for the instance.",
+    ///      "description": "Create one or more `NetworkInterface`s for the `Instance`.\n\nIf more than one interface is provided, then the first will be designated the primary interface for the instance.",
     ///      "type": "object",
     ///      "required": [
     ///        "params",
@@ -4242,10 +4094,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The default networking configuration for an
-    /// instance is to create a single primary interface with an
-    /// automatically-assigned IP address. The IP will be pulled from the
-    /// Project's default VPC / VPC Subnet.",
+    ///      "description": "The default networking configuration for an instance is to create a single primary interface with an automatically-assigned IP address. The IP will be pulled from the Project's default VPC / VPC Subnet.",
     ///      "type": "object",
     ///      "required": [
     ///        "type"
@@ -4260,8 +4109,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "No network interfaces at all will be created for
-    /// the instance.",
+    ///      "description": "No network interfaces at all will be created for the instance.",
     ///      "type": "object",
     ///      "required": [
     ///        "type"
@@ -4276,7 +4124,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4307,7 +4155,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -4322,15 +4170,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4347,7 +4194,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Contents of an Instance's serial console buffer.",
     ///  "type": "object",
     ///  "required": [
@@ -4356,9 +4203,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "data": {
-    ///      "description": "The bytes starting from the requested offset up to
-    /// either the end of the buffer or the request's `max_bytes`. Provided as a
-    /// u8 array rather than a string, as it may not be UTF-8.",
+    ///      "description": "The bytes starting from the requested offset up to either the end of the buffer or the request's `max_bytes`. Provided as a u8 array rather than a string, as it may not be UTF-8.",
     ///      "type": "array",
     ///      "items": {
     ///        "type": "integer",
@@ -4367,15 +4212,13 @@ pub mod types {
     ///      }
     ///    },
     ///    "last_byte_offset": {
-    ///      "description": "The absolute offset since boot (suitable for use as
-    /// `byte_offset` in a subsequent request) of the last byte returned in
-    /// `data`.",
+    ///      "description": "The absolute offset since boot (suitable for use as `byte_offset` in a subsequent request) of the last byte returned in `data`.",
     ///      "type": "integer",
     ///      "format": "uint64",
     ///      "minimum": 0.0
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4397,11 +4240,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Running state of an Instance (primarily: booted or
-    /// stopped)\n\nThis typically reflects whether it's starting, running,
-    /// stopping, or stopped, but also includes states related to the Instance's
-    /// lifecycle",
+    /// {
+    ///  "description": "Running state of an Instance (primarily: booted or stopped)\n\nThis typically reflects whether it's starting, running, stopping, or stopped, but also includes states related to the Instance's lifecycle",
     ///  "oneOf": [
     ///    {
     ///      "description": "The instance is being created.",
@@ -4425,8 +4265,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    {
-    ///      "description": "The instance has been requested to stop and a
-    /// transition to \"Stopped\" is imminent.",
+    ///      "description": "The instance has been requested to stop and a transition to \"Stopped\" is imminent.",
     ///      "type": "string",
     ///      "enum": [
     ///        "stopping"
@@ -4440,9 +4279,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    {
-    ///      "description": "The instance is in the process of rebooting - it
-    /// will remain in the \"rebooting\" state until the VM is starting once
-    /// more.",
+    ///      "description": "The instance is in the process of rebooting - it will remain in the \"rebooting\" state until the VM is starting once more.",
     ///      "type": "string",
     ///      "enum": [
     ///        "rebooting"
@@ -4456,8 +4293,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    {
-    ///      "description": "The instance is attempting to recover from a
-    /// failure.",
+    ///      "description": "The instance is attempting to recover from a failure.",
     ///      "type": "string",
     ///      "enum": [
     ///        "repairing"
@@ -4478,7 +4314,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -4596,14 +4432,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The kind of an external IP address for an instance",
     ///  "type": "string",
     ///  "enum": [
     ///    "ephemeral",
     ///    "floating"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -4675,7 +4511,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "title": "v4",
@@ -4694,7 +4530,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4769,9 +4605,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in nearly all
-    /// public API objects",
+    /// {
+    ///  "description": "Identity-related metadata that's included in nearly all public API objects",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -4786,14 +4621,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -4811,7 +4644,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4835,9 +4668,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an IP Pool.\n\nSee
-    /// [`IpPool`](crate::external_api::views::IpPool)",
+    /// {
+    ///  "description": "Create-time parameters for an IP Pool.\n\nSee [`IpPool`](crate::external_api::views::IpPool)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -4851,7 +4683,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4865,7 +4697,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -4885,7 +4717,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4900,7 +4732,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -4915,15 +4747,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4940,7 +4771,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -4955,15 +4786,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -4980,7 +4810,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Parameters for updating an IP Pool",
     ///  "type": "object",
     ///  "properties": {
@@ -5005,7 +4835,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5030,7 +4860,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "title": "v4",
@@ -5049,7 +4879,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5076,18 +4906,15 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "An IPv4 subnet",
     ///  "description": "An IPv4 subnet, including prefix and subnet mask",
     ///  "examples": [
     ///    "192.168.1.0/24"
     ///  ],
     ///  "type": "string",
-    ///  "pattern":
-    /// "^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.
-    /// ){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/
-    /// ([8-9]|1[0-9]|2[0-9]|3[0-2])$"
-    ///}
+    ///  "pattern": "^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/([8-9]|1[0-9]|2[0-9]|3[0-2])$"
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -5174,10 +5001,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A non-decreasing IPv4 address range, inclusive of both
-    /// ends.\n\nThe first address must be less than or equal to the last
-    /// address.",
+    /// {
+    ///  "description": "A non-decreasing IPv4 address range, inclusive of both ends.\n\nThe first address must be less than or equal to the last address.",
     ///  "type": "object",
     ///  "required": [
     ///    "first",
@@ -5193,7 +5018,7 @@ pub mod types {
     ///      "format": "ipv4"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5207,17 +5032,15 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "An IPv6 subnet",
     ///  "description": "An IPv6 subnet, including prefix and subnet mask",
     ///  "examples": [
     ///    "fd12:3456::/64"
     ///  ],
     ///  "type": "string",
-    ///  "pattern":
-    /// "^([fF][dD])[0-9a-fA-F]{2}:(([0-9a-fA-F]{1,4}:){6}[0-9a-fA-F]{1,
-    /// 4}|([0-9a-fA-F]{1,4}:){1,6}:)\\/([1-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$"
-    ///}
+    ///  "pattern": "^([fF][dD])[0-9a-fA-F]{2}:(([0-9a-fA-F]{1,4}:){6}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:)\\/([1-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8])$"
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -5303,10 +5126,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A non-decreasing IPv6 address range, inclusive of both
-    /// ends.\n\nThe first address must be less than or equal to the last
-    /// address.",
+    /// {
+    ///  "description": "A non-decreasing IPv6 address range, inclusive of both ends.\n\nThe first address must be less than or equal to the last address.",
     ///  "type": "object",
     ///  "required": [
     ///    "first",
@@ -5322,7 +5143,7 @@ pub mod types {
     ///      "format": "ipv6"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5337,10 +5158,9 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A range of IP ports",
-    ///  "description": "An inclusive-inclusive range of IP ports. The second
-    /// port may be omitted to represent a single port",
+    ///  "description": "An inclusive-inclusive range of IP ports. The second port may be omitted to represent a single port",
     ///  "examples": [
     ///    "22"
     ///  ],
@@ -5348,7 +5168,7 @@ pub mod types {
     ///  "maxLength": 11,
     ///  "minLength": 1,
     ///  "pattern": "^[0-9]{1,5}(-[0-9]{1,5})?$"
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -5430,7 +5250,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A MAC address",
     ///  "description": "A Media Access Control address, in EUI-48 format",
     ///  "examples": [
@@ -5440,7 +5260,7 @@ pub mod types {
     ///  "maxLength": 17,
     ///  "minLength": 17,
     ///  "pattern": "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$"
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -5524,9 +5344,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `Measurement` is a timestamped datum from a single
-    /// metric",
+    /// {
+    ///  "description": "A `Measurement` is a timestamped datum from a single metric",
     ///  "type": "object",
     ///  "required": [
     ///    "datum",
@@ -5541,7 +5360,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5555,7 +5374,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -5570,15 +5389,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5597,18 +5415,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A name unique within the parent collection",
-    ///  "description": "Names must begin with a lower case ASCII letter, be
-    /// composed exclusively of lowercase ASCII, uppercase ASCII, numbers, and
-    /// '-', and may not end with a '-'. Names cannot be a UUID though they may
-    /// contain a UUID.",
+    ///  "description": "Names must begin with a lower case ASCII letter, be composed exclusively of lowercase ASCII, uppercase ASCII, numbers, and '-', and may not end with a '-'. Names cannot be a UUID though they may contain a UUID.",
     ///  "type": "string",
     ///  "maxLength": 63,
-    ///  "pattern":
-    /// "^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*
-    /// [a-zA-Z0-9]$"
-    ///}
+    ///  "pattern": "^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*[a-zA-Z0-9]$"
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -5688,7 +5501,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "title": "id",
@@ -5708,7 +5521,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -5782,9 +5595,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Supported set of sort modes for scanning by name or
-    /// id",
+    /// {
+    ///  "description": "Supported set of sort modes for scanning by name or id",
     ///  "oneOf": [
     ///    {
     ///      "description": "sort in increasing order of \"name\"",
@@ -5808,7 +5620,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -5889,9 +5701,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Supported set of sort modes for scanning by name
-    /// only\n\nCurrently, we only support scanning in ascending order.",
+    /// {
+    ///  "description": "Supported set of sort modes for scanning by name only\n\nCurrently, we only support scanning in ascending order.",
     ///  "oneOf": [
     ///    {
     ///      "description": "sort in increasing order of \"name\"",
@@ -5901,7 +5712,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -5970,9 +5781,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `NetworkInterface` represents a virtual network
-    /// interface device.",
+    /// {
+    ///  "description": "A `NetworkInterface` represents a virtual network interface device.",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -5993,8 +5803,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -6017,8 +5826,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -6026,8 +5834,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "primary": {
-    ///      "description": "True if this interface is the primary for the
-    /// instance to which it's attached.",
+    ///      "description": "True if this interface is the primary for the instance to which it's attached.",
     ///      "type": "boolean"
     ///    },
     ///    "subnet_id": {
@@ -6051,7 +5858,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6087,7 +5894,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Create-time parameters for a [`NetworkInterface`](omicron_common::api::external::NetworkInterface)",
     ///  "type": "object",
     ///  "required": [
@@ -6101,8 +5908,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "ip": {
-    ///      "description": "The IP address for the interface. One will be
-    /// auto-assigned if not provided.",
+    ///      "description": "The IP address for the interface. One will be auto-assigned if not provided.",
     ///      "type": [
     ///        "string",
     ///        "null"
@@ -6129,7 +5935,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6151,7 +5957,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -6166,15 +5972,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6195,11 +6000,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Parameters for updating a
-    /// [`NetworkInterface`](omicron_common::api::external::NetworkInterface).\
-    /// n\nNote that modifying IP addresses for an interface is not yet
-    /// supported, a new interface must be created instead.",
+    /// {
+    ///  "description": "Parameters for updating a [`NetworkInterface`](omicron_common::api::external::NetworkInterface).\n\nNote that modifying IP addresses for an interface is not yet supported, a new interface must be created instead.",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -6223,19 +6025,12 @@ pub mod types {
     ///      ]
     ///    },
     ///    "primary": {
-    ///      "description": "Make a secondary interface the instance's primary
-    /// interface.\n\nIf applied to a secondary interface, that interface will
-    /// become the primary on the next reboot of the instance. Note that this
-    /// may have implications for routing between instances, as the new primary
-    /// interface will be on a distinct subnet from the previous primary
-    /// interface.\n\nNote that this can only be used to select a new primary
-    /// interface for an instance. Requests to change the primary interface into
-    /// a secondary will return an error.",
+    ///      "description": "Make a secondary interface the instance's primary interface.\n\nIf applied to a secondary interface, that interface will become the primary on the next reboot of the instance. Note that this may have implications for routing between instances, as the new primary interface will be on a distinct subnet from the previous primary interface.\n\nNote that this can only be used to select a new primary interface for an instance. Requests to change the primary interface into a secondary will return an error.",
     ///      "default": false,
     ///      "type": "boolean"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6279,13 +6074,10 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Unique name for a saga [`Node`]\n\nEach node requires a
-    /// string name that's unique within its DAG.  The name is used to identify
-    /// its output.  Nodes that depend on a given node (either directly or
-    /// indirectly) can access the node's output using its name.",
+    /// {
+    ///  "description": "Unique name for a saga [`Node`]\n\nEach node requires a string name that's unique within its DAG.  The name is used to identify its output.  Nodes that depend on a given node (either directly or indirectly) can access the node's output using its name.",
     ///  "type": "string"
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -6338,7 +6130,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of an [`Organization`]",
     ///  "type": "object",
     ///  "required": [
@@ -6354,14 +6146,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -6379,32 +6169,18 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct Organization {
-        ///human-readable free-form text about a resource
-        pub description: ::std::string::String,
-        ///unique, immutable, system-controlled identifier for each resource
-        pub id: ::uuid::Uuid,
-        ///unique, mutable, user-controlled identifier for each resource
-        pub name: Name,
-        ///timestamp when this resource was created
-        pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
-        ///timestamp when this resource was last modified
-        pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
-    }
-
+    pub use self::IpPool as Organization;
     ///Create-time parameters for an
     /// [`Organization`](crate::external_api::views::Organization)
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an
-    /// [`Organization`](crate::external_api::views::Organization)",
+    /// {
+    ///  "description": "Create-time parameters for an [`Organization`](crate::external_api::views::Organization)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -6418,21 +6194,16 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct OrganizationCreate {
-        pub description: ::std::string::String,
-        pub name: Name,
-    }
-
+    pub use self::IpPoolCreate as OrganizationCreate;
     ///A single page of results
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -6447,15 +6218,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6472,84 +6242,17 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "admin",
     ///    "collaborator",
     ///    "viewer"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
-    pub enum OrganizationRole {
-        #[serde(rename = "admin")]
-        Admin,
-        #[serde(rename = "collaborator")]
-        Collaborator,
-        #[serde(rename = "viewer")]
-        Viewer,
-    }
-
-    impl ::std::fmt::Display for OrganizationRole {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            match *self {
-                Self::Admin => f.write_str("admin"),
-                Self::Collaborator => f.write_str("collaborator"),
-                Self::Viewer => f.write_str("viewer"),
-            }
-        }
-    }
-
-    impl ::std::str::FromStr for OrganizationRole {
-        type Err = self::error::ConversionError;
-        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            match value {
-                "admin" => Ok(Self::Admin),
-                "collaborator" => Ok(Self::Collaborator),
-                "viewer" => Ok(Self::Viewer),
-                _ => Err("invalid value".into()),
-            }
-        }
-    }
-
-    impl ::std::convert::TryFrom<&str> for OrganizationRole {
-        type Error = self::error::ConversionError;
-        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<&::std::string::String> for OrganizationRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<::std::string::String> for OrganizationRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: ::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
+    pub use self::FleetRole as OrganizationRole;
     ///Client view of a [`Policy`], which describes how this resource may be
     /// accessed
     ///
@@ -6560,11 +6263,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Client view of a [`Policy`], which describes how this
-    /// resource may be accessed\n\nNote that the Policy only describes access
-    /// granted explicitly for this resource.  The policies of parent resources
-    /// can also cause a user to have access to this resource.",
+    /// {
+    ///  "description": "Client view of a [`Policy`], which describes how this resource may be accessed\n\nNote that the Policy only describes access granted explicitly for this resource.  The policies of parent resources can also cause a user to have access to this resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "role_assignments"
@@ -6578,7 +6278,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6597,12 +6297,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes the assignment of a particular role on a
-    /// particular resource to a particular identity (user, group, etc.)\n\nThe
-    /// resource is not part of this structure.  Rather, [`RoleAssignment`]s are
-    /// put into a [`Policy`] and that Policy is applied to a particular
-    /// resource.",
+    /// {
+    ///  "description": "Describes the assignment of a particular role on a particular resource to a particular identity (user, group, etc.)\n\nThe resource is not part of this structure.  Rather, [`RoleAssignment`]s are put into a [`Policy`] and that Policy is applied to a particular resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "identity_id",
@@ -6621,25 +6317,18 @@ pub mod types {
     ///      "$ref": "#/components/schemas/OrganizationRole"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct OrganizationRoleRoleAssignment {
-        pub identity_id: ::uuid::Uuid,
-        pub identity_type: IdentityType,
-        pub role_name: OrganizationRole,
-    }
-
+    pub use self::FleetRoleRoleAssignment as OrganizationRoleRoleAssignment;
     ///Updateable properties of an
     /// [`Organization`](crate::external_api::views::Organization)
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of an
-    /// [`Organization`](crate::external_api::views::Organization)",
+    /// {
+    ///  "description": "Updateable properties of an [`Organization`](crate::external_api::views::Organization)",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -6663,37 +6352,21 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct OrganizationUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub name: ::std::option::Option<Name>,
-    }
-
-    impl ::std::default::Default for OrganizationUpdate {
-        fn default() -> Self {
-            Self {
-                description: ::std::default::Default::default(),
-                name: ::std::default::Default::default(),
-            }
-        }
-    }
-
+    pub use self::IpPoolUpdate as OrganizationUpdate;
     ///Passwords may be subject to additional constraints.
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A password used to authenticate a user",
     ///  "description": "Passwords may be subject to additional constraints.",
     ///  "type": "string",
     ///  "maxLength": 512
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -6765,7 +6438,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`PhysicalDisk`]",
     ///  "type": "object",
     ///  "required": [
@@ -6782,8 +6455,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/PhysicalDiskType"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -6815,7 +6487,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6840,7 +6512,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -6855,15 +6527,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -6880,13 +6551,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "internal",
     ///    "external"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -6958,7 +6629,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Project`]",
     ///  "type": "object",
     ///  "required": [
@@ -6975,14 +6646,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -7004,7 +6673,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7028,9 +6697,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Project`](crate::external_api::views::Project)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Project`](crate::external_api::views::Project)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -7044,21 +6712,16 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct ProjectCreate {
-        pub description: ::std::string::String,
-        pub name: Name,
-    }
-
+    pub use self::IpPoolCreate as ProjectCreate;
     ///A single page of results
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -7073,15 +6736,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7098,84 +6760,17 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "admin",
     ///    "collaborator",
     ///    "viewer"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
-    pub enum ProjectRole {
-        #[serde(rename = "admin")]
-        Admin,
-        #[serde(rename = "collaborator")]
-        Collaborator,
-        #[serde(rename = "viewer")]
-        Viewer,
-    }
-
-    impl ::std::fmt::Display for ProjectRole {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            match *self {
-                Self::Admin => f.write_str("admin"),
-                Self::Collaborator => f.write_str("collaborator"),
-                Self::Viewer => f.write_str("viewer"),
-            }
-        }
-    }
-
-    impl ::std::str::FromStr for ProjectRole {
-        type Err = self::error::ConversionError;
-        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            match value {
-                "admin" => Ok(Self::Admin),
-                "collaborator" => Ok(Self::Collaborator),
-                "viewer" => Ok(Self::Viewer),
-                _ => Err("invalid value".into()),
-            }
-        }
-    }
-
-    impl ::std::convert::TryFrom<&str> for ProjectRole {
-        type Error = self::error::ConversionError;
-        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<&::std::string::String> for ProjectRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<::std::string::String> for ProjectRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: ::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
+    pub use self::FleetRole as ProjectRole;
     ///Client view of a [`Policy`], which describes how this resource may be
     /// accessed
     ///
@@ -7186,11 +6781,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Client view of a [`Policy`], which describes how this
-    /// resource may be accessed\n\nNote that the Policy only describes access
-    /// granted explicitly for this resource.  The policies of parent resources
-    /// can also cause a user to have access to this resource.",
+    /// {
+    ///  "description": "Client view of a [`Policy`], which describes how this resource may be accessed\n\nNote that the Policy only describes access granted explicitly for this resource.  The policies of parent resources can also cause a user to have access to this resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "role_assignments"
@@ -7204,7 +6796,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7223,12 +6815,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes the assignment of a particular role on a
-    /// particular resource to a particular identity (user, group, etc.)\n\nThe
-    /// resource is not part of this structure.  Rather, [`RoleAssignment`]s are
-    /// put into a [`Policy`] and that Policy is applied to a particular
-    /// resource.",
+    /// {
+    ///  "description": "Describes the assignment of a particular role on a particular resource to a particular identity (user, group, etc.)\n\nThe resource is not part of this structure.  Rather, [`RoleAssignment`]s are put into a [`Policy`] and that Policy is applied to a particular resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "identity_id",
@@ -7247,25 +6835,18 @@ pub mod types {
     ///      "$ref": "#/components/schemas/ProjectRole"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct ProjectRoleRoleAssignment {
-        pub identity_id: ::uuid::Uuid,
-        pub identity_type: IdentityType,
-        pub role_name: ProjectRole,
-    }
-
+    pub use self::FleetRoleRoleAssignment as ProjectRoleRoleAssignment;
     ///Updateable properties of a
     /// [`Project`](crate::external_api::views::Project)
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of a
-    /// [`Project`](crate::external_api::views::Project)",
+    /// {
+    ///  "description": "Updateable properties of a [`Project`](crate::external_api::views::Project)",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -7289,32 +6870,16 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct ProjectUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub name: ::std::option::Option<Name>,
-    }
-
-    impl ::std::default::Default for ProjectUpdate {
-        fn default() -> Self {
-            Self {
-                description: ::std::default::Default::default(),
-                name: ::std::default::Default::default(),
-            }
-        }
-    }
-
+    pub use self::IpPoolUpdate as ProjectUpdate;
     ///Client view of an [`Rack`]
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of an [`Rack`]",
     ///  "type": "object",
     ///  "required": [
@@ -7324,8 +6889,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -7340,7 +6904,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7358,7 +6922,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -7373,15 +6937,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7398,7 +6961,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Role`]",
     ///  "type": "object",
     ///  "required": [
@@ -7413,7 +6976,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/RoleName"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7427,14 +6990,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A name for a built-in role",
-    ///  "description": "Role names consist of two string components separated
-    /// by dot (\".\").",
+    ///  "description": "Role names consist of two string components separated by dot (\".\").",
     ///  "type": "string",
     ///  "maxLength": 63,
     ///  "pattern": "[a-z-]+\\.[a-z-]+"
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -7511,7 +7073,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -7526,15 +7088,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7556,16 +7117,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `RouteDestination` is used to match traffic with a
-    /// routing rule, on the destination of that traffic.\n\nWhen traffic is to
-    /// be sent to a destination that is within a given `RouteDestination`, the
-    /// corresponding [`RouterRoute`] applies, and traffic will be forward to
-    /// the [`RouteTarget`] for that rule.",
+    /// {
+    ///  "description": "A `RouteDestination` is used to match traffic with a routing rule, on the destination of that traffic.\n\nWhen traffic is to be sent to a destination that is within a given `RouteDestination`, the corresponding [`RouterRoute`] applies, and traffic will be forward to the [`RouteTarget`] for that rule.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "Route applies to traffic destined for a specific IP
-    /// address",
+    ///      "description": "Route applies to traffic destined for a specific IP address",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -7585,8 +7141,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "Route applies to traffic destined for a specific IP
-    /// subnet",
+    ///      "description": "Route applies to traffic destined for a specific IP subnet",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -7605,8 +7160,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "Route applies to traffic destined for the given
-    /// VPC.",
+    ///      "description": "Route applies to traffic destined for the given VPC.",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -7644,7 +7198,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7682,9 +7236,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `RouteTarget` describes the possible locations that
-    /// traffic matching a route destination can be sent.",
+    /// {
+    ///  "description": "A `RouteTarget` describes the possible locations that traffic matching a route destination can be sent.",
     ///  "oneOf": [
     ///    {
     ///      "description": "Forward traffic to a particular IP address.",
@@ -7783,7 +7336,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7818,9 +7371,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A route defines a rule that governs where traffic
-    /// should be sent based on its destination.",
+    /// {
+    ///  "description": "A route defines a rule that governs where traffic should be sent based on its destination.",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -7842,14 +7394,12 @@ pub mod types {
     ///      "$ref": "#/components/schemas/RouteDestination"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "kind": {
-    ///      "description": "Describes the kind of router. Set at creation.
-    /// `read-only`",
+    ///      "description": "Describes the kind of router. Set at creation. `read-only`",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/RouterRouteKind"
@@ -7857,8 +7407,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -7884,7 +7433,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7912,7 +7461,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Create-time parameters for a [`RouterRoute`]",
     ///  "type": "object",
     ///  "required": [
@@ -7935,7 +7484,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/RouteTarget"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -7955,44 +7504,39 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The classification of a [`RouterRoute`] as defined by the system. The kind determines certain attributes such as if the route is modifiable and describes how or where the route was created.\n\nSee [RFD-21](https://rfd.shared.oxide.computer/rfd/0021#concept-router) for more context",
     ///  "oneOf": [
     ///    {
-    ///      "description": "Determines the default destination of traffic, such
-    /// as whether it goes to the internet or not.\n\n`Destination: An Internet
-    /// Gateway` `Modifiable: true`",
+    ///      "description": "Determines the default destination of traffic, such as whether it goes to the internet or not.\n\n`Destination: An Internet Gateway` `Modifiable: true`",
     ///      "type": "string",
     ///      "enum": [
     ///        "default"
     ///      ]
     ///    },
     ///    {
-    ///      "description": "Automatically added for each VPC Subnet in the
-    /// VPC\n\n`Destination: A VPC Subnet` `Modifiable: false`",
+    ///      "description": "Automatically added for each VPC Subnet in the VPC\n\n`Destination: A VPC Subnet` `Modifiable: false`",
     ///      "type": "string",
     ///      "enum": [
     ///        "vpc_subnet"
     ///      ]
     ///    },
     ///    {
-    ///      "description": "Automatically added when VPC peering is
-    /// established\n\n`Destination: A different VPC` `Modifiable: false`",
+    ///      "description": "Automatically added when VPC peering is established\n\n`Destination: A different VPC` `Modifiable: false`",
     ///      "type": "string",
     ///      "enum": [
     ///        "vpc_peering"
     ///      ]
     ///    },
     ///    {
-    ///      "description": "Created by a user See
-    /// [`RouteTarget`]\n\n`Destination: User defined` `Modifiable: true`",
+    ///      "description": "Created by a user See [`RouteTarget`]\n\n`Destination: User defined` `Modifiable: true`",
     ///      "type": "string",
     ///      "enum": [
     ///        "custom"
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -8085,7 +7629,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -8100,15 +7644,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8125,7 +7668,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Updateable properties of a [`RouterRoute`]",
     ///  "type": "object",
     ///  "required": [
@@ -8160,7 +7703,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/RouteTarget"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8178,7 +7721,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -8193,7 +7736,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SagaState"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8207,7 +7750,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -8294,7 +7837,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8317,7 +7860,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -8332,15 +7875,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8357,7 +7899,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -8410,7 +7952,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8433,9 +7975,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in nearly all
-    /// public API objects",
+    /// {
+    ///  "description": "Identity-related metadata that's included in nearly all public API objects",
     ///  "type": "object",
     ///  "required": [
     ///    "acs_url",
@@ -8451,8 +7992,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "acs_url": {
-    ///      "description": "service provider endpoint where the response will
-    /// be sent",
+    ///      "description": "service provider endpoint where the response will be sent",
     ///      "type": "string"
     ///    },
     ///    "description": {
@@ -8460,8 +8000,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -8470,8 +8009,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -8479,16 +8017,14 @@ pub mod types {
     ///      ]
     ///    },
     ///    "public_cert": {
-    ///      "description": "optional request signing public certificate (base64
-    /// encoded der file)",
+    ///      "description": "optional request signing public certificate (base64 encoded der file)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    },
     ///    "slo_url": {
-    ///      "description": "service provider endpoint where the idp should send
-    /// log out requests",
+    ///      "description": "service provider endpoint where the idp should send log out requests",
     ///      "type": "string"
     ///    },
     ///    "sp_client_id": {
@@ -8496,8 +8032,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "technical_contact_email": {
-    ///      "description": "customer's technical contact for saml
-    /// configuration",
+    ///      "description": "customer's technical contact for saml configuration",
     ///      "type": "string"
     ///    },
     ///    "time_created": {
@@ -8511,7 +8046,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8547,7 +8082,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Create-time identity-related parameters",
     ///  "type": "object",
     ///  "required": [
@@ -8562,17 +8097,14 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "acs_url": {
-    ///      "description": "service provider endpoint where the response will
-    /// be sent",
+    ///      "description": "service provider endpoint where the response will be sent",
     ///      "type": "string"
     ///    },
     ///    "description": {
     ///      "type": "string"
     ///    },
     ///    "group_attribute_name": {
-    ///      "description": "If set, SAML attributes with this name will be
-    /// considered to denote a user's group membership, where the attribute
-    /// value(s) should be a comma-separated list of group names.",
+    ///      "description": "If set, SAML attributes with this name will be considered to denote a user's group membership, where the attribute value(s) should be a comma-separated list of group names.",
     ///      "type": [
     ///        "string",
     ///        "null"
@@ -8583,8 +8115,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "idp_metadata_source": {
-    ///      "description": "the source of an identity provider metadata
-    /// descriptor",
+    ///      "description": "the source of an identity provider metadata descriptor",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/IdpMetadataSource"
@@ -8610,8 +8141,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "slo_url": {
-    ///      "description": "service provider endpoint where the idp should send
-    /// log out requests",
+    ///      "description": "service provider endpoint where the idp should send log out requests",
     ///      "type": "string"
     ///    },
     ///    "sp_client_id": {
@@ -8619,12 +8149,11 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "technical_contact_email": {
-    ///      "description": "customer's technical contact for saml
-    /// configuration",
+    ///      "description": "customer's technical contact for saml configuration",
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8658,10 +8187,10 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "pattern": "^\\d+\\.\\d+\\.\\d+([\\-\\+].+)?$"
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -8737,19 +8266,18 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "The service intended to use this certificate.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "This certificate is intended for access to the
-    /// external API.",
+    ///      "description": "This certificate is intended for access to the external API.",
     ///      "type": "string",
     ///      "enum": [
     ///        "external_api"
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -8818,7 +8346,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a ['Silo']",
     ///  "type": "object",
     ///  "required": [
@@ -8840,8 +8368,7 @@ pub mod types {
     ///      "type": "boolean"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -8854,8 +8381,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -8873,7 +8399,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8900,9 +8426,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Silo`](crate::external_api::views::Silo)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Silo`](crate::external_api::views::Silo)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -8912,13 +8437,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "admin_group_name": {
-    ///      "description": "If set, this group will be created during Silo
-    /// creation and granted the \"Silo Admin\" role. Identity providers can
-    /// assert that users belong to this group and those users can log in and
-    /// further initialize the Silo.\n\nNote that if configuring a SAML based
-    /// identity provider, group_attribute_name must be set for users to be
-    /// considered part of a group. See [`SamlIdentityProviderCreate`] for more
-    /// information.",
+    ///      "description": "If set, this group will be created during Silo creation and granted the \"Silo Admin\" role. Identity providers can assert that users belong to this group and those users can log in and further initialize the Silo.\n\nNote that if configuring a SAML based identity provider, group_attribute_name must be set for users to be considered part of a group. See [`SamlIdentityProviderCreate`] for more information.",
     ///      "type": [
     ///        "string",
     ///        "null"
@@ -8937,7 +8456,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -8964,31 +8483,25 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes how identities are managed and users are
-    /// authenticated in this Silo",
+    /// {
+    ///  "description": "Describes how identities are managed and users are authenticated in this Silo",
     ///  "oneOf": [
     ///    {
-    ///      "description": "Users are authenticated with SAML using an external
-    /// authentication provider.  The system updates information about users and
-    /// groups only during successful authentication (i.e,. \"JIT provisioning\"
-    /// of users and groups).",
+    ///      "description": "Users are authenticated with SAML using an external authentication provider.  The system updates information about users and groups only during successful authentication (i.e,. \"JIT provisioning\" of users and groups).",
     ///      "type": "string",
     ///      "enum": [
     ///        "saml_jit"
     ///      ]
     ///    },
     ///    {
-    ///      "description": "The system is the source of truth about users.
-    /// There is no linkage to an external authentication provider or identity
-    /// provider.",
+    ///      "description": "The system is the source of truth about users.  There is no linkage to an external authentication provider or identity provider.",
     ///      "type": "string",
     ///      "enum": [
     ///        "local_only"
     ///      ]
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -9066,7 +8579,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -9081,15 +8594,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9106,84 +8618,17 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "admin",
     ///    "collaborator",
     ///    "viewer"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
-    pub enum SiloRole {
-        #[serde(rename = "admin")]
-        Admin,
-        #[serde(rename = "collaborator")]
-        Collaborator,
-        #[serde(rename = "viewer")]
-        Viewer,
-    }
-
-    impl ::std::fmt::Display for SiloRole {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            match *self {
-                Self::Admin => f.write_str("admin"),
-                Self::Collaborator => f.write_str("collaborator"),
-                Self::Viewer => f.write_str("viewer"),
-            }
-        }
-    }
-
-    impl ::std::str::FromStr for SiloRole {
-        type Err = self::error::ConversionError;
-        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            match value {
-                "admin" => Ok(Self::Admin),
-                "collaborator" => Ok(Self::Collaborator),
-                "viewer" => Ok(Self::Viewer),
-                _ => Err("invalid value".into()),
-            }
-        }
-    }
-
-    impl ::std::convert::TryFrom<&str> for SiloRole {
-        type Error = self::error::ConversionError;
-        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<&::std::string::String> for SiloRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<::std::string::String> for SiloRole {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: ::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
+    pub use self::FleetRole as SiloRole;
     ///Client view of a [`Policy`], which describes how this resource may be
     /// accessed
     ///
@@ -9194,11 +8639,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Client view of a [`Policy`], which describes how this
-    /// resource may be accessed\n\nNote that the Policy only describes access
-    /// granted explicitly for this resource.  The policies of parent resources
-    /// can also cause a user to have access to this resource.",
+    /// {
+    ///  "description": "Client view of a [`Policy`], which describes how this resource may be accessed\n\nNote that the Policy only describes access granted explicitly for this resource.  The policies of parent resources can also cause a user to have access to this resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "role_assignments"
@@ -9212,7 +8654,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9231,12 +8673,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Describes the assignment of a particular role on a
-    /// particular resource to a particular identity (user, group, etc.)\n\nThe
-    /// resource is not part of this structure.  Rather, [`RoleAssignment`]s are
-    /// put into a [`Policy`] and that Policy is applied to a particular
-    /// resource.",
+    /// {
+    ///  "description": "Describes the assignment of a particular role on a particular resource to a particular identity (user, group, etc.)\n\nThe resource is not part of this structure.  Rather, [`RoleAssignment`]s are put into a [`Policy`] and that Policy is applied to a particular resource.",
     ///  "type": "object",
     ///  "required": [
     ///    "identity_id",
@@ -9255,22 +8693,16 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SiloRole"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct SiloRoleRoleAssignment {
-        pub identity_id: ::uuid::Uuid,
-        pub identity_type: IdentityType,
-        pub role_name: SiloRole,
-    }
-
+    pub use self::FleetRoleRoleAssignment as SiloRoleRoleAssignment;
     ///Client view of a [`Sled`]
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Sled`]",
     ///  "type": "object",
     ///  "required": [
@@ -9285,8 +8717,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Baseboard"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -9304,7 +8735,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9324,7 +8755,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -9339,15 +8770,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9364,7 +8794,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a Snapshot",
     ///  "type": "object",
     ///  "required": [
@@ -9388,14 +8818,12 @@ pub mod types {
     ///      "format": "uuid"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -9423,7 +8851,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9450,9 +8878,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Snapshot`](crate::external_api::views::Snapshot)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Snapshot`](crate::external_api::views::Snapshot)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -9475,7 +8902,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9491,7 +8918,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -9506,15 +8933,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9531,7 +8957,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "creating",
@@ -9539,7 +8965,7 @@ pub mod types {
     ///    "faulted",
     ///    "destroyed"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -9619,7 +9045,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "username"
@@ -9629,7 +9055,7 @@ pub mod types {
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9642,7 +9068,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`SshKey`]",
     ///  "type": "object",
     ///  "required": [
@@ -9660,14 +9086,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -9675,8 +9099,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "public_key": {
-    ///      "description": "SSH public key, e.g., `\"ssh-ed25519
-    /// AAAAC3NzaC...\"`",
+    ///      "description": "SSH public key, e.g., `\"ssh-ed25519 AAAAC3NzaC...\"`",
     ///      "type": "string"
     ///    },
     ///    "silo_user_id": {
@@ -9695,7 +9118,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9722,9 +9145,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for an
-    /// [`SshKey`](crate::external_api::views::SshKey)",
+    /// {
+    ///  "description": "Create-time parameters for an [`SshKey`](crate::external_api::views::SshKey)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -9739,12 +9161,11 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    },
     ///    "public_key": {
-    ///      "description": "SSH public key, e.g., `\"ssh-ed25519
-    /// AAAAC3NzaC...\"`",
+    ///      "description": "SSH public key, e.g., `\"ssh-ed25519 AAAAC3NzaC...\"`",
     ///      "type": "string"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9760,7 +9181,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -9775,15 +9196,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9800,14 +9220,14 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "virtual_disk_space_provisioned",
     ///    "cpus_provisioned",
     ///    "ram_provisioned"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -9884,9 +9304,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in \"asset\"
-    /// public API objects (which generally have no name or description)",
+    /// {
+    ///  "description": "Identity-related metadata that's included in \"asset\" public API objects (which generally have no name or description)",
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -9896,8 +9315,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -9915,7 +9333,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9934,7 +9352,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -9949,15 +9367,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9974,7 +9391,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "version"
@@ -9984,7 +9401,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -9997,7 +9414,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "status",
@@ -10011,7 +9428,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/VersionRange"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10027,15 +9444,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "The name of a timeseries",
-    ///  "description": "Names are constructed by concatenating the target and
-    /// metric names with ':'. Target and metric names must be lowercase
-    /// alphanumeric characters with '_' separating words.",
+    ///  "description": "Names are constructed by concatenating the target and metric names with ':'. Target and metric names must be lowercase alphanumeric characters with '_' separating words.",
     ///  "type": "string",
-    ///  "pattern":
-    /// "(([a-z]+[a-z0-9]*)(_([a-z0-9]+))*):(([a-z]+[a-z0-9]*)(_([a-z0-9]+))*)"
-    ///}
+    ///  "pattern": "(([a-z]+[a-z0-9]*)(_([a-z0-9]+))*):(([a-z]+[a-z0-9]*)(_([a-z0-9]+))*)"
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -10120,10 +9534,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The schema for a timeseries.\n\nThis includes the name
-    /// of the timeseries, as well as the datum type of its metric and the
-    /// schema for each field.",
+    /// {
+    ///  "description": "The schema for a timeseries.\n\nThis includes the name of the timeseries, as well as the datum type of its metric and the schema for each field.",
     ///  "type": "object",
     ///  "required": [
     ///    "created",
@@ -10149,7 +9561,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/TimeseriesName"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10165,7 +9577,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -10180,15 +9592,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10206,9 +9617,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in \"asset\"
-    /// public API objects (which generally have no name or description)",
+    /// {
+    ///  "description": "Identity-related metadata that's included in \"asset\" public API objects (which generally have no name or description)",
     ///  "type": "object",
     ///  "required": [
     ///    "id",
@@ -10219,8 +9629,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -10241,7 +9650,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10261,7 +9670,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -10276,15 +9685,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10301,7 +9709,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "oneOf": [
     ///    {
     ///      "type": "object",
@@ -10332,7 +9740,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -10406,9 +9814,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Identity-related metadata that's included in \"asset\"
-    /// public API objects (which generally have no name or description)",
+    /// {
+    ///  "description": "Identity-related metadata that's included in \"asset\" public API objects (which generally have no name or description)",
     ///  "type": "object",
     ///  "required": [
     ///    "component_type",
@@ -10428,8 +9835,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -10453,7 +9859,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10476,7 +9882,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -10491,15 +9897,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10516,7 +9921,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "bootloader_for_rot",
@@ -10532,7 +9937,7 @@ pub mod types {
     ///    "helios_host_phase2",
     ///    "host_omicron"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -10644,7 +10049,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`User`]",
     ///  "type": "object",
     ///  "required": [
@@ -10667,7 +10072,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10684,7 +10089,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`UserBuiltin`]",
     ///  "type": "object",
     ///  "required": [
@@ -10700,14 +10105,12 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -10725,29 +10128,16 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct UserBuiltin {
-        ///human-readable free-form text about a resource
-        pub description: ::std::string::String,
-        ///unique, immutable, system-controlled identifier for each resource
-        pub id: ::uuid::Uuid,
-        ///unique, mutable, user-controlled identifier for each resource
-        pub name: Name,
-        ///timestamp when this resource was created
-        pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
-        ///timestamp when this resource was last modified
-        pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
-    }
-
+    pub use self::IpPool as UserBuiltin;
     ///A single page of results
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -10762,15 +10152,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10787,9 +10176,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`User`](crate::external_api::views::User)",
+    /// {
+    ///  "description": "Create-time parameters for a [`User`](crate::external_api::views::User)",
     ///  "type": "object",
     ///  "required": [
     ///    "external_id",
@@ -10813,7 +10201,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10831,98 +10219,22 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "title": "A name unique within the parent collection",
-    ///  "description": "Names must begin with a lower case ASCII letter, be
-    /// composed exclusively of lowercase ASCII, uppercase ASCII, numbers, and
-    /// '-', and may not end with a '-'. Names cannot be a UUID though they may
-    /// contain a UUID.",
+    ///  "description": "Names must begin with a lower case ASCII letter, be composed exclusively of lowercase ASCII, uppercase ASCII, numbers, and '-', and may not end with a '-'. Names cannot be a UUID though they may contain a UUID.",
     ///  "type": "string",
     ///  "maxLength": 63,
-    ///  "pattern":
-    /// "^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*
-    /// [a-zA-Z0-9]$"
-    ///}
+    ///  "pattern": "^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*[a-zA-Z0-9]$"
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-    #[serde(transparent)]
-    pub struct UserId(::std::string::String);
-    impl ::std::ops::Deref for UserId {
-        type Target = ::std::string::String;
-        fn deref(&self) -> &::std::string::String {
-            &self.0
-        }
-    }
-
-    impl ::std::convert::From<UserId> for ::std::string::String {
-        fn from(value: UserId) -> Self {
-            value.0
-        }
-    }
-
-    impl ::std::str::FromStr for UserId {
-        type Err = self::error::ConversionError;
-        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            if value.chars().count() > 63usize {
-                return Err("longer than 63 characters".into());
-            }
-            static PATTERN: ::std::sync::LazyLock<::regress::Regex> = ::std::sync::LazyLock::new(
-                || {
-                    :: regress :: Regex :: new ("^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*[a-zA-Z0-9]$") . unwrap ()
-                },
-            );
-            if PATTERN.find(value).is_none() {
-                return Err ("doesn't match pattern \"^(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$)^[a-z][a-z0-9-]*[a-zA-Z0-9]$\"" . into ()) ;
-            }
-            Ok(Self(value.to_string()))
-        }
-    }
-
-    impl ::std::convert::TryFrom<&str> for UserId {
-        type Error = self::error::ConversionError;
-        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<&::std::string::String> for UserId {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: &::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl ::std::convert::TryFrom<::std::string::String> for UserId {
-        type Error = self::error::ConversionError;
-        fn try_from(
-            value: ::std::string::String,
-        ) -> ::std::result::Result<Self, self::error::ConversionError> {
-            value.parse()
-        }
-    }
-
-    impl<'de> ::serde::Deserialize<'de> for UserId {
-        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
-        where
-            D: ::serde::Deserializer<'de>,
-        {
-            ::std::string::String::deserialize(deserializer)?
-                .parse()
-                .map_err(|e: self::error::ConversionError| {
-                    <D::Error as ::serde::de::Error>::custom(e.to_string())
-                })
-        }
-    }
-
+    pub use self::Name as UserId;
     ///Parameters for setting a user's password
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Parameters for setting a user's password",
     ///  "oneOf": [
     ///    {
@@ -10945,8 +10257,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "Invalidates any current password (disabling
-    /// password authentication)",
+    ///      "description": "Invalidates any current password (disabling password authentication)",
     ///      "type": "object",
     ///      "required": [
     ///        "user_password_value"
@@ -10961,7 +10272,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -10985,7 +10296,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -11000,15 +10311,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11025,7 +10335,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Credentials for local user login",
     ///  "type": "object",
     ///  "required": [
@@ -11040,7 +10350,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/UserId"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11054,7 +10364,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "object",
     ///  "required": [
     ///    "high",
@@ -11068,7 +10378,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/SemverVersion"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11082,7 +10392,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Client view of a [`Vpc`]",
     ///  "type": "object",
     ///  "required": [
@@ -11110,14 +10420,12 @@ pub mod types {
     ///      ]
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "ipv6_prefix": {
-    ///      "description": "The unique local IPv6 address range for subnets in
-    /// this VPC",
+    ///      "description": "The unique local IPv6 address range for subnets in this VPC",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Ipv6Net"
@@ -11125,8 +10433,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -11139,8 +10446,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    },
     ///    "system_router_id": {
-    ///      "description": "id for the system router where subnet default
-    /// routes are registered",
+    ///      "description": "id for the system router where subnet default routes are registered",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -11155,7 +10461,7 @@ pub mod types {
     ///      "format": "date-time"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11185,9 +10491,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`Vpc`](crate::external_api::views::Vpc)",
+    /// {
+    ///  "description": "Create-time parameters for a [`Vpc`](crate::external_api::views::Vpc)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -11202,10 +10507,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    },
     ///    "ipv6_prefix": {
-    ///      "description": "The IPv6 prefix for this VPC.\n\nAll IPv6 subnets
-    /// created from this VPC must be taken from this range, which sould be a
-    /// Unique Local Address in the range `fd00::/48`. The default VPC Subnet
-    /// will have the first `/64` range from this prefix.",
+    ///      "description": "The IPv6 prefix for this VPC.\n\nAll IPv6 subnets created from this VPC must be taken from this range, which sould be a Unique Local Address in the range `fd00::/48`. The default VPC Subnet will have the first `/64` range from this prefix.",
     ///      "oneOf": [
     ///        {
     ///          "type": "null"
@@ -11223,7 +10525,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11246,7 +10548,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single rule in a VPC firewall",
     ///  "type": "object",
     ///  "required": [
@@ -11265,8 +10567,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "action": {
-    ///      "description": "whether traffic matching the rule should be allowed
-    /// or dropped",
+    ///      "description": "whether traffic matching the rule should be allowed or dropped",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/VpcFirewallRuleAction"
@@ -11278,8 +10579,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "direction": {
-    ///      "description": "whether this rule is for incoming or outgoing
-    /// traffic",
+    ///      "description": "whether this rule is for incoming or outgoing traffic",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/VpcFirewallRuleDirection"
@@ -11295,14 +10595,12 @@ pub mod types {
     ///      ]
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -11324,8 +10622,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "targets": {
-    ///      "description": "list of sets of instances that the rule applies
-    /// to",
+    ///      "description": "list of sets of instances that the rule applies to",
     ///      "type": "array",
     ///      "items": {
     ///        "$ref": "#/components/schemas/VpcFirewallRuleTarget"
@@ -11347,7 +10644,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11383,13 +10680,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "allow",
     ///    "deny"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -11461,13 +10758,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "inbound",
     ///    "outbound"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -11541,15 +10838,12 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Filter for a firewall rule. A given packet must match
-    /// every field that is present for the rule to apply to it. A packet
-    /// matches a field if any entry in that field matches the packet.",
+    /// {
+    ///  "description": "Filter for a firewall rule. A given packet must match every field that is present for the rule to apply to it. A packet matches a field if any entry in that field matches the packet.",
     ///  "type": "object",
     ///  "properties": {
     ///    "hosts": {
-    ///      "description": "If present, the sources (if incoming) or
-    /// destinations (if outgoing) this rule applies to.",
+    ///      "description": "If present, the sources (if incoming) or destinations (if outgoing) this rule applies to.",
     ///      "type": [
     ///        "array",
     ///        "null"
@@ -11559,8 +10853,7 @@ pub mod types {
     ///      }
     ///    },
     ///    "ports": {
-    ///      "description": "If present, the destination ports this rule applies
-    /// to.",
+    ///      "description": "If present, the destination ports this rule applies to.",
     ///      "type": [
     ///        "array",
     ///        "null"
@@ -11570,8 +10863,7 @@ pub mod types {
     ///      }
     ///    },
     ///    "protocols": {
-    ///      "description": "If present, the networking protocols this rule
-    /// applies to.",
+    ///      "description": "If present, the networking protocols this rule applies to.",
     ///      "type": [
     ///        "array",
     ///        "null"
@@ -11581,7 +10873,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11614,13 +10906,11 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The `VpcFirewallRuleHostFilter` is used to filter
-    /// traffic on the basis of its source or destination host.",
+    /// {
+    ///  "description": "The `VpcFirewallRuleHostFilter` is used to filter traffic on the basis of its source or destination host.",
     ///  "oneOf": [
     ///    {
-    ///      "description": "The rule applies to traffic from/to all instances
-    /// in the VPC",
+    ///      "description": "The rule applies to traffic from/to all instances in the VPC",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -11639,8 +10929,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The rule applies to traffic from/to all instances
-    /// in the VPC Subnet",
+    ///      "description": "The rule applies to traffic from/to all instances in the VPC Subnet",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -11659,8 +10948,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The rule applies to traffic from/to this specific
-    /// instance",
+    ///      "description": "The rule applies to traffic from/to this specific instance",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -11679,8 +10967,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The rule applies to traffic from/to a specific IP
-    /// address",
+    ///      "description": "The rule applies to traffic from/to a specific IP address",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -11700,8 +10987,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The rule applies to traffic from/to a specific IP
-    /// subnet",
+    ///      "description": "The rule applies to traffic from/to a specific IP subnet",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -11720,7 +11006,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -11760,16 +11046,15 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "The protocols that may be specified in a firewall
-    /// rule's filter",
+    /// {
+    ///  "description": "The protocols that may be specified in a firewall rule's filter",
     ///  "type": "string",
     ///  "enum": [
     ///    "TCP",
     ///    "UDP",
     ///    "ICMP"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -11845,13 +11130,13 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "disabled",
     ///    "enabled"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -11924,9 +11209,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A `VpcFirewallRuleTarget` is used to specify the set of
-    /// [`Instance`]s to which a firewall rule applies.",
+    /// {
+    ///  "description": "A `VpcFirewallRuleTarget` is used to specify the set of [`Instance`]s to which a firewall rule applies.",
     ///  "oneOf": [
     ///    {
     ///      "description": "The rule applies to all instances in the VPC",
@@ -11948,8 +11232,7 @@ pub mod types {
     ///      }
     ///    },
     ///    {
-    ///      "description": "The rule applies to all instances in the VPC
-    /// Subnet",
+    ///      "description": "The rule applies to all instances in the VPC Subnet",
     ///      "type": "object",
     ///      "required": [
     ///        "type",
@@ -12026,7 +11309,7 @@ pub mod types {
     ///      }
     ///    }
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12066,7 +11349,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single rule in a VPC firewall",
     ///  "type": "object",
     ///  "required": [
@@ -12081,8 +11364,7 @@ pub mod types {
     ///  ],
     ///  "properties": {
     ///    "action": {
-    ///      "description": "whether traffic matching the rule should be allowed
-    /// or dropped",
+    ///      "description": "whether traffic matching the rule should be allowed or dropped",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/VpcFirewallRuleAction"
@@ -12094,8 +11376,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "direction": {
-    ///      "description": "whether this rule is for incoming or outgoing
-    /// traffic",
+    ///      "description": "whether this rule is for incoming or outgoing traffic",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/VpcFirewallRuleDirection"
@@ -12133,15 +11414,14 @@ pub mod types {
     ///      ]
     ///    },
     ///    "targets": {
-    ///      "description": "list of sets of instances that the rule applies
-    /// to",
+    ///      "description": "list of sets of instances that the rule applies to",
     ///      "type": "array",
     ///      "items": {
     ///        "$ref": "#/components/schemas/VpcFirewallRuleTarget"
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12171,10 +11451,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of a `Vpc`'s firewall Note that
-    /// VpcFirewallRules are implicitly created along with a Vpc, so there is no
-    /// explicit creation.",
+    /// {
+    ///  "description": "Updateable properties of a `Vpc`'s firewall Note that VpcFirewallRules are implicitly created along with a Vpc, so there is no explicit creation.",
     ///  "type": "object",
     ///  "required": [
     ///    "rules"
@@ -12187,7 +11465,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12200,7 +11478,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "Collection of a Vpc's firewall rules",
     ///  "type": "object",
     ///  "required": [
@@ -12214,7 +11492,7 @@ pub mod types {
     ///      }
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12227,7 +11505,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -12242,15 +11520,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12268,9 +11545,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A VPC router defines a series of rules that indicate
-    /// where traffic should be sent depending on its destination.",
+    /// {
+    ///  "description": "A VPC router defines a series of rules that indicate where traffic should be sent depending on its destination.",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -12287,8 +11563,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -12296,8 +11571,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/VpcRouterKind"
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -12320,7 +11594,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12346,9 +11620,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`VpcRouter`](crate::external_api::views::VpcRouter)",
+    /// {
+    ///  "description": "Create-time parameters for a [`VpcRouter`](crate::external_api::views::VpcRouter)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -12362,27 +11635,22 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct VpcRouterCreate {
-        pub description: ::std::string::String,
-        pub name: Name,
-    }
-
+    pub use self::IpPoolCreate as VpcRouterCreate;
     ///`VpcRouterKind`
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "type": "string",
     ///  "enum": [
     ///    "system",
     ///    "custom"
     ///  ]
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(
@@ -12454,7 +11722,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -12469,15 +11737,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12495,9 +11762,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of a
-    /// [`VpcRouter`](crate::external_api::views::VpcRouter)",
+    /// {
+    ///  "description": "Updateable properties of a [`VpcRouter`](crate::external_api::views::VpcRouter)",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -12521,26 +11787,10 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct VpcRouterUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub name: ::std::option::Option<Name>,
-    }
-
-    impl ::std::default::Default for VpcRouterUpdate {
-        fn default() -> Self {
-            Self {
-                description: ::std::default::Default::default(),
-                name: ::std::default::Default::default(),
-            }
-        }
-    }
-
+    pub use self::IpPoolUpdate as VpcRouterUpdate;
     ///A VPC subnet represents a logical grouping for instances that allows
     /// network traffic between them, within a IPv4 subnetwork or optionall an
     /// IPv6 subnetwork.
@@ -12548,10 +11798,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "A VPC subnet represents a logical grouping for
-    /// instances that allows network traffic between them, within a IPv4
-    /// subnetwork or optionall an IPv6 subnetwork.",
+    /// {
+    ///  "description": "A VPC subnet represents a logical grouping for instances that allows network traffic between them, within a IPv4 subnetwork or optionall an IPv6 subnetwork.",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -12569,8 +11817,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "id": {
-    ///      "description": "unique, immutable, system-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, immutable, system-controlled identifier for each resource",
     ///      "type": "string",
     ///      "format": "uuid"
     ///    },
@@ -12591,8 +11838,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "name": {
-    ///      "description": "unique, mutable, user-controlled identifier for
-    /// each resource",
+    ///      "description": "unique, mutable, user-controlled identifier for each resource",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Name"
@@ -12615,7 +11861,7 @@ pub mod types {
     ///      "format": "uuid"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12644,9 +11890,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Create-time parameters for a
-    /// [`VpcSubnet`](crate::external_api::views::VpcSubnet)",
+    /// {
+    ///  "description": "Create-time parameters for a [`VpcSubnet`](crate::external_api::views::VpcSubnet)",
     ///  "type": "object",
     ///  "required": [
     ///    "description",
@@ -12658,9 +11903,7 @@ pub mod types {
     ///      "type": "string"
     ///    },
     ///    "ipv4_block": {
-    ///      "description": "The IPv4 address range for this subnet.\n\nIt must
-    /// be allocated from an RFC 1918 private address range, and must not
-    /// overlap with any other existing subnet in the VPC.",
+    ///      "description": "The IPv4 address range for this subnet.\n\nIt must be allocated from an RFC 1918 private address range, and must not overlap with any other existing subnet in the VPC.",
     ///      "allOf": [
     ///        {
     ///          "$ref": "#/components/schemas/Ipv4Net"
@@ -12668,11 +11911,7 @@ pub mod types {
     ///      ]
     ///    },
     ///    "ipv6_block": {
-    ///      "description": "The IPv6 address range for this subnet.\n\nIt must
-    /// be allocated from the RFC 4193 Unique Local Address range, with the
-    /// prefix equal to the parent VPC's prefix. A random `/64` block will be
-    /// assigned if one is not provided. It must not overlap with any existing
-    /// subnet in the VPC.",
+    ///      "description": "The IPv6 address range for this subnet.\n\nIt must be allocated from the RFC 4193 Unique Local Address range, with the prefix equal to the parent VPC's prefix. A random `/64` block will be assigned if one is not provided. It must not overlap with any existing subnet in the VPC.",
     ///      "oneOf": [
     ///        {
     ///          "type": "null"
@@ -12690,7 +11929,7 @@ pub mod types {
     ///      "$ref": "#/components/schemas/Name"
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12717,7 +11956,7 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
+    /// {
     ///  "description": "A single page of results",
     ///  "type": "object",
     ///  "required": [
@@ -12732,15 +11971,14 @@ pub mod types {
     ///      }
     ///    },
     ///    "next_page": {
-    ///      "description": "token used to fetch the next page of results (if
-    /// any)",
+    ///      "description": "token used to fetch the next page of results (if any)",
     ///      "type": [
     ///        "string",
     ///        "null"
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
@@ -12758,9 +11996,8 @@ pub mod types {
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of a
-    /// [`VpcSubnet`](crate::external_api::views::VpcSubnet)",
+    /// {
+    ///  "description": "Updateable properties of a [`VpcSubnet`](crate::external_api::views::VpcSubnet)",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -12784,34 +12021,17 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct VpcSubnetUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub name: ::std::option::Option<Name>,
-    }
-
-    impl ::std::default::Default for VpcSubnetUpdate {
-        fn default() -> Self {
-            Self {
-                description: ::std::default::Default::default(),
-                name: ::std::default::Default::default(),
-            }
-        }
-    }
-
+    pub use self::IpPoolUpdate as VpcSubnetUpdate;
     ///Updateable properties of a [`Vpc`](crate::external_api::views::Vpc)
     ///
     /// <details><summary>JSON schema</summary>
     ///
     /// ```json
-    ///{
-    ///  "description": "Updateable properties of a
-    /// [`Vpc`](crate::external_api::views::Vpc)",
+    /// {
+    ///  "description": "Updateable properties of a [`Vpc`](crate::external_api::views::Vpc)",
     ///  "type": "object",
     ///  "properties": {
     ///    "description": {
@@ -12849,7 +12069,7 @@ pub mod types {
     ///      ]
     ///    }
     ///  }
-    ///}
+    /// }
     /// ```
     /// </details>
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
