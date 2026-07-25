@@ -256,6 +256,95 @@
         }
       }
     },
+    "/upload/{file}": {
+      "post": {
+        "operationId": "upload_item",
+        "summary": "Upload typed multipart fields.",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "multipart_file_part",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "rating"],
+                "properties": {
+                  "file": {
+                    "description": "The primary upload.",
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "note": {
+                    "description": "A note stored with the upload.",
+                    "type": "string"
+                  },
+                  "rating": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "url": {
+                    "description": "A field named like the generated request URL local.",
+                    "type": "string"
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "legacy": {
+                    "$ref": "#/components/schemas/DoesNotExist"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Message" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/upload-raw": {
+      "post": {
+        "operationId": "upload_raw",
+        "summary": "Keep schema-less multipart as a raw body.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {}
+          }
+        },
+        "responses": {
+          "204": { "description": "uploaded" }
+        }
+      }
+    },
     "/render-rejection": {
       "post": {
         "operationId": "render_rejection",

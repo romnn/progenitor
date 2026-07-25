@@ -468,10 +468,11 @@ impl Generator {
             .iter()
             .find(|param| matches!(&param.kind, OperationParameterKind::Body(_)))
             .and_then(|param| match &param.typ {
-                // TODO not sure how to deal with raw bodies, but we definitely
-                // need **some** input so we shouldn't just ignore it... as we
-                // are currently...
+                // TODO not sure how to deal with raw or multipart bodies, but
+                // we definitely need **some** input so we shouldn't just
+                // ignore them... as we are currently...
                 OperationParameterType::RawBody => None,
+                OperationParameterType::Multipart(_) => None,
 
                 OperationParameterType::Type(body_type_id) => Some(body_type_id),
             });

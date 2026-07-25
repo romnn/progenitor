@@ -1,7 +1,9 @@
 #[allow(unused_imports)]
-use progenitor_client::{encode_path, ClientHooks, OperationInfo, RequestBuilderExt};
+use progenitor_client::{
+    encode_path, multipart_file_part, ClientHooks, OperationInfo, RequestBuilderExt,
+};
 #[allow(unused_imports)]
-pub use progenitor_client::{ByteStream, ClientInfo, Error, ResponseValue};
+pub use progenitor_client::{ByteStream, ClientInfo, Error, FilePart, ResponseValue};
 /// Types used as operation parameters and responses.
 #[allow(clippy::all)]
 pub mod types {
@@ -32,6 +34,36 @@ pub mod types {
             fn from(value: String) -> Self {
                 Self(value.into())
             }
+        }
+    }
+
+    ///`DoesNotExist`
+    ///
+    /// <details><summary>JSON schema</summary>
+    ///
+    /// ```json
+    ///true
+    /// ```
+    /// </details>
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[serde(transparent)]
+    pub struct DoesNotExist(pub ::serde_json::Value);
+    impl ::std::ops::Deref for DoesNotExist {
+        type Target = ::serde_json::Value;
+        fn deref(&self) -> &::serde_json::Value {
+            &self.0
+        }
+    }
+
+    impl ::std::convert::From<DoesNotExist> for ::serde_json::Value {
+        fn from(value: DoesNotExist) -> Self {
+            value.0
+        }
+    }
+
+    impl ::std::convert::From<::serde_json::Value> for DoesNotExist {
+        fn from(value: ::serde_json::Value) -> Self {
+            Self(value)
         }
     }
 
@@ -228,6 +260,25 @@ pub enum MultiKindError {
     Status401(types::Error),
     StatusRange4xx(types::Error),
     Default(ByteStream),
+}
+
+///Typed multipart request body for the `upload_item` operation.
+#[derive(Debug, Clone)]
+pub struct UploadItemMultipartBody {
+    ///The `attachments` multipart field.
+    pub attachments: ::std::vec::Vec<FilePart>,
+    ///The primary upload.
+    pub file: FilePart,
+    ///The `legacy` multipart field.
+    pub legacy: ::std::option::Option<::std::string::String>,
+    ///The `metadata` multipart field.
+    pub metadata: ::std::option::Option<::std::string::String>,
+    ///A note stored with the upload.
+    pub note: ::std::option::Option<::std::string::String>,
+    ///The `rating` multipart field.
+    pub rating: i32,
+    ///A field named like the generated request URL local.
+    pub url: ::std::option::Option<::std::string::String>,
 }
 
 #[allow(clippy::all)]
@@ -519,6 +570,113 @@ impl Client {
             _ => Err(Error::ErrorResponse(
                 ResponseValue::stream(response).map(|inner| MultiKindError::Default(inner)),
             )),
+        }
+    }
+
+    ///Upload typed multipart fields
+    ///
+    ///Sends a `POST` request to `/upload/{file}`
+    pub async fn upload_item<'a>(
+        &'a self,
+        file: &'a str,
+        multipart_file_part: ::std::option::Option<&'a str>,
+        body: UploadItemMultipartBody,
+    ) -> Result<ResponseValue<types::Message>, Error<()>> {
+        let url = format!("{}/upload/{}", self.baseurl, encode_path(&file.to_string()),);
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self
+            .client
+            .post(url)
+            .header(
+                ::reqwest::header::ACCEPT,
+                ::reqwest::header::HeaderValue::from_static("application/json"),
+            )
+            .multipart({
+                let mut __progenitor_multipart_form = ::reqwest::multipart::Form::new();
+                for value in body.attachments {
+                    __progenitor_multipart_form = __progenitor_multipart_form
+                        .part("attachments", self::multipart_file_part(value)?);
+                }
+                __progenitor_multipart_form =
+                    __progenitor_multipart_form.part("file", self::multipart_file_part(body.file)?);
+                if let Some(value) = body.legacy {
+                    __progenitor_multipart_form =
+                        __progenitor_multipart_form.text("legacy", value.to_string());
+                }
+                if let Some(value) = body.metadata {
+                    __progenitor_multipart_form =
+                        __progenitor_multipart_form.text("metadata", value.to_string());
+                }
+                if let Some(value) = body.note {
+                    __progenitor_multipart_form =
+                        __progenitor_multipart_form.text("note", value.to_string());
+                }
+                __progenitor_multipart_form =
+                    __progenitor_multipart_form.text("rating", body.rating.to_string());
+                if let Some(value) = body.url {
+                    __progenitor_multipart_form =
+                        __progenitor_multipart_form.text("url", value.to_string());
+                }
+                __progenitor_multipart_form
+            })
+            .query(&progenitor_client::QueryParam::new(
+                "multipart_file_part",
+                &multipart_file_part,
+            ))
+            .headers(header_map)
+            .build()?;
+        let info = OperationInfo {
+            operation_id: "upload_item",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            201u16 => ResponseValue::from_response(response).await,
+            _ => Err(Error::UnexpectedResponse(response)),
+        }
+    }
+
+    ///Keep schema-less multipart as a raw body
+    ///
+    ///Sends a `POST` request to `/upload-raw`
+    pub async fn upload_raw<'a, B: Into<reqwest::Body>>(
+        &'a self,
+        body: B,
+    ) -> Result<ResponseValue<()>, Error<()>> {
+        let url = format!("{}/upload-raw", self.baseurl,);
+        let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+        header_map.append(
+            ::reqwest::header::HeaderName::from_static("api-version"),
+            ::reqwest::header::HeaderValue::from_static(Self::api_version()),
+        );
+        #[allow(unused_mut)]
+        let mut request = self
+            .client
+            .post(url)
+            .header(
+                ::reqwest::header::CONTENT_TYPE,
+                ::reqwest::header::HeaderValue::from_static("multipart/form-data"),
+            )
+            .body(body)
+            .headers(header_map)
+            .build()?;
+        let info = OperationInfo {
+            operation_id: "upload_raw",
+        };
+        self.pre(&mut request, &info).await?;
+        let result = self.exec(request, &info).await;
+        self.post(&result, &info).await?;
+        let response = result?;
+        match response.status().as_u16() {
+            204u16 => Ok(ResponseValue::empty(response)),
+            _ => Err(Error::UnexpectedResponse(response)),
         }
     }
 

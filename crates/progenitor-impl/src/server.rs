@@ -24,9 +24,9 @@ use crate::{
     Generator, OpenApiDocument, PreparedIr, Result,
     ir::Document,
     operation::{
-        BodyContentType, OperationMethod, OperationParameterKind, OperationParameterType,
-        OperationResponse, OperationResponseKind, OperationResponseStatus, ResponseSide,
-        synth_variant_name,
+        BodyContentType, MultipartFieldKind, MultipartSpec, OperationMethod,
+        OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
+        OperationResponseStatus, ResponseSide, synth_variant_name,
     },
     operations::responses::response_items_for_side,
     util::{Case, sanitize},
@@ -281,6 +281,7 @@ impl Generator {
         let CollectedParams {
             request_fields,
             query_struct,
+            multipart_struct,
             extractor_args,
             extractor_lets,
             header_lets,
@@ -320,6 +321,7 @@ impl Generator {
             }
 
             #query_struct_item
+            #multipart_struct
         };
 
         let doc = method.summary.as_deref().or(method.description.as_deref());
@@ -699,6 +701,7 @@ impl Generator {
     ) -> CollectedParams {
         let mut request_fields = TokenStream::new();
         let mut query_fields = TokenStream::new();
+        let mut multipart_struct = None;
         let mut has_query = false;
         let mut extractor_args: Vec<TokenStream> = vec![
             quote! { axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>> },
@@ -724,6 +727,7 @@ impl Generator {
                         self.type_space.get_type(id).unwrap().ident()
                     }
                     OperationParameterType::RawBody => quote! { String },
+                    OperationParameterType::Multipart(_) => quote! { String },
                 };
                 let field_ty = ty.clone();
                 request_fields.extend(quote! { pub #ident: #field_ty, });
@@ -883,21 +887,68 @@ impl Generator {
                     field_inits.push(quote! { #ident });
                 }
                 OperationParameterKind::Body(content_type) => {
-                    let (extractor_type, extractor_pattern, field_ty) =
-                        self.body_extractor(content_type, &param.typ);
                     let binding = format_ident!("__progenitor_body_extractor");
-                    let extractor_arg = quote! {
-                        #binding: ::std::result::Result<
-                            #extractor_type,
-                            ::progenitor_server::Rejection,
-                        >
-                    };
-                    let extractor = rejection_match(&binding);
-                    let extractor_let = quote! {
-                        let #extractor_pattern = #extractor;
-                    };
-                    request_fields.extend(quote! { pub body: #field_ty, });
-                    body_extractor = Some((extractor_arg, extractor_let));
+                    if let OperationParameterType::Multipart(spec) = &param.typ {
+                        assert_eq!(content_type, &BodyContentType::Multipart);
+                        let body_ident = method.multipart_body_ident();
+                        let extractor_arg = quote! {
+                            #binding: ::std::result::Result<
+                                ::progenitor_server::Multipart,
+                                ::progenitor_server::Rejection,
+                            >
+                        };
+                        let extractor = rejection_match(&binding);
+                        let bind_fields = self.multipart_bindings(spec);
+                        let field_names = spec
+                            .fields
+                            .iter()
+                            .map(|field| format_ident!("{}", field.name));
+                        let extractor_let = quote! {
+                            let __progenitor_body = {
+                                let __progenitor_multipart = #extractor;
+                                let mut __progenitor_parts =
+                                    match ::progenitor_server::multipart::Parts::collect(
+                                        __progenitor_multipart,
+                                    )
+                                    .await
+                                    {
+                                        Ok(parts) => parts,
+                                        Err(rejection) => {
+                                            return Self::render_rejection(
+                                                &__progenitor_inner,
+                                                rejection,
+                                            );
+                                        }
+                                    };
+                                #bind_fields
+                                #body_ident {
+                                    #(#field_names),*
+                                }
+                            };
+                        };
+                        request_fields.extend(quote! { pub body: #body_ident, });
+                        multipart_struct = Some(self.multipart_body_definition(
+                            method,
+                            spec,
+                            &quote! { ::progenitor_server::multipart::FilePart },
+                        ));
+                        body_extractor = Some((extractor_arg, extractor_let));
+                    } else {
+                        let (extractor_type, extractor_pattern, field_ty) =
+                            self.body_extractor(content_type, &param.typ);
+                        let extractor_arg = quote! {
+                            #binding: ::std::result::Result<
+                                #extractor_type,
+                                ::progenitor_server::Rejection,
+                            >
+                        };
+                        let extractor = rejection_match(&binding);
+                        let extractor_let = quote! {
+                            let #extractor_pattern = #extractor;
+                        };
+                        request_fields.extend(quote! { pub body: #field_ty, });
+                        body_extractor = Some((extractor_arg, extractor_let));
+                    }
                     field_inits.push(quote! { body: __progenitor_body });
                 }
                 OperationParameterKind::Query {
@@ -934,6 +985,7 @@ impl Generator {
         CollectedParams {
             request_fields,
             query_struct,
+            multipart_struct,
             extractor_args,
             extractor_lets,
             header_lets,
@@ -976,6 +1028,7 @@ impl Generator {
                 }
             }
             OperationParameterType::RawBody => (quote! { String }, false),
+            OperationParameterType::Multipart(_) => (quote! { String }, false),
         }
     }
 
@@ -1000,6 +1053,7 @@ impl Generator {
                 (effective, param.optional)
             }
             OperationParameterType::RawBody => (quote! { String }, param.optional),
+            OperationParameterType::Multipart(_) => (quote! { String }, param.optional),
         }
     }
 
@@ -1038,6 +1092,60 @@ impl Generator {
                 quote! { bytes::Bytes },
             ),
         }
+    }
+
+    fn multipart_bindings(&self, spec: &MultipartSpec) -> TokenStream {
+        let bindings = spec.fields.iter().map(|field| {
+            let ident = format_ident!("{}", field.name);
+            let api_name = &field.api_name;
+            let accessor = match (&field.kind, field.required) {
+                (MultipartFieldKind::Text(type_id), required) => {
+                    let typ = self.type_space.get_type(type_id).unwrap().ident();
+                    if required {
+                        quote! { __progenitor_parts.required_text::<#typ>(#api_name) }
+                    } else {
+                        quote! { __progenitor_parts.optional_text::<#typ>(#api_name) }
+                    }
+                }
+                (MultipartFieldKind::File { repeated: false }, true) => quote! {
+                    __progenitor_parts.required_file(#api_name)
+                },
+                (MultipartFieldKind::File { repeated: false }, false) => quote! {
+                    __progenitor_parts.optional_file(#api_name)
+                },
+                (MultipartFieldKind::File { repeated: true }, _) => quote! {
+                    __progenitor_parts.repeated_file(#api_name)
+                },
+            };
+            // A required repeated field must arrive with at least one part;
+            // on the wire "present but empty" is indistinguishable from
+            // absent, so both render the missing-part rejection.
+            let is_repeated = matches!(&field.kind, MultipartFieldKind::File { repeated: true });
+            let require_nonempty = (field.required && is_repeated).then(|| {
+                let message = format!("missing required multipart part `{api_name}`");
+                quote! {
+                    if #ident.is_empty() {
+                        return Self::render_rejection(
+                            &__progenitor_inner,
+                            ::progenitor_server::Rejection::missing_part(#message),
+                        );
+                    }
+                }
+            });
+            quote! {
+                let #ident = match #accessor {
+                    Ok(value) => value,
+                    Err(rejection) => {
+                        return Self::render_rejection(
+                            &__progenitor_inner,
+                            rejection,
+                        );
+                    }
+                };
+                #require_nonempty
+            }
+        });
+        quote! { #(#bindings)* }
     }
 }
 
@@ -1078,6 +1186,7 @@ fn server_operation_ident(
 struct CollectedParams {
     request_fields: TokenStream,
     query_struct: Option<TokenStream>,
+    multipart_struct: Option<TokenStream>,
     extractor_args: Vec<TokenStream>,
     extractor_lets: Vec<TokenStream>,
     header_lets: Vec<TokenStream>,

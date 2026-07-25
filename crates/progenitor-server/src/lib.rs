@@ -29,6 +29,7 @@
 
 mod error;
 mod extract;
+pub mod multipart;
 mod request;
 mod response;
 mod service;
@@ -36,8 +37,8 @@ mod status;
 
 pub use error::{BoxError, ServerError};
 pub use extract::{
-    Bytes, Form, Json, Metadata, Path, Query, Rejection, RejectionKind, Text, optional_cookie,
-    optional_header, required_cookie, required_header,
+    Bytes, Form, Json, Metadata, Multipart, Path, Query, Rejection, RejectionKind, Text,
+    optional_cookie, optional_header, required_cookie, required_header,
 };
 pub use request::Request;
 pub use response::{Response, respond};

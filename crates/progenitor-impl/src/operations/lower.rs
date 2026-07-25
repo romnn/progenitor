@@ -1,13 +1,17 @@
-use std::{cmp::Ordering, collections::BTreeMap, str::FromStr};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, HashSet},
+    str::FromStr,
+};
 
 use indexmap::IndexMap;
 
 use crate::{
     Error, Generator, Result, ir,
     operation::{
-        BodyContentType, HttpMethod, OperationMethod, OperationParameter, OperationParameterKind,
-        OperationParameterType, OperationResponse, OperationResponseKind, OperationResponseStatus,
-        is_json_content_type,
+        BodyContentType, HttpMethod, MultipartField, MultipartFieldKind, MultipartSpec,
+        OperationMethod, OperationParameter, OperationParameterKind, OperationParameterType,
+        OperationResponse, OperationResponseKind, OperationResponseStatus, is_json_content_type,
     },
     util::{Case, sanitize},
 };
@@ -449,11 +453,10 @@ impl Generator {
             // Multiple request-body media types is common in real-world specs
             // (e.g. an endpoint advertising both `application/json` for a
             // typed body and `multipart/form-data` for a binary upload).
-            // Progenitor can only generate one body parameter per operation
-            // today (multipart support is incomplete — see oxidecomputer/
-            // progenitor#418), so prefer the canonical JSON variant when
-            // present; otherwise fall back to the first declared variant.
-            // The other variants are not exposed in the generated client.
+            // Progenitor can only generate one body parameter per operation,
+            // so prefer the canonical JSON variant when present; otherwise
+            // fall back to the first declared variant. The other variants are
+            // not exposed in the generated client.
             (_, _) => body
                 .content
                 .iter()
@@ -517,6 +520,21 @@ impl Generator {
             // generator; expose it as a raw body regardless of what the
             // schema says.
             BodyContentType::Raw(_) => OperationParameterType::RawBody,
+            BodyContentType::Multipart => {
+                let spec = match &media_type.schema {
+                    Some(schema_ref) => {
+                        self.multipart_spec(operation, &schema_ref.schema, schemas)?
+                    }
+                    None => None,
+                };
+                match spec {
+                    Some(spec) => OperationParameterType::Multipart(spec),
+                    None => {
+                        content_type = BodyContentType::Raw("multipart/form-data".to_string());
+                        OperationParameterType::RawBody
+                    }
+                }
+            }
             BodyContentType::Json | BodyContentType::FormUrlencoded => {
                 let schema_ref = media_type.schema.as_ref().ok_or_else(|| {
                     Error::UnexpectedFormat("No schema specified for request body".to_string())
@@ -547,6 +565,130 @@ impl Generator {
             kind: OperationParameterKind::Body(content_type),
         }))
     }
+
+    fn multipart_spec(
+        &mut self,
+        operation: &ir::Operation,
+        schema: &schemars::schema::Schema,
+        schemas: &IndexMap<String, schemars::schema::Schema>,
+    ) -> Result<Option<MultipartSpec>> {
+        let schemars::schema::Schema::Object(schema) = ir::resolve_schema(schema, schemas) else {
+            return Ok(None);
+        };
+        let Some(object) = &schema.object else {
+            return Ok(None);
+        };
+        if object.properties.is_empty() {
+            return Ok(None);
+        }
+
+        let operation_id = operation
+            .operation_id
+            .as_deref()
+            .expect("operation IDs are assigned before body lowering");
+        let mut names = HashSet::new();
+        let mut fields = Vec::with_capacity(object.properties.len());
+
+        for (api_name, property) in &object.properties {
+            let base_name = sanitize(api_name, Case::Snake);
+            let name = unique_field_name(base_name, &mut names);
+            let resolved = ir::resolve_schema(property, schemas);
+            let repeated = array_item(resolved, schemas).is_some_and(is_binary_schema);
+            let kind = if repeated || is_binary_schema(resolved) {
+                MultipartFieldKind::File { repeated }
+            } else {
+                let type_name = sanitize(&format!("{operation_id}-multipart-{name}"), Case::Pascal);
+                // Text fields degrade to the raw part text whenever the
+                // property schema can't produce a round-trippable type —
+                // whether typify can't represent it at all or the type
+                // lacks `FromStr`/`Display`. One exotic part must never
+                // sink generation of the whole client.
+                match self
+                    .type_space
+                    .add_type_with_name(property, Some(type_name))
+                {
+                    Ok(type_id) => {
+                        let typ = self.type_space.get_type(&type_id)?;
+                        if typ.has_impl(typify::TypeSpaceImpl::FromStr)
+                            && typ.has_impl(typify::TypeSpaceImpl::Display)
+                        {
+                            MultipartFieldKind::Text(type_id)
+                        } else {
+                            MultipartFieldKind::Text(self.string_type()?)
+                        }
+                    }
+                    Err(_) => MultipartFieldKind::Text(self.string_type()?),
+                }
+            };
+            let description = property_description(property)
+                .or_else(|| property_description(resolved))
+                .map(ToOwned::to_owned);
+            fields.push(MultipartField {
+                name,
+                api_name: api_name.clone(),
+                description,
+                kind,
+                required: object.required.contains(api_name),
+            });
+        }
+
+        Ok(Some(MultipartSpec { fields }))
+    }
+
+    fn string_type(&mut self) -> Result<typify::TypeId> {
+        let schema: schemars::schema::Schema = schemars::schema::SchemaObject {
+            instance_type: Some(schemars::schema::InstanceType::String.into()),
+            ..Default::default()
+        }
+        .into();
+        Ok(self.type_space.add_type(&schema)?)
+    }
+}
+
+fn unique_field_name(base: String, names: &mut HashSet<String>) -> String {
+    let mut name = base.clone();
+    let mut counter = 2;
+    while !names.insert(name.clone()) {
+        let separator = if base.ends_with('_') { "" } else { "_" };
+        name = format!("{base}{separator}{counter}");
+        counter += 1;
+    }
+    name
+}
+
+fn array_item<'a>(
+    schema: &'a schemars::schema::Schema,
+    schemas: &'a IndexMap<String, schemars::schema::Schema>,
+) -> Option<&'a schemars::schema::Schema> {
+    let schemars::schema::Schema::Object(object) = schema else {
+        return None;
+    };
+    let items = object.array.as_ref()?.items.as_ref()?;
+    let schemars::schema::SingleOrVec::Single(item) = items else {
+        return None;
+    };
+    Some(ir::resolve_schema(item, schemas))
+}
+
+fn is_binary_schema(schema: &schemars::schema::Schema) -> bool {
+    let schemars::schema::Schema::Object(object) = schema else {
+        return false;
+    };
+    object
+        .instance_type
+        .as_ref()
+        .is_some_and(|types| types.contains(&schemars::schema::InstanceType::String))
+        && (object.format.as_deref() == Some("binary") || has_content_keywords(schema))
+}
+
+fn property_description(schema: &schemars::schema::Schema) -> Option<&str> {
+    let schemars::schema::Schema::Object(object) = schema else {
+        return None;
+    };
+    object
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.description.as_deref())
 }
 
 /// Get a parameter's schema.

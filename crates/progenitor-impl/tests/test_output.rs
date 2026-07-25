@@ -186,10 +186,18 @@ fn test_nexus_with_different_timeout() {
 fn test_server_gen() {
     let spec = load_api("../../sample_openapi/server-gen.json");
 
-    // The client golden provides the `types` module the server golden imports.
+    // The positional client golden provides the `types` module the server
+    // golden imports.
     let mut generator = Generator::default();
     let client = generate_formatted(&mut generator, &spec);
     expectorate::assert_contents("tests/output/src/server_gen_client.rs", &client);
+
+    // Multipart body structs must also live in the builder module and remain
+    // usable by its owned request state.
+    let mut builder =
+        Generator::new(GenerationSettings::default().with_interface(InterfaceStyle::Builder));
+    let builder_client = generate_formatted(&mut builder, &spec);
+    expectorate::assert_contents("tests/output/src/server_gen_builder.rs", &builder_client);
 
     let server = generator.server(&spec, "crate::server_gen_client").unwrap();
     let output = rustfmt_wrapper::rustfmt_config(

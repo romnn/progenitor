@@ -11,6 +11,34 @@ use futures_core::Stream;
 use reqwest::RequestBuilder;
 use serde::{Serialize, de::DeserializeOwned, ser::SerializeStruct};
 
+/// Represents one file uploaded in a generated multipart request.
+#[derive(Debug, Clone)]
+pub struct FilePart {
+    /// The filename reported in the part's content disposition, when present.
+    pub filename: Option<String>,
+    /// The part's media type, when present.
+    pub content_type: Option<String>,
+    /// The complete file contents.
+    pub bytes: Bytes,
+}
+
+#[doc(hidden)]
+pub fn multipart_file_part(file: FilePart) -> reqwest::Result<reqwest::multipart::Part> {
+    let FilePart {
+        filename,
+        content_type,
+        bytes,
+    } = file;
+    let mut part = reqwest::multipart::Part::stream(bytes);
+    if let Some(filename) = filename {
+        part = part.file_name(filename);
+    }
+    if let Some(content_type) = content_type {
+        part = part.mime_str(&content_type)?;
+    }
+    Ok(part)
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 type InnerByteStream = std::pin::Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send + Sync>>;
 

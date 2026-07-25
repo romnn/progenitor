@@ -4,9 +4,9 @@ use quote::{format_ident, quote};
 use crate::{
     Error, Generator, PreparedIr, Result,
     operation::{
-        BodyContentType, DROPSHOT_PAGE_TOKEN_PARAM, HttpMethod, OperationMethod,
-        OperationParameterKind, OperationParameterType, OperationResponse, OperationResponseKind,
-        OperationResponseStatus, ResponseSide, synth_variant_name,
+        BodyContentType, DROPSHOT_PAGE_TOKEN_PARAM, HttpMethod, MultipartFieldKind, MultipartSpec,
+        OperationMethod, OperationParameterKind, OperationParameterType, OperationResponse,
+        OperationResponseKind, OperationResponseStatus, ResponseSide, synth_variant_name,
     },
     util::unique_ident_from,
 };
@@ -376,57 +376,70 @@ impl Generator {
         };
 
         // Generate code to handle the body param.
-        let body_func = method.params.iter().filter_map(|param| {
-            match (&param.kind, &param.typ) {
-                (
-                    OperationParameterKind::Body(BodyContentType::OctetStream),
-                    OperationParameterType::RawBody,
-                ) => Some(quote! {
-                    // Set the content type (this is handled by helper
-                    // functions for other MIME types).
-                    .header(
-                        ::reqwest::header::CONTENT_TYPE,
-                        ::reqwest::header::HeaderValue::from_static("application/octet-stream"),
-                    )
-                    .body(body)
-                }),
-                (
-                    OperationParameterKind::Body(
-                        BodyContentType::Text(mime_type) | BodyContentType::Raw(mime_type),
-                    ),
-                    OperationParameterType::RawBody,
-                ) => Some(quote! {
-                    // Set the content type (this is handled by helper
-                    // functions for other MIME types).
-                    .header(
-                        ::reqwest::header::CONTENT_TYPE,
-                        ::reqwest::header::HeaderValue::from_static(#mime_type),
-                    )
-                    .body(body)
-                }),
-                (
-                    OperationParameterKind::Body(BodyContentType::Json),
-                    OperationParameterType::Type(_),
-                ) => Some(quote! {
-                    // Serialization errors are deferred.
-                    .json(&body)
-                }),
-                (
-                    OperationParameterKind::Body(BodyContentType::FormUrlencoded),
-                    OperationParameterType::Type(_),
-                ) => Some(quote! {
-                    // This uses progenitor_client::RequestBuilderExt which
-                    // returns an error in the case of a serialization failure.
-                    .form_urlencoded(&body)?
-                }),
-                (OperationParameterKind::Body(_), _) => {
-                    unreachable!("invalid body kind/type combination")
+        let body_func = method
+            .params
+            .iter()
+            .filter_map(|param| {
+                match (&param.kind, &param.typ) {
+                    (
+                        OperationParameterKind::Body(BodyContentType::OctetStream),
+                        OperationParameterType::RawBody,
+                    ) => Some(quote! {
+                        // Set the content type (this is handled by helper
+                        // functions for other MIME types).
+                        .header(
+                            ::reqwest::header::CONTENT_TYPE,
+                            ::reqwest::header::HeaderValue::from_static("application/octet-stream"),
+                        )
+                        .body(body)
+                    }),
+                    (
+                        OperationParameterKind::Body(
+                            BodyContentType::Text(mime_type) | BodyContentType::Raw(mime_type),
+                        ),
+                        OperationParameterType::RawBody,
+                    ) => Some(quote! {
+                        // Set the content type (this is handled by helper
+                        // functions for other MIME types).
+                        .header(
+                            ::reqwest::header::CONTENT_TYPE,
+                            ::reqwest::header::HeaderValue::from_static(#mime_type),
+                        )
+                        .body(body)
+                    }),
+                    (
+                        OperationParameterKind::Body(BodyContentType::Json),
+                        OperationParameterType::Type(_),
+                    ) => Some(quote! {
+                        // Serialization errors are deferred.
+                        .json(&body)
+                    }),
+                    (
+                        OperationParameterKind::Body(BodyContentType::FormUrlencoded),
+                        OperationParameterType::Type(_),
+                    ) => Some(quote! {
+                        // This uses progenitor_client::RequestBuilderExt which
+                        // returns an error in the case of a serialization failure.
+                        .form_urlencoded(&body)?
+                    }),
+                    (
+                        OperationParameterKind::Body(BodyContentType::Multipart),
+                        OperationParameterType::Multipart(spec),
+                    ) => {
+                        let form = self.multipart_form_expr(spec);
+                        Some(quote! {
+                            .multipart(#form)
+                        })
+                    }
+                    (OperationParameterKind::Body(_), _) => {
+                        unreachable!("invalid body kind/type combination")
+                    }
+                    _ => None,
                 }
-                _ => None,
-            }
-        });
+            })
+            .collect::<Vec<_>>();
         // ... and there can be at most one body.
-        assert!(body_func.clone().count() <= 1);
+        assert!(body_func.len() <= 1);
 
         let (success_response_items, response_type) =
             self.extract_responses(prepared, method, ResponseSide::Success);
@@ -734,7 +747,13 @@ impl Generator {
             }
             _ => None,
         };
-        let extra_types = quote! { #success_enum #error_enum };
+        let multipart_body = method.params.iter().find_map(|param| {
+            let OperationParameterType::Multipart(spec) = &param.typ else {
+                return None;
+            };
+            Some(self.multipart_body_definition(method, spec, &quote! { FilePart }))
+        });
+        let extra_types = quote! { #multipart_body #success_enum #error_enum };
 
         Ok(MethodSigBody {
             success: response_type.into_tokens(&self.type_space),
@@ -742,6 +761,117 @@ impl Generator {
             body: body_impl,
             extra_types,
         })
+    }
+
+    /// Emit the `{Op}MultipartBody` struct for one side of the wire.
+    ///
+    /// Client and server emit parallel structs from the same
+    /// [`MultipartSpec`] — same field names, same layout rules — differing
+    /// only in `file_part`, the path of that side's `FilePart` type. Sharing
+    /// this function is what keeps the two layouts from drifting.
+    pub(crate) fn multipart_body_definition(
+        &self,
+        method: &OperationMethod,
+        spec: &MultipartSpec,
+        file_part: &TokenStream,
+    ) -> TokenStream {
+        let ident = method.multipart_body_ident();
+        let doc = format!(
+            "Typed multipart request body for the `{}` operation.",
+            method.operation_id,
+        );
+        let fields = spec.fields.iter().map(|field| {
+            let name = format_ident!("{}", field.name);
+            let description = field
+                .description
+                .clone()
+                .unwrap_or_else(|| format!("The `{}` multipart field.", field.api_name));
+            let typ = match &field.kind {
+                MultipartFieldKind::File { repeated: true } => {
+                    quote! { ::std::vec::Vec<#file_part> }
+                }
+                MultipartFieldKind::File { repeated: false } if field.required => file_part.clone(),
+                MultipartFieldKind::File { repeated: false } => {
+                    quote! { ::std::option::Option<#file_part> }
+                }
+                MultipartFieldKind::Text(type_id) => {
+                    let base = self.type_space.get_type(type_id).unwrap().ident();
+                    if field.required {
+                        base
+                    } else {
+                        quote! { ::std::option::Option<#base> }
+                    }
+                }
+            };
+            quote! {
+                #[doc = #description]
+                pub #name: #typ,
+            }
+        });
+        quote! {
+            #[doc = #doc]
+            #[derive(Debug, Clone)]
+            pub struct #ident {
+                #(#fields)*
+            }
+        }
+    }
+
+    fn multipart_form_expr(&self, spec: &MultipartSpec) -> TokenStream {
+        let append_fields = spec.fields.iter().map(|field| {
+            let name = format_ident!("{}", field.name);
+            let api_name = &field.api_name;
+            match (&field.kind, field.required) {
+                (MultipartFieldKind::Text(_), true) => quote! {
+                    __progenitor_multipart_form = __progenitor_multipart_form
+                        .text(#api_name, body.#name.to_string());
+                },
+                (MultipartFieldKind::Text(_), false) => quote! {
+                    if let Some(value) = body.#name {
+                        __progenitor_multipart_form = __progenitor_multipart_form
+                            .text(#api_name, value.to_string());
+                    }
+                },
+                (MultipartFieldKind::File { repeated: false }, true) => quote! {
+                    __progenitor_multipart_form = __progenitor_multipart_form
+                        .part(#api_name, self::multipart_file_part(body.#name)?);
+                },
+                (MultipartFieldKind::File { repeated: false }, false) => quote! {
+                    if let Some(value) = body.#name {
+                        __progenitor_multipart_form = __progenitor_multipart_form
+                            .part(#api_name, self::multipart_file_part(value)?);
+                    }
+                },
+                (MultipartFieldKind::File { repeated: true }, required) => {
+                    // Mirrors the server's missing-part rejection: a required
+                    // repeated field with zero files would be indistinguishable
+                    // from an absent part on the wire.
+                    let require_nonempty = required.then(|| {
+                        let message =
+                            format!("multipart field `{api_name}` requires at least one file");
+                        quote! {
+                            if body.#name.is_empty() {
+                                return Err(Error::InvalidRequest(#message.to_string()));
+                            }
+                        }
+                    });
+                    quote! {
+                        #require_nonempty
+                        for value in body.#name {
+                            __progenitor_multipart_form = __progenitor_multipart_form
+                                .part(#api_name, self::multipart_file_part(value)?);
+                        }
+                    }
+                }
+            }
+        });
+        quote! {
+            {
+                let mut __progenitor_multipart_form = ::reqwest::multipart::Form::new();
+                #(#append_fields)*
+                __progenitor_multipart_form
+            }
+        }
     }
 
     /// Emit a synthesized response/error enum. Variants are derived from

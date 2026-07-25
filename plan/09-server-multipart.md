@@ -7,7 +7,11 @@ Dropshot proves in-process multipart is viable, but its `MultipartBody` hands th
 `multer::Multipart`; that violates this fork's #1 server rule ("implementors must not touch
 serialization or header parsing", plan 07 §1), so we generate typed parts instead.
 
-Status: **PLANNED**. Grounded in branch `feat/openapi3.1-support` at `c38e41d`.
+Status: **IMPLEMENTED** (2026-07-25). Landed as designed with two refinements:
+`Parts::required_text`/`optional_text` are generic over `T: FromStr` (parsing
+lives in the runtime like `required_header`, instead of §2.2's `String`-returning
+accessors plus generated parse blocks), and a text property whose schema typify
+cannot represent degrades to `String` rather than failing generation.
 
 ## 1. Current state (measured)
 

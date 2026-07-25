@@ -199,6 +199,49 @@ pub struct MultiKindRequest {
     pub mode: ::std::string::String,
 }
 
+#[doc = "Error type for the `upload_item` operation."]
+pub type UploadItemError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `upload_item` operation."]
+#[derive(Debug, Clone)]
+pub struct UploadItemRequest {
+    pub file: ::std::string::String,
+    pub multipart_file_part: Option<::std::string::String>,
+    pub body: UploadItemMultipartBody,
+}
+
+#[derive(Debug, Clone, :: serde :: Deserialize)]
+pub struct UploadItemQuery {
+    #[serde(rename = "multipart_file_part")]
+    pub multipart_file_part: Option<::std::string::String>,
+}
+
+#[doc = "Typed multipart request body for the `upload_item` operation."]
+#[derive(Debug, Clone)]
+pub struct UploadItemMultipartBody {
+    #[doc = "The `attachments` multipart field."]
+    pub attachments: ::std::vec::Vec<::progenitor_server::multipart::FilePart>,
+    #[doc = "The primary upload."]
+    pub file: ::progenitor_server::multipart::FilePart,
+    #[doc = "The `legacy` multipart field."]
+    pub legacy: ::std::option::Option<::std::string::String>,
+    #[doc = "The `metadata` multipart field."]
+    pub metadata: ::std::option::Option<::std::string::String>,
+    #[doc = "A note stored with the upload."]
+    pub note: ::std::option::Option<::std::string::String>,
+    #[doc = "The `rating` multipart field."]
+    pub rating: i32,
+    #[doc = "A field named like the generated request URL local."]
+    pub url: ::std::option::Option<::std::string::String>,
+}
+
+#[doc = "Error type for the `upload_raw` operation."]
+pub type UploadRawError = ::progenitor_server::ServerError<::std::convert::Infallible>;
+#[doc = "Bundled, typed request for the `upload_raw` operation."]
+#[derive(Debug, Clone)]
+pub struct UploadRawRequest {
+    pub body: bytes::Bytes,
+}
+
 #[doc = "Error type for the `render_rejection` operation."]
 pub type RenderRejectionError = ::progenitor_server::ServerError<::std::convert::Infallible>;
 #[doc = "Bundled, typed request for the `render_rejection` operation."]
@@ -257,6 +300,16 @@ pub trait ServerGen: Send + Sync + 'static {
         &self,
         request: ::progenitor_server::Request<MultiKindRequest>,
     ) -> ::std::result::Result<::progenitor_server::Response<MultiKindResponse>, MultiKindError>;
+    #[doc = "Upload typed multipart fields."]
+    async fn upload_item(
+        &self,
+        request: ::progenitor_server::Request<UploadItemRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<types::Message>, UploadItemError>;
+    #[doc = "Keep schema-less multipart as a raw body."]
+    async fn upload_raw(
+        &self,
+        request: ::progenitor_server::Request<UploadRawRequest>,
+    ) -> ::std::result::Result<::progenitor_server::Response<()>, UploadRawError>;
     #[doc = "An operation whose name collides with the service rejection hook."]
     async fn render_rejection_2(
         &self,
@@ -292,6 +345,11 @@ impl<T: ServerGen> ServerGenServer<T> {
             .route("/collide/{inner}", axum::routing::get(Self::collide_route))
             .route("/blob", axum::routing::get(Self::download_blob_route))
             .route("/multi/{mode}", axum::routing::get(Self::multi_kind_route))
+            .route(
+                "/upload/{file}",
+                axum::routing::post(Self::upload_item_route),
+            )
+            .route("/upload-raw", axum::routing::post(Self::upload_raw_route))
             .route(
                 "/render-rejection",
                 axum::routing::post(Self::render_rejection_route),
@@ -781,6 +839,192 @@ impl<T: ServerGen> ServerGenServer<T> {
                         )
                     }
                 },
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn upload_item_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+        __progenitor_path_extractor: ::std::result::Result<
+            ::progenitor_server::Path<::std::string::String>,
+            ::progenitor_server::Rejection,
+        >,
+        __progenitor_query_extractor: ::std::result::Result<
+            ::progenitor_server::Query<UploadItemQuery>,
+            ::progenitor_server::Rejection,
+        >,
+        __progenitor_body_extractor: ::std::result::Result<
+            ::progenitor_server::Multipart,
+            ::progenitor_server::Rejection,
+        >,
+    ) -> axum::response::Response {
+        let ::progenitor_server::Path(file) = match __progenitor_path_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let ::progenitor_server::Query(__progenitor_query) = match __progenitor_query_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let __progenitor_body = {
+            let __progenitor_multipart = match __progenitor_body_extractor {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let mut __progenitor_parts = match ::progenitor_server::multipart::Parts::collect(
+                __progenitor_multipart,
+            )
+            .await
+            {
+                Ok(parts) => parts,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let attachments = match __progenitor_parts.repeated_file("attachments") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let file = match __progenitor_parts.required_file("file") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let legacy = match __progenitor_parts.optional_text::<::std::string::String>("legacy") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let metadata =
+                match __progenitor_parts.optional_text::<::std::string::String>("metadata") {
+                    Ok(value) => value,
+                    Err(rejection) => {
+                        return Self::render_rejection(&__progenitor_inner, rejection);
+                    }
+                };
+            let note = match __progenitor_parts.optional_text::<::std::string::String>("note") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let rating = match __progenitor_parts.required_text::<i32>("rating") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            let url = match __progenitor_parts.optional_text::<::std::string::String>("url") {
+                Ok(value) => value,
+                Err(rejection) => {
+                    return Self::render_rejection(&__progenitor_inner, rejection);
+                }
+            };
+            UploadItemMultipartBody {
+                attachments,
+                file,
+                legacy,
+                metadata,
+                note,
+                rating,
+                url,
+            }
+        };
+        let message = UploadItemRequest {
+            file,
+            multipart_file_part: __progenitor_query.multipart_file_part,
+            body: __progenitor_body,
+        };
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::upload_item(&__progenitor_inner, request).await;
+        Self::upload_item_respond(&__progenitor_inner, result)
+    }
+
+    fn upload_item_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<
+            ::progenitor_server::Response<types::Message>,
+            UploadItemError,
+        >,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::CREATED;
+                ::progenitor_server::respond::json(__status, __headers, &__body)
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
+                ::progenitor_server::ServerError::Internal(__e) => {
+                    ::progenitor_server::respond::log_internal(&__e);
+                    ::std::mem::drop(__e);
+                    Self::render_rejection(
+                        __progenitor_inner,
+                        ::progenitor_server::Rejection::internal(),
+                    )
+                }
+                ::progenitor_server::ServerError::Response(__r) => __r,
+            },
+        }
+    }
+
+    async fn upload_raw_route(
+        axum::extract::State(__progenitor_inner): axum::extract::State<Arc<T>>,
+        __progenitor_meta: ::progenitor_server::Metadata,
+        __progenitor_body_extractor: ::std::result::Result<
+            ::progenitor_server::Bytes,
+            ::progenitor_server::Rejection,
+        >,
+    ) -> axum::response::Response {
+        let ::progenitor_server::Bytes(__progenitor_body) = match __progenitor_body_extractor {
+            Ok(value) => value,
+            Err(rejection) => {
+                return Self::render_rejection(&__progenitor_inner, rejection);
+            }
+        };
+        let message = UploadRawRequest {
+            body: __progenitor_body,
+        };
+        let request = ::progenitor_server::Request::from_metadata(__progenitor_meta, message);
+        let result = <T as ServerGen>::upload_raw(&__progenitor_inner, request).await;
+        Self::upload_raw_respond(&__progenitor_inner, result)
+    }
+
+    fn upload_raw_respond(
+        __progenitor_inner: &T,
+        result: ::std::result::Result<::progenitor_server::Response<()>, UploadRawError>,
+    ) -> axum::response::Response {
+        match result {
+            Ok(response) => {
+                let (__headers, __body) = response.into_parts();
+                let __status = http::StatusCode::NO_CONTENT;
+                {
+                    let _ = __body;
+                    ::progenitor_server::respond::empty(__status, __headers)
+                }
+            }
+            Err(__error) => match __error {
+                ::progenitor_server::ServerError::Api(__body) => match __body {},
                 ::progenitor_server::ServerError::Internal(__e) => {
                     ::progenitor_server::respond::log_internal(&__e);
                     ::std::mem::drop(__e);

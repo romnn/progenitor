@@ -337,6 +337,27 @@ where
     }
 }
 
+/// Extracts a multipart body with runtime-standard rejection mapping.
+#[derive(Debug)]
+pub struct Multipart(pub(crate) axum::extract::Multipart);
+
+impl<S> FromRequest<S> for Multipart
+where
+    S: Send + Sync,
+{
+    type Rejection = Rejection;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::extract::Multipart::from_request(req, state).await {
+            Ok(value) => Ok(Multipart(value)),
+            Err(rejection) => Err(Rejection::invalid_body(
+                rejection.status(),
+                "invalid multipart body",
+            )),
+        }
+    }
+}
+
 /// Raw byte body extractor (octet-stream / other raw media types).
 #[derive(Debug, Clone)]
 pub struct Bytes(pub bytes::Bytes);

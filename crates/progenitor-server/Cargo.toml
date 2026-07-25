@@ -18,11 +18,12 @@ default = ["transport"]
 transport = ["dep:tokio", "dep:tower", "dep:tower-http", "axum/tokio", "axum/http1"]
 
 [dependencies]
-axum = { workspace = true, features = ["json", "form", "query"] }
+axum = { workspace = true, features = ["json", "form", "multipart", "query"] }
 async-trait = { workspace = true }
 bytes = { workspace = true }
 futures = { workspace = true }
 http = { workspace = true }
+indexmap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

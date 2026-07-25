@@ -30,6 +30,7 @@ struct BuilderParameter {
 impl Generator {
     fn builder_parameter(
         &self,
+        method: &OperationMethod,
         param: &OperationParameter,
         cloneable: &mut bool,
     ) -> Result<BuilderParameter> {
@@ -168,6 +169,29 @@ impl Generator {
                     implementation,
                 )
             }
+            OperationParameterType::Multipart(_) => {
+                let body_ident = method.multipart_body_ident();
+                let error = format!("{} was not initialized", param.name);
+                let conversion_error =
+                    format!("conversion to `{body_ident}` for {} failed", param.name,);
+                (
+                    quote! {
+                        ::std::result::Result<#body_ident, ::std::string::String>
+                    },
+                    quote! { Err(#error.to_string()) },
+                    quote! {},
+                    quote! {
+                        pub fn #name<V>(mut self, value: V) -> Self
+                        where
+                            V: std::convert::TryInto<#body_ident>,
+                        {
+                            self.#name = value.try_into()
+                                .map_err(|_| #conversion_error.to_string());
+                            self
+                        }
+                    },
+                )
+            }
         };
 
         Ok(BuilderParameter {
@@ -276,7 +300,7 @@ impl Generator {
         let parameters = method
             .params
             .iter()
-            .map(|param| self.builder_parameter(param, &mut cloneable))
+            .map(|param| self.builder_parameter(method, param, &mut cloneable))
             .collect::<Result<Vec<_>>>()?;
         let param_names = parameters
             .iter()

@@ -168,6 +168,7 @@ impl Generator {
                             },
                             _ => unreachable!(),
                         },
+                        OperationParameterType::Multipart(_) => quote! { String },
                     };
 
                     // For query/header params, use Display if available.
@@ -180,6 +181,7 @@ impl Generator {
                             .unwrap()
                             .has_impl(typify::TypeSpaceImpl::Display),
                         OperationParameterType::RawBody => true,
+                        OperationParameterType::Multipart(_) => true,
                     };
                     let value_to_str = if has_display {
                         quote! { value.to_string() }
@@ -280,6 +282,12 @@ impl Generator {
                                 ),
                                 _ => unreachable!(),
                             },
+                            OperationParameterType::Multipart(_) => (
+                                true,
+                                quote! {
+                                    Self(self.0.body(value))
+                                },
+                            ),
                         },
                     };
 

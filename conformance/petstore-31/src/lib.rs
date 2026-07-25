@@ -197,6 +197,26 @@ mod server_round_trip {
             }
         }
 
+        async fn upload_pet_photo(
+            &self,
+            request: Request<server::UploadPetPhotoRequest>,
+        ) -> Result<Response<types::PhotoUpload>, server::UploadPetPhotoError> {
+            let request = request.get_ref();
+            let upload = &request.body;
+            assert_eq!(request.pet_id, 7);
+            assert_eq!(upload.file.bytes, "png bytes");
+            assert_eq!(upload.file.filename.as_deref(), Some("pet.png"));
+            assert_eq!(upload.file.content_type.as_deref(), Some("image/png"));
+            Ok(Response::new(types::PhotoUpload {
+                pet_id: request.pet_id,
+                filename: upload.file.filename.clone().unwrap_or_default(),
+                content_type: upload.file.content_type.clone().unwrap_or_default(),
+                file_size: upload.file.bytes.len() as i64,
+                note: upload.note.clone().unwrap_or_default(),
+                rating: upload.rating,
+            }))
+        }
+
         async fn rejection_probe(
             &self,
             request: Request<server::RejectionProbeRequest>,
@@ -277,6 +297,13 @@ mod server_round_trip {
             request: Request<server::TypedErrorsRequest>,
         ) -> Result<Response<()>, server::TypedErrorsError> {
             <MyPets as server::Petstore>::typed_errors(&self.0, request).await
+        }
+
+        async fn upload_pet_photo(
+            &self,
+            request: Request<server::UploadPetPhotoRequest>,
+        ) -> Result<Response<types::PhotoUpload>, server::UploadPetPhotoError> {
+            <MyPets as server::Petstore>::upload_pet_photo(&self.0, request).await
         }
 
         async fn rejection_probe(
@@ -378,6 +405,98 @@ mod server_round_trip {
             }
             other => panic!("expected typed 409 response, got {other:?}"),
         }
+    }
+
+    #[conformance_support::tokio::test]
+    async fn multipart_upload_round_trips_through_generated_client() {
+        let addr = spawn().await;
+        let client = Client::new(&format!("http://{addr}"));
+        let body = UploadPetPhotoMultipartBody {
+            file: FilePart {
+                filename: Some("pet.png".to_string()),
+                content_type: Some("image/png".to_string()),
+                bytes: bytes::Bytes::from_static(b"png bytes"),
+            },
+            note: Some("portrait".to_string()),
+            rating: Some(5),
+        };
+
+        let uploaded = client
+            .upload_pet_photo(7, body)
+            .await
+            .expect("multipart upload succeeds")
+            .into_inner();
+
+        assert_eq!(uploaded.pet_id, 7);
+        assert_eq!(uploaded.filename, "pet.png");
+        assert_eq!(uploaded.content_type, "image/png");
+        assert_eq!(uploaded.file_size, 9);
+        assert_eq!(uploaded.note, "portrait");
+        assert_eq!(uploaded.rating, Some(5));
+    }
+
+    fn photo_part() -> reqwest::multipart::Part {
+        reqwest::multipart::Part::bytes(b"png bytes".to_vec())
+            .file_name("pet.png")
+            .mime_str("image/png")
+            .unwrap()
+    }
+
+    #[conformance_support::tokio::test]
+    async fn multipart_missing_required_part_is_rejected() {
+        let addr = spawn().await;
+        let form = reqwest::multipart::Form::new().text("note", "missing file");
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/pets/7/photo"))
+            .multipart(form)
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response.text().await.unwrap(),
+            "missing required multipart part `file`"
+        );
+    }
+
+    #[conformance_support::tokio::test]
+    async fn multipart_unknown_part_is_ignored() {
+        let addr = spawn().await;
+        let form = reqwest::multipart::Form::new()
+            .part("file", photo_part())
+            .text("note", "known")
+            .text("future-field", "ignored");
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/pets/7/photo"))
+            .multipart(form)
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), reqwest::StatusCode::CREATED);
+        let uploaded = response.json::<types::PhotoUpload>().await.unwrap();
+        assert_eq!(uploaded.note, "known");
+    }
+
+    #[conformance_support::tokio::test]
+    async fn multipart_invalid_typed_text_names_the_part() {
+        let addr = spawn().await;
+        let form = reqwest::multipart::Form::new()
+            .part("file", photo_part())
+            .text("rating", "excellent");
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/pets/7/photo"))
+            .multipart(form)
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response.text().await.unwrap(),
+            "multipart part `rating` is malformed"
+        );
     }
 
     #[conformance_support::tokio::test]

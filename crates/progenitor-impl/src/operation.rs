@@ -8,7 +8,11 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use typify::{TypeId, TypeSpace};
 
-use crate::{Error, Result, template::PathTemplate};
+use crate::{
+    Error, Result,
+    template::PathTemplate,
+    util::{Case, sanitize},
+};
 
 /// The intermediate representation of an operation that will become a method.
 pub(crate) struct OperationMethod {
@@ -22,6 +26,17 @@ pub(crate) struct OperationMethod {
     pub responses: Vec<OperationResponse>,
     pub dropshot_paginated: Option<DropshotPagination>,
     pub(crate) dropshot_websocket: bool,
+}
+
+impl OperationMethod {
+    /// The `{Op}MultipartBody` struct name shared by every backend that
+    /// emits or references this operation's typed multipart body.
+    pub(crate) fn multipart_body_ident(&self) -> proc_macro2::Ident {
+        format_ident!(
+            "{}MultipartBody",
+            sanitize(&self.operation_id, Case::Pascal)
+        )
+    }
 }
 
 pub(crate) enum HttpMethod {
@@ -117,6 +132,33 @@ pub(crate) struct OperationParameter {
 pub(crate) enum OperationParameterType {
     Type(TypeId),
     RawBody,
+    Multipart(MultipartSpec),
+}
+
+#[derive(Eq, PartialEq)]
+pub(crate) struct MultipartSpec {
+    pub fields: Vec<MultipartField>,
+}
+
+#[derive(Eq, PartialEq)]
+pub(crate) struct MultipartField {
+    /// Sanitized field name used by generated Rust structs.
+    pub name: String,
+    /// Original property name used on the wire.
+    pub api_name: String,
+    pub description: Option<String>,
+    pub kind: MultipartFieldKind,
+    pub required: bool,
+}
+
+#[derive(Eq, PartialEq)]
+pub(crate) enum MultipartFieldKind {
+    /// A binary part carrying filename, content type, and bytes. Only file
+    /// fields may repeat: an array-of-binary property becomes one repeated
+    /// field rather than a text field holding a serialized array.
+    File { repeated: bool },
+    /// A text part parsed into the typed value via `FromStr`.
+    Text(TypeId),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -134,12 +176,14 @@ pub(crate) enum BodyContentType {
     OctetStream,
     Json,
     FormUrlencoded,
+    Multipart,
     Text(String),
-    /// Any other media type (multipart/form-data, application/yaml,
-    /// image/*, …). The generated method takes a raw `reqwest::Body` and
-    /// sets this content type verbatim — the caller is responsible for
-    /// producing a conforming payload. Coarse, but it keeps one exotic
-    /// upload endpoint from failing generation of the whole client.
+    /// Any other media type (`application/yaml`, `image/*`, …).
+    ///
+    /// The generated method takes a raw `reqwest::Body` and sets this content
+    /// type verbatim. The caller is responsible for producing a conforming
+    /// payload. Multipart bodies without an object schema also use this
+    /// fallback because their fields cannot be generated safely.
     Raw(String),
 }
 
@@ -169,6 +213,7 @@ impl FromStr for BodyContentType {
         match base {
             "application/octet-stream" => Ok(Self::OctetStream),
             "application/x-www-form-urlencoded" => Ok(Self::FormUrlencoded),
+            "multipart/form-data" => Ok(Self::Multipart),
             "text/plain" | "text/x-markdown" => Ok(Self::Text(String::from(base))),
             _ => Ok(Self::Raw(String::from(base))),
         }
@@ -181,6 +226,7 @@ impl std::fmt::Display for BodyContentType {
             Self::OctetStream => "application/octet-stream",
             Self::Json => "application/json",
             Self::FormUrlencoded => "application/x-www-form-urlencoded",
+            Self::Multipart => "multipart/form-data",
             Self::Text(typ) | Self::Raw(typ) => typ,
         })
     }
@@ -413,5 +459,13 @@ mod tests {
             BodyContentType::from_str("application/vnd.api+json; charset=utf-8").unwrap(),
             BodyContentType::Json,
         ));
+    }
+
+    #[test]
+    fn body_content_type_parses_parameterized_multipart() {
+        assert_eq!(
+            BodyContentType::from_str("multipart/form-data; boundary=ignored").unwrap(),
+            BodyContentType::Multipart,
+        );
     }
 }

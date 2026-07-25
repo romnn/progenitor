@@ -59,6 +59,10 @@ impl Generator {
                         _ => unreachable!(),
                     },
                     (OperationParameterType::RawBody, true) => unreachable!(),
+                    (OperationParameterType::Multipart(_), false) => {
+                        method.multipart_body_ident().to_token_stream()
+                    }
+                    (OperationParameterType::Multipart(_), true) => unreachable!(),
                 };
                 quote! {
                     #name: #typ

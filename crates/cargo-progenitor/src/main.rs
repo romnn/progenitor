@@ -260,7 +260,7 @@ fn dependencies(builder: &Generator, include_client: bool, server: bool) -> Vec<
         format!("bytes = \"{}\"", DEPENDENCIES.bytes),
         format!("futures-core = \"{}\"", DEPENDENCIES.futures),
         format!(
-            "reqwest = {{ version = \"{}\", default-features=false, features = [\"json\", \"query\", \"stream\"] }}",
+            "reqwest = {{ version = \"{}\", default-features=false, features = [\"json\", \"multipart\", \"query\", \"stream\"] }}",
             DEPENDENCIES.reqwest,
         ),
         format!(

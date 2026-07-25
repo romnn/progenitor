@@ -82,6 +82,15 @@ pub(crate) struct PreparedIr {
     pub schema_type_ids: BTreeMap<String, TypeId>,
 }
 
+fn methods_use_multipart(methods: &[operation::OperationMethod]) -> bool {
+    methods.iter().any(|method| {
+        method
+            .params
+            .iter()
+            .any(|param| matches!(&param.typ, operation::OperationParameterType::Multipart(_)))
+    })
+}
+
 /// Settings for [Generator].
 #[derive(Default, Clone)]
 pub struct GenerationSettings {
@@ -500,6 +509,17 @@ impl Generator {
 
         let prepared = self.prepare(spec)?;
         let raw_methods = &prepared.raw_methods;
+        let uses_multipart = methods_use_multipart(raw_methods);
+        let multipart_public_import = uses_multipart.then(|| {
+            quote! {
+                FilePart,
+            }
+        });
+        let multipart_private_import = uses_multipart.then(|| {
+            quote! {
+                multipart_file_part,
+            }
+        });
 
         let operation_code = match (&self.settings.interface, &self.settings.tag) {
             (InterfaceStyle::Positional, TagStyle::Merged) => self
@@ -612,12 +632,14 @@ impl Generator {
                 ByteStream,
                 ClientInfo,
                 Error,
+                #multipart_public_import
                 ResponseValue,
             };
             #[allow(unused_imports)]
             use progenitor_client::{
                 encode_path,
                 ClientHooks,
+                #multipart_private_import
                 OperationInfo,
                 RequestBuilderExt,
             };
@@ -751,6 +773,12 @@ impl Generator {
         input_methods: &[operation::OperationMethod],
         has_inner: bool,
     ) -> Result<TokenStream> {
+        let multipart_imports = methods_use_multipart(input_methods).then(|| {
+            quote! {
+                FilePart,
+                multipart_file_part,
+            }
+        });
         let pairs = input_methods
             .iter()
             .map(|method| self.builder_struct(prepared, method, TagStyle::Merged, has_inner))
@@ -779,6 +807,7 @@ impl Generator {
                     ClientInfo,
                     ClientHooks,
                     Error,
+                    #multipart_imports
                     OperationInfo,
                     RequestBuilderExt,
                     ResponseValue,
@@ -808,6 +837,12 @@ impl Generator {
         tag_info: BTreeMap<&String, &ir::Tag>,
         has_inner: bool,
     ) -> Result<TokenStream> {
+        let multipart_imports = methods_use_multipart(input_methods).then(|| {
+            quote! {
+                FilePart,
+                multipart_file_part,
+            }
+        });
         let pairs = input_methods
             .iter()
             .map(|method| self.builder_struct(prepared, method, TagStyle::Separate, has_inner))
@@ -835,6 +870,7 @@ impl Generator {
                     ClientInfo,
                     ClientHooks,
                     Error,
+                    #multipart_imports
                     OperationInfo,
                     RequestBuilderExt,
                     ResponseValue,

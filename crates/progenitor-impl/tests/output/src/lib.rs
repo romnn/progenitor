@@ -28,6 +28,7 @@ pub mod propolis_server_builder_tagged;
 pub mod propolis_server_cli;
 //pub mod propolis_server_httpmock;
 pub mod propolis_server_positional;
+pub mod server_gen_builder;
 pub mod server_gen_client;
 pub mod server_gen_server;
 pub mod test_default_params_builder;
