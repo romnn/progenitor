@@ -24,6 +24,12 @@ impl SchemaCache {
     }
 
     pub fn lookup(&self, search_schema: &SchemaObject) -> Option<TypeEntry> {
+        // `lookup` runs once per schema node and the clone below is a deep copy
+        // of the whole subtree, so skipping it when no conversions were
+        // registered takes the common case from quadratic to free.
+        if self.schemas.is_empty() {
+            return None;
+        }
         let search_schema = SchemaObject {
             metadata: None,
             ..search_schema.clone()
