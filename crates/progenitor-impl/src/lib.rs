@@ -4,7 +4,10 @@
 
 #![deny(missing_docs)]
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    sync::Arc,
+};
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -17,6 +20,8 @@ pub use crate::openapi::ParseOpenApiError;
 pub use crate::openapi::parse_openapi_str;
 pub use crate::openapi::parse_openapi_value;
 pub use typify::CrateVers;
+pub use typify::SchemaDocs;
+pub use typify::TypeDedup;
 pub use typify::TypeSpaceImpl as TypeImpl;
 pub use typify::TypeSpacePatch as TypePatch;
 pub use typify::UnknownPolicy;
@@ -68,13 +73,17 @@ pub struct Generator {
     /// Component schemas as schemars objects, retained after `generate_tokens`
     /// so callers can inspect metadata (e.g., examples) without a second parse.
     component_schemas: indexmap::IndexMap<String, schemars::schema::Schema>,
+    /// Memoized [`Self::prepare`] result — see that method for why re-lowering
+    /// the same spec is not merely wasteful but wrong.
+    prepared: Option<Arc<PreparedIr>>,
     diagnostics: Vec<String>,
 }
 
 /// The shared generation IR produced once per spec by [`Generator::prepare`].
 ///
-/// Owned so it can outlive the `&mut self` token-generation calls (which mutate
-/// generator state such as `uses_futures`) without holding a borrow of `self`.
+/// Handed out behind an [`Arc`](std::sync::Arc) so it can outlive the `&mut self`
+/// token-generation calls (which mutate generator state such as `uses_futures`)
+/// without holding a borrow of `self`, and so repeat calls are free.
 pub(crate) struct PreparedIr {
     /// Operation methods with operation IDs already deduped.
     pub raw_methods: Vec<operation::OperationMethod>,
@@ -106,6 +115,8 @@ pub struct GenerationSettings {
     post_hook_async: Option<TokenStream>,
     extra_derives: Vec<String>,
     extra_cli_bounds: Vec<String>,
+    schema_docs: SchemaDocs,
+    type_dedup: TypeDedup,
 
     map_type: Option<String>,
     unknown_crates: UnknownPolicy,
@@ -215,6 +226,20 @@ impl GenerationSettings {
         self
     }
 
+    /// How much of each type's schema to embed in its doc comment.
+    /// See [`typify::TypeSpaceSettings::with_schema_docs`].
+    pub fn with_schema_docs(&mut self, schema_docs: SchemaDocs) -> &mut Self {
+        self.schema_docs = schema_docs;
+        self
+    }
+
+    /// Whether structurally identical named types share one definition.
+    /// See [`typify::TypeSpaceSettings::with_type_dedup`].
+    pub fn with_type_dedup(&mut self, type_dedup: TypeDedup) -> &mut Self {
+        self.type_dedup = type_dedup;
+        self
+    }
+
     /// Modify a type with the given name.
     /// See [`typify::TypeSpaceSettings::with_patch`].
     pub fn with_patch<S: AsRef<str>>(&mut self, type_name: S, patch: &TypePatch) -> &mut Self {
@@ -307,6 +332,7 @@ impl Default for Generator {
             uses_websockets: Default::default(),
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
+            prepared: None,
             diagnostics: Default::default(),
         }
     }
@@ -319,7 +345,9 @@ impl Generator {
         let mut type_settings = TypeSpaceSettings::default();
         type_settings
             .with_type_mod("types")
-            .with_struct_builder(settings.interface == InterfaceStyle::Builder);
+            .with_struct_builder(settings.interface == InterfaceStyle::Builder)
+            .with_schema_docs(settings.schema_docs)
+            .with_type_dedup(settings.type_dedup);
         settings.extra_derives.iter().for_each(|derive| {
             let _ = type_settings.with_derive(derive.clone());
         });
@@ -362,6 +390,7 @@ impl Generator {
             uses_websockets: false,
             schema_type_ids: Default::default(),
             component_schemas: Default::default(),
+            prepared: None,
             diagnostics: Default::default(),
         }
     }
@@ -445,11 +474,27 @@ impl Generator {
     /// Returns an **owned** [`PreparedIr`] (not a borrow of `self`) so callers
     /// can pass `&prepared.raw_methods` into the `&mut self` token-generation
     /// methods without holding a borrow of `self`. Shared by `generate_tokens`
-    /// and the standalone `server` entry point so the client and server agree on
-    /// types and method names; safe to call more than once on the same generator
-    /// (`add_ref_types` is idempotent for already-registered names, which the
-    /// existing `generate_text`-then-`httpmock` flow already relies on).
-    pub(crate) fn prepare(&mut self, spec: &OpenApiDocument) -> Result<PreparedIr> {
+    /// and the standalone `cli`/`httpmock`/`server` entry points so every output
+    /// agrees on types and method names.
+    ///
+    /// The result is cached, and that is load-bearing rather than an
+    /// optimization: lowering an operation *synthesizes* types for inline
+    /// response schemas, and typify disambiguates a name that is already taken
+    /// by appending a suffix. Lowering the same spec twice therefore mints a
+    /// second `FooSchemaVariant3` next to the `FooSchemaVariant` the first pass
+    /// emitted, and a `generate_text`-then-`server` caller would get a server
+    /// referring to a type that never made it into `mod types`. Reusing the
+    /// first lowering also saves a full pass over every schema and operation,
+    /// which is the dominant cost of a build script for a large spec.
+    ///
+    /// A `Generator` is single-spec by construction — its `type_space`,
+    /// `schema_type_ids` and `component_schemas` all accumulate one spec's
+    /// state — so caching on first call needs no key.
+    pub(crate) fn prepare(&mut self, spec: &OpenApiDocument) -> Result<Arc<PreparedIr>> {
+        if let Some(prepared) = &self.prepared {
+            return Ok(Arc::clone(prepared));
+        }
+
         let document = &spec.0;
 
         self.type_space.add_ref_types(
@@ -496,11 +541,13 @@ impl Generator {
             }
         }
 
-        Ok(PreparedIr {
+        let prepared = Arc::new(PreparedIr {
             raw_methods,
             schema_supertypes,
             schema_type_ids,
-        })
+        });
+        self.prepared = Some(Arc::clone(&prepared));
+        Ok(prepared)
     }
 
     /// Emit a [`TokenStream`] containing the generated client code.
