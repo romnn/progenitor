@@ -1,5 +1,6 @@
 name = "meilisearch"
 url = "https://raw.githubusercontent.com/meilisearch/open-api/main/open-api.json"
 version = "3.1"
+mock = true
 # Kind is typed as `string` (an enum) but the example is an array of strings.
 bad_examples = ["Kind"]

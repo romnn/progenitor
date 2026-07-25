@@ -1,3 +1,4 @@
 name = "resend"
 url = "https://raw.githubusercontent.com/resend/resend-openapi/main/resend.yaml"
 version = "3.1"
+mock = true

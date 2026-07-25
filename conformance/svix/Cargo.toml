@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 progenitor-client = { workspace = true }
+progenitor-server = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
 futures-core = { workspace = true }

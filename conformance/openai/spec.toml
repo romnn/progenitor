@@ -1,6 +1,7 @@
 name = "openai"
 url = "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml"
 version = "3.1"
+mock = true
 # Examples use model/voice IDs not in the schema's enum, or are missing
 # required fields, or include a union variant not recognised by the codegen.
 bad_examples = [

@@ -1,3 +1,4 @@
 name = "github-31"
 url = "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions-next/api.github.com/api.github.com.json"
 version = "3.1"
+mock = true

@@ -1,5 +1,9 @@
 name = "petstore-31"
 file = "petstore-31.yaml"
 version = "3.1"
-server = true
+mock = true
+# The corpus generates description-only docs because the embedded JSON schema
+# blocks are roughly half its source bytes. This crate is small enough to keep
+# them, so the full doc-emission path stays covered by something that compiles.
+schema_docs = true
 notes = "Hermetic tiny spec committed in the crate directory; used as a fast always-asserted PR-CI crate."

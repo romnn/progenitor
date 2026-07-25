@@ -1,5 +1,6 @@
 name = "pagerduty"
 url = "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json"
 version = "3.0"
+mock = true
 # IncidentAddon example uses "type": "service" but the spec enum only defines "service_reference".
 bad_examples = ["IncidentAddon"]

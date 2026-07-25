@@ -285,3 +285,9 @@ mod operation_tests {
         mock.assert_async().await;
     }
 }
+
+/// Generated axum server stub: the service trait and its `{Api}Server` adapter.
+#[allow(clippy::all)]
+pub mod server {
+    include!(concat!(env!("OUT_DIR"), "/server.rs"));
+}

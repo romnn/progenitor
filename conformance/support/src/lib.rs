@@ -104,7 +104,13 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
         )
     });
 
-    let mut gen = progenitor_impl::Generator::default();
+    let mut settings = progenitor_impl::GenerationSettings::default();
+    settings.with_schema_docs(if manifest.schema_docs {
+        progenitor_impl::SchemaDocs::Full
+    } else {
+        progenitor_impl::SchemaDocs::DescriptionOnly
+    });
+    let mut gen = progenitor_impl::Generator::new(&settings);
     let generated = gen
         .generate_text(&spec)
         .unwrap_or_else(|err| {
@@ -124,15 +130,17 @@ pub fn generate(spec_manifest: impl AsRef<Path>) {
         panic!("conformance_support::generate: cannot write example_tests.rs: {err}")
     });
 
-    let mock_src = generate_mock_helpers(&mut gen, &spec);
-    std::fs::write(out_dir.join("mock.rs"), &mock_src).unwrap_or_else(|err| {
-        panic!("conformance_support::generate: cannot write mock.rs: {err}")
-    });
+    // `httpmock` runs a second full `Generator::prepare` pass, so only generate
+    // it for the crates whose tests actually `include!` mock.rs.
+    if manifest.mock {
+        let mock_src = generate_mock_helpers(&mut gen, &spec);
+        std::fs::write(out_dir.join("mock.rs"), &mock_src).unwrap_or_else(|err| {
+            panic!("conformance_support::generate: cannot write mock.rs: {err}")
+        });
+    }
 
-    // Only crates that opt in (via `server = true` in spec.toml) pay the axum
-    // compile cost; the rest of the corpus never references server.rs.
     if manifest.server {
-        let server_src = generate_server_helpers(&mut gen, &spec);
+        let server_src = generate_server_helpers(&mut gen, &spec, &manifest);
         std::fs::write(out_dir.join("server.rs"), &server_src).unwrap_or_else(|err| {
             panic!("conformance_support::generate: cannot write server.rs: {err}")
         });
@@ -216,16 +224,28 @@ fn generate_mock_helpers(
 
 /// Emit the server module body (service trait, request structs, responders, and
 /// the `{Api}Server` adapter) for every operation, referencing spec types via
-/// `crate::types`. Returns the contents of `server.rs` (empty on failure, so the
-/// `include!` still compiles). Include inside `#[cfg(test)] pub mod server { … }`.
+/// `crate::types`. Returns the contents of `server.rs`; include inside a
+/// `pub mod server { … }`.
+///
+/// Operations the server generator cannot express (websocket upgrades,
+/// `deepObject` query parameters) get a `501` route stub instead of a trait
+/// method. Those are surfaced as `cargo:warning` lines rather than swallowed,
+/// so a spec silently losing half its operations is visible in the build log.
 fn generate_server_helpers(
     gen: &mut progenitor_impl::Generator,
     spec: &progenitor_impl::OpenApiDocument,
+    manifest: &fetch::SpecManifest,
 ) -> String {
-    match gen.server(spec, "crate") {
-        Ok(tokens) => tokens.to_string(),
-        Err(_) => String::new(),
+    let server = gen.server_text(spec, "crate").unwrap_or_else(|err| {
+        panic!(
+            "conformance_support::generate: server generation failed for {:?}: {err}",
+            manifest.name
+        )
+    });
+    for diagnostic in gen.diagnostics() {
+        println!("cargo:warning={}: {diagnostic}", manifest.name);
     }
+    server
 }
 
 /// Enumerate default workspace-member spec crates in the conformance workspace.

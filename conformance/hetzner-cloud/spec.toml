@@ -1,3 +1,4 @@
 name = "hetzner-cloud"
 url = "https://docs.hetzner.cloud/cloud.spec.json"
 version = "3.0"
+mock = true

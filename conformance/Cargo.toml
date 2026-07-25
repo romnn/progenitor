@@ -150,3 +150,14 @@ incremental = false
 [profile.test]
 debug = 0
 incremental = false
+
+# Cargo builds build scripts and proc macros unoptimized by default. Both are
+# hot here: every spec crate's build.rs runs the whole generator, and rustc then
+# drives serde_derive tens of thousands of times over the result (cloudflare
+# alone has ~24k derive sites). Paying to optimize them once is cheaper than
+# running them unoptimized 78 times.
+[profile.dev.build-override]
+opt-level = 2
+
+[profile.test.build-override]
+opt-level = 2

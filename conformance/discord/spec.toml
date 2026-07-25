@@ -1,3 +1,4 @@
 name = "discord"
 url = "https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json"
 version = "3.1"
+mock = true
