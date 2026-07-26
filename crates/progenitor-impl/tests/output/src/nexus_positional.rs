@@ -35,6 +35,912 @@ pub mod types {
         }
     }
 
+    /// Support for the generated `Deserialize` impls.
+    ///
+    /// Emitted only for
+    /// [`DeserializeImpl::Buffered`](crate::DeserializeImpl::Buffered);
+    /// see that variant for what the generated impls do with it.
+    ///
+    /// Not public API. It is `pub(crate)` so that changing the
+    /// runtime is never a breaking change for the crate this was
+    /// generated into.
+    #[doc(hidden)]
+    #[allow(dead_code)]
+    pub(crate) mod de {
+        //! The `types::de` runtime, emitted verbatim into each generated crate
+        //! that
+        //! uses [`DeserializeImpl::Buffered`](crate::DeserializeImpl::Buffered).
+        //!
+        //! Generated `Deserialize` impls are two parts: a tiny generic
+        //! `deserialize<D>`
+        //! that drives `D::deserialize_struct` with the shared
+        //! [`StructVisitor`] below,
+        //! and a fully monomorphic `__build` that reads the buffered fields.
+        //! The point
+        //! is that only the second part is per-type, and it is not generic over
+        //! the
+        //! `Deserializer`, so rustc type-checks one small body per struct
+        //! instead of
+        //! serde_derive's nine (mostly generic) ones.
+        //!
+        //! `serde`'s own equivalent lives in `serde::__private::de`, but that
+        //! module's
+        //! name is suffixed with serde's patch version by its build script
+        //! (`pub mod
+        //! __private$$`), so no generator can name it — hence this copy.
+        //!
+        //! This file is not compiled as part of `typify-impl`; it is
+        //! `include_str!`d and
+        //! re-parsed into the generated output. Keeping it as ordinary Rust
+        //! rather than
+        //! a `quote!` block means it can be edited, formatted and tested
+        //! directly.
+        use serde::de::{
+            self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, IntoDeserializer,
+            MapAccess, SeqAccess, Unexpected, VariantAccess, Visitor,
+        };
+        use std::fmt;
+        use std::marker::PhantomData;
+        /// A format-agnostic buffered value.
+        ///
+        /// The map arm is an association list rather than a map so that
+        /// duplicate keys
+        /// survive buffering: `serde_derive` rejects `{"a":1,"a":2}` and
+        /// collapsing
+        /// into a `HashMap`/`serde_json::Map` here would silently accept it.
+        #[derive(Debug, Clone)]
+        pub enum Content<'de> {
+            Bool(bool),
+            U8(u8),
+            U16(u16),
+            U32(u32),
+            U64(u64),
+            I8(i8),
+            I16(i16),
+            I32(i32),
+            I64(i64),
+            F32(f32),
+            F64(f64),
+            Char(char),
+            String(String),
+            Str(&'de str),
+            ByteBuf(Vec<u8>),
+            Bytes(&'de [u8]),
+            None,
+            Some(Box<Content<'de>>),
+            Unit,
+            Newtype(Box<Content<'de>>),
+            Seq(Vec<Content<'de>>),
+            Map(Vec<(Content<'de>, Content<'de>)>),
+        }
+
+        impl<'de> Content<'de> {
+            /// The `Unexpected` describing this value, for error messages.
+            ///
+            /// `Unit` maps to `Unexpected::Other("null")` rather than
+            /// `Unexpected::Unit` so messages read `invalid type: null,
+            /// expected …`
+            /// the way `serde_json` renders them, instead of `unit value`.
+            fn unexpected(&self) -> Unexpected<'_> {
+                match self {
+                    Content::Bool(b) => Unexpected::Bool(*b),
+                    Content::U8(n) => Unexpected::Unsigned(u64::from(*n)),
+                    Content::U16(n) => Unexpected::Unsigned(u64::from(*n)),
+                    Content::U32(n) => Unexpected::Unsigned(u64::from(*n)),
+                    Content::U64(n) => Unexpected::Unsigned(*n),
+                    Content::I8(n) => Unexpected::Signed(i64::from(*n)),
+                    Content::I16(n) => Unexpected::Signed(i64::from(*n)),
+                    Content::I32(n) => Unexpected::Signed(i64::from(*n)),
+                    Content::I64(n) => Unexpected::Signed(*n),
+                    Content::F32(f) => Unexpected::Float(f64::from(*f)),
+                    Content::F64(f) => Unexpected::Float(*f),
+                    Content::Char(c) => Unexpected::Char(*c),
+                    Content::String(s) => Unexpected::Str(s),
+                    Content::Str(s) => Unexpected::Str(s),
+                    Content::ByteBuf(b) => Unexpected::Bytes(b),
+                    Content::Bytes(b) => Unexpected::Bytes(b),
+                    Content::None | Content::Some(_) => Unexpected::Option,
+                    Content::Unit => Unexpected::Other("null"),
+                    Content::Newtype(_) => Unexpected::NewtypeStruct,
+                    Content::Seq(_) => Unexpected::Seq,
+                    Content::Map(_) => Unexpected::Map,
+                }
+            }
+            /// The string form of a buffered map key, used to match field
+            /// names.
+            fn as_key_str(&self) -> Option<&str> {
+                match self {
+                    Content::Str(s) => Some(s),
+                    Content::String(s) => Some(s),
+                    Content::Bytes(b) => std::str::from_utf8(b).ok(),
+                    Content::ByteBuf(b) => std::str::from_utf8(b).ok(),
+                    _ => None,
+                }
+            }
+        }
+
+        struct ContentVisitor<'de> {
+            marker: std::marker::PhantomData<Content<'de>>,
+        }
+
+        impl<'de> Visitor<'de> for ContentVisitor<'de> {
+            type Value = Content<'de>;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("any value")
+            }
+            fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Content::Bool(v))
+            }
+            fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E> {
+                Ok(Content::I8(v))
+            }
+            fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E> {
+                Ok(Content::I16(v))
+            }
+            fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E> {
+                Ok(Content::I32(v))
+            }
+            fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Content::I64(v))
+            }
+            fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E> {
+                Ok(Content::U8(v))
+            }
+            fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E> {
+                Ok(Content::U16(v))
+            }
+            fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E> {
+                Ok(Content::U32(v))
+            }
+            fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Content::U64(v))
+            }
+            fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E> {
+                Ok(Content::F32(v))
+            }
+            fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Content::F64(v))
+            }
+            fn visit_char<E>(self, v: char) -> Result<Self::Value, E> {
+                Ok(Content::Char(v))
+            }
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
+                Ok(Content::Unit)
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Content::String(v.to_string()))
+            }
+            fn visit_borrowed_str<E: de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+                Ok(Content::Str(v))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(Content::String(v))
+            }
+            fn visit_bytes<E: de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                Ok(Content::ByteBuf(v.to_vec()))
+            }
+            fn visit_borrowed_bytes<E: de::Error>(self, v: &'de [u8]) -> Result<Self::Value, E> {
+                Ok(Content::Bytes(v))
+            }
+            fn visit_byte_buf<E: de::Error>(self, v: Vec<u8>) -> Result<Self::Value, E> {
+                Ok(Content::ByteBuf(v))
+            }
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
+                Ok(Content::None)
+            }
+            fn visit_some<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+                Content::deserialize(d).map(|c| Content::Some(Box::new(c)))
+            }
+            fn visit_newtype_struct<D: Deserializer<'de>>(
+                self,
+                d: D,
+            ) -> Result<Self::Value, D::Error> {
+                Content::deserialize(d).map(|c| Content::Newtype(Box::new(c)))
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut items = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+                while let Some(item) = seq.next_element()? {
+                    items.push(item);
+                }
+                Ok(Content::Seq(items))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut entries = Vec::with_capacity(map.size_hint().unwrap_or(0));
+                while let Some(kv) = map.next_entry()? {
+                    entries.push(kv);
+                }
+                Ok(Content::Map(entries))
+            }
+            fn visit_enum<A: EnumAccess<'de>>(self, _: A) -> Result<Self::Value, A::Error> {
+                Err(de::Error::custom("unexpected enum while buffering a value"))
+            }
+        }
+
+        impl<'de> Deserialize<'de> for Content<'de> {
+            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                deserializer.deserialize_any(ContentVisitor {
+                    marker: std::marker::PhantomData,
+                })
+            }
+        }
+
+        /// Deserializer that replays a buffered [`Content`].
+        pub struct ContentDeserializer<'de, E> {
+            content: Content<'de>,
+            marker: std::marker::PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> ContentDeserializer<'de, E> {
+            pub fn new(content: Content<'de>) -> Self {
+                Self {
+                    content,
+                    marker: std::marker::PhantomData,
+                }
+            }
+            fn invalid_type<T>(self, exp: &dyn de::Expected) -> Result<T, E> {
+                Err(E::invalid_type(self.content.unexpected(), exp))
+            }
+        }
+
+        impl<'de, E: de::Error> IntoDeserializer<'de, E> for ContentDeserializer<'de, E> {
+            type Deserializer = Self;
+            fn into_deserializer(self) -> Self {
+                self
+            }
+        }
+
+        macro_rules ! forward_number { ($ ($ method : ident => $ visit : ident ,) *) => { $ (fn $ method < V : Visitor <'de >> (self , visitor : V) -> Result < V :: Value , E > { self . deserialize_any (visitor) }) * } ; }
+        impl<'de, E: de::Error> Deserializer<'de> for ContentDeserializer<'de, E> {
+            type Error = E;
+            fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, E> {
+                match self.content {
+                    Content::Bool(v) => visitor.visit_bool(v),
+                    Content::U8(v) => visitor.visit_u8(v),
+                    Content::U16(v) => visitor.visit_u16(v),
+                    Content::U32(v) => visitor.visit_u32(v),
+                    Content::U64(v) => visitor.visit_u64(v),
+                    Content::I8(v) => visitor.visit_i8(v),
+                    Content::I16(v) => visitor.visit_i16(v),
+                    Content::I32(v) => visitor.visit_i32(v),
+                    Content::I64(v) => visitor.visit_i64(v),
+                    Content::F32(v) => visitor.visit_f32(v),
+                    Content::F64(v) => visitor.visit_f64(v),
+                    Content::Char(v) => visitor.visit_char(v),
+                    Content::String(v) => visitor.visit_string(v),
+                    Content::Str(v) => visitor.visit_borrowed_str(v),
+                    Content::ByteBuf(v) => visitor.visit_byte_buf(v),
+                    Content::Bytes(v) => visitor.visit_borrowed_bytes(v),
+                    Content::Unit => visitor.visit_unit(),
+                    Content::None => visitor.visit_none(),
+                    Content::Some(v) => visitor.visit_some(ContentDeserializer::new(*v)),
+                    Content::Newtype(v) => {
+                        visitor.visit_newtype_struct(ContentDeserializer::new(*v))
+                    }
+                    Content::Seq(v) => {
+                        let mut seq = SeqReplay::new(v);
+                        let value = visitor.visit_seq(&mut seq)?;
+                        seq.end()?;
+                        Ok(value)
+                    }
+                    Content::Map(v) => {
+                        let mut map = MapReplay::new(v);
+                        let value = visitor.visit_map(&mut map)?;
+                        map.end()?;
+                        Ok(value)
+                    }
+                }
+            }
+            fn deserialize_option<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, E> {
+                match self.content {
+                    Content::None | Content::Unit => visitor.visit_none(),
+                    Content::Some(v) => visitor.visit_some(ContentDeserializer::new(*v)),
+                    other => visitor.visit_some(ContentDeserializer::new(other)),
+                }
+            }
+            fn deserialize_newtype_struct<V: Visitor<'de>>(
+                self,
+                _name: &'static str,
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                match self.content {
+                    Content::Newtype(v) => {
+                        visitor.visit_newtype_struct(ContentDeserializer::new(*v))
+                    }
+                    other => visitor.visit_newtype_struct(ContentDeserializer::new(other)),
+                }
+            }
+            fn deserialize_enum<V: Visitor<'de>>(
+                self,
+                _name: &'static str,
+                _variants: &'static [&'static str],
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                let (variant, value) = match self.content {
+                    Content::Map(entries) => {
+                        let mut iter = entries.into_iter();
+                        let (variant, value) = match iter.next() {
+                            Some(kv) => kv,
+                            None => {
+                                return Err(E::invalid_value(
+                                    Unexpected::Map,
+                                    &"map with a single key",
+                                ));
+                            }
+                        };
+                        if iter.next().is_some() {
+                            return Err(E::invalid_value(
+                                Unexpected::Map,
+                                &"map with a single key",
+                            ));
+                        }
+                        (variant, Some(value))
+                    }
+                    s @ (Content::String(_) | Content::Str(_)) => (s, None),
+                    other => return Err(E::invalid_type(other.unexpected(), &"string or map")),
+                };
+                visitor.visit_enum(EnumReplay {
+                    variant,
+                    value,
+                    marker: std::marker::PhantomData,
+                })
+            }
+            fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, E> {
+                match self.content {
+                    Content::Bool(v) => visitor.visit_bool(v),
+                    _ => self.invalid_type(&visitor),
+                }
+            }
+            forward_number! { deserialize_i8 => visit_i8 , deserialize_i16 => visit_i16 , deserialize_i32 => visit_i32 , deserialize_i64 => visit_i64 , deserialize_u8 => visit_u8 , deserialize_u16 => visit_u16 , deserialize_u32 => visit_u32 , deserialize_u64 => visit_u64 , deserialize_f32 => visit_f32 , deserialize_f64 => visit_f64 , deserialize_char => visit_char , deserialize_str => visit_str , deserialize_string => visit_string , deserialize_bytes => visit_bytes , deserialize_byte_buf => visit_byte_buf , deserialize_unit => visit_unit , deserialize_seq => visit_seq , deserialize_map => visit_map , deserialize_identifier => visit_identifier , deserialize_ignored_any => visit_ignored_any , }
+            fn deserialize_unit_struct<V: Visitor<'de>>(
+                self,
+                _name: &'static str,
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                self.deserialize_any(visitor)
+            }
+            fn deserialize_tuple<V: Visitor<'de>>(
+                self,
+                _len: usize,
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                self.deserialize_any(visitor)
+            }
+            fn deserialize_tuple_struct<V: Visitor<'de>>(
+                self,
+                _name: &'static str,
+                _len: usize,
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                self.deserialize_any(visitor)
+            }
+            fn deserialize_struct<V: Visitor<'de>>(
+                self,
+                _name: &'static str,
+                _fields: &'static [&'static str],
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                self.deserialize_any(visitor)
+            }
+        }
+
+        struct SeqReplay<'de, E> {
+            iter: std::vec::IntoIter<Content<'de>>,
+            taken: usize,
+            marker: std::marker::PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> SeqReplay<'de, E> {
+            fn new(content: Vec<Content<'de>>) -> Self {
+                Self {
+                    iter: content.into_iter(),
+                    taken: 0,
+                    marker: std::marker::PhantomData,
+                }
+            }
+            /// Reject whatever the visitor did not consume, in serde's own
+            /// wording for
+            /// a replayed sequence.
+            fn end(self) -> Result<(), E> {
+                let remaining = self.iter.count();
+                if remaining == 0 {
+                    Ok(())
+                } else {
+                    Err(E::invalid_length(
+                        self.taken + remaining,
+                        &ExpectedIn::seq(self.taken),
+                    ))
+                }
+            }
+        }
+
+        impl<'de, E: de::Error> SeqAccess<'de> for &mut SeqReplay<'de, E> {
+            type Error = E;
+            fn next_element_seed<T: DeserializeSeed<'de>>(
+                &mut self,
+                seed: T,
+            ) -> Result<Option<T::Value>, E> {
+                match self.iter.next() {
+                    Some(c) => {
+                        self.taken += 1;
+                        seed.deserialize(ContentDeserializer::new(c)).map(Some)
+                    }
+                    None => Ok(None),
+                }
+            }
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.iter.len())
+            }
+        }
+
+        struct MapReplay<'de, E> {
+            iter: std::vec::IntoIter<(Content<'de>, Content<'de>)>,
+            value: Option<Content<'de>>,
+            taken: usize,
+            marker: std::marker::PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> MapReplay<'de, E> {
+            fn new(content: Vec<(Content<'de>, Content<'de>)>) -> Self {
+                Self {
+                    iter: content.into_iter(),
+                    value: None,
+                    taken: 0,
+                    marker: std::marker::PhantomData,
+                }
+            }
+            /// The map counterpart of [`SeqReplay::end`]. Struct visitors drain
+            /// the
+            /// map, so this only bites for a visitor with a fixed shape — but
+            /// the
+            /// asymmetry is not worth relying on.
+            fn end(self) -> Result<(), E> {
+                let remaining = self.iter.count();
+                if remaining == 0 {
+                    Ok(())
+                } else {
+                    Err(E::invalid_length(
+                        self.taken + remaining,
+                        &ExpectedIn::map(self.taken),
+                    ))
+                }
+            }
+        }
+
+        impl<'de, E: de::Error> MapAccess<'de> for &mut MapReplay<'de, E> {
+            type Error = E;
+            fn next_key_seed<K: DeserializeSeed<'de>>(
+                &mut self,
+                seed: K,
+            ) -> Result<Option<K::Value>, E> {
+                match self.iter.next() {
+                    Some((k, v)) => {
+                        self.taken += 1;
+                        self.value = Some(v);
+                        seed.deserialize(ContentDeserializer::new(k)).map(Some)
+                    }
+                    None => Ok(None),
+                }
+            }
+            fn next_value_seed<V: DeserializeSeed<'de>>(&mut self, seed: V) -> Result<V::Value, E> {
+                let value = self
+                    .value
+                    .take()
+                    .expect("next_value_seed before next_key_seed");
+                seed.deserialize(ContentDeserializer::new(value))
+            }
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.iter.len())
+            }
+        }
+
+        /// serde's phrasing for "the visitor stopped before the input did".
+        struct ExpectedIn {
+            taken: usize,
+            container: &'static str,
+        }
+
+        impl ExpectedIn {
+            fn seq(taken: usize) -> Self {
+                Self {
+                    taken,
+                    container: "sequence",
+                }
+            }
+            fn map(taken: usize) -> Self {
+                Self {
+                    taken,
+                    container: "map",
+                }
+            }
+        }
+
+        impl de::Expected for ExpectedIn {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self.taken {
+                    1 => write!(f, "1 element in {}", self.container),
+                    n => write!(f, "{n} elements in {}", self.container),
+                }
+            }
+        }
+
+        struct EnumReplay<'de, E> {
+            variant: Content<'de>,
+            value: Option<Content<'de>>,
+            marker: std::marker::PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> EnumAccess<'de> for EnumReplay<'de, E> {
+            type Error = E;
+            type Variant = VariantReplay<'de, E>;
+            fn variant_seed<V: DeserializeSeed<'de>>(
+                self,
+                seed: V,
+            ) -> Result<(V::Value, Self::Variant), E> {
+                let variant = seed.deserialize(ContentDeserializer::new(self.variant))?;
+                Ok((
+                    variant,
+                    VariantReplay {
+                        value: self.value,
+                        marker: std::marker::PhantomData,
+                    },
+                ))
+            }
+        }
+
+        struct VariantReplay<'de, E> {
+            value: Option<Content<'de>>,
+            marker: std::marker::PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> VariantAccess<'de> for VariantReplay<'de, E> {
+            type Error = E;
+            fn unit_variant(self) -> Result<(), E> {
+                match self.value {
+                    None | Some(Content::Unit) => Ok(()),
+                    Some(other) => Err(E::invalid_type(other.unexpected(), &"unit variant")),
+                }
+            }
+            fn newtype_variant_seed<T: DeserializeSeed<'de>>(self, seed: T) -> Result<T::Value, E> {
+                match self.value {
+                    Some(v) => seed.deserialize(ContentDeserializer::new(v)),
+                    None => Err(E::invalid_type(Unexpected::UnitVariant, &"newtype variant")),
+                }
+            }
+            fn tuple_variant<V: Visitor<'de>>(
+                self,
+                _len: usize,
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                match self.value {
+                    Some(v) => ContentDeserializer::new(v).deserialize_any(visitor),
+                    None => Err(E::invalid_type(Unexpected::UnitVariant, &"tuple variant")),
+                }
+            }
+            fn struct_variant<V: Visitor<'de>>(
+                self,
+                _fields: &'static [&'static str],
+                visitor: V,
+            ) -> Result<V::Value, E> {
+                match self.value {
+                    Some(v) => ContentDeserializer::new(v).deserialize_any(visitor),
+                    None => Err(E::invalid_type(Unexpected::UnitVariant, &"struct variant")),
+                }
+            }
+        }
+
+        /// The expectation `serde_derive` names when a sequence is too short:
+        /// `struct Foo with 3 elements`, distinct from the visitor's own
+        /// `expecting`.
+        struct StructLen {
+            name: &'static str,
+            len: usize,
+        }
+
+        impl de::Expected for StructLen {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "struct {} with {} elements", self.name, self.len)
+            }
+        }
+
+        /// The buffered fields of one struct, in wire order.
+        pub type Fields<'de> = Vec<(Content<'de>, Content<'de>)>;
+        /// Visitor a generated `deserialize` hands to
+        /// `Deserializer::deserialize_struct`.
+        ///
+        /// Implements both `visit_map` and `visit_seq` so non-self-describing
+        /// formats
+        /// (bincode, postcard, MessagePack in compact mode) keep working: a
+        /// sequence is
+        /// zipped against the struct's static field list here, in shared code,
+        /// so
+        /// `__build` only ever sees a map and pays nothing per struct for it.
+        /// Per-type half of a buffered `Deserialize`, implemented by generated
+        /// types.
+        ///
+        /// Splitting it out this way is what keeps the emitted code to two
+        /// bodies per
+        /// struct: everything that walks the input lives in the generic
+        /// [`StructVisitor`] below and is type-checked once, no matter how many
+        /// types
+        /// implement this.
+        pub trait Build<'de>: Sized {
+            /// The name the format sees, i.e. after any container rename.
+            const NAME: &'static str;
+            /// The wire names of the fields, in declaration order.
+            const FIELDS: &'static [&'static str];
+            /// Assemble the value from already-buffered fields.
+            ///
+            /// Deliberately generic only over the error type, never over the
+            /// `Deserializer` — this is the half that repeats per type.
+            fn build<E: de::Error>(fields: Fields<'de>) -> Result<Self, E>;
+        }
+
+        /// Drives `T`'s buffered deserialization. The whole per-type
+        /// `deserialize`.
+        pub fn deserialize_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+        where
+            T: Build<'de>,
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_struct(T::NAME, T::FIELDS, StructVisitor::<T>(PhantomData))
+        }
+
+        /// Visitor handed to `deserialize_struct`.
+        ///
+        /// Implements both `visit_map` and `visit_seq` so non-self-describing
+        /// formats
+        /// keep working: a sequence is zipped against the struct's static field
+        /// list
+        /// here, in shared code, so `build` only ever sees a map.
+        ///
+        /// `build` is called *inside* the visitor rather than after it returns,
+        /// which
+        /// is what keeps a format's positional error fixup (serde_json's
+        /// line/column)
+        /// applying to whatever `build` reports.
+        pub struct StructVisitor<T>(pub PhantomData<T>);
+        impl<'de, T: Build<'de>> Visitor<'de> for StructVisitor<T> {
+            type Value = T;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "struct {}", T::NAME)
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut entries = Vec::with_capacity(map.size_hint().unwrap_or(T::FIELDS.len()));
+                while let Some(kv) = map.next_entry()? {
+                    entries.push(kv);
+                }
+                T::build(entries)
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut entries = Vec::with_capacity(T::FIELDS.len());
+                for (index, name) in T::FIELDS.iter().enumerate() {
+                    match seq.next_element::<Content<'de>>()? {
+                        Some(value) => entries.push((Content::Str(name), value)),
+                        None => {
+                            return Err(de::Error::invalid_length(
+                                index,
+                                &StructLen {
+                                    name: T::NAME,
+                                    len: T::FIELDS.len(),
+                                },
+                            ));
+                        }
+                    }
+                }
+                T::build(entries)
+            }
+        }
+
+        /// Take the value for `name`, erroring on a duplicate the way the
+        /// derive does.
+        ///
+        /// Returns the raw `Content` so the caller decides between "absent" and
+        /// "present but null", which `serde_derive` distinguishes and a
+        /// `HashMap`-based
+        /// buffer cannot.
+        pub fn take<'de, E: de::Error>(
+            fields: &mut Fields<'de>,
+            name: &'static str,
+        ) -> Result<Option<Content<'de>>, E> {
+            let mut found = None;
+            let mut index = 0;
+            while index < fields.len() {
+                if fields[index].0.as_key_str() == Some(name) {
+                    if found.is_some() {
+                        return Err(E::duplicate_field(name));
+                    }
+                    found = Some(fields.remove(index).1);
+                } else {
+                    index += 1;
+                }
+            }
+            Ok(found)
+        }
+
+        /// Per-type half of a fieldless enum's `Deserialize`.
+        ///
+        /// Unlike [`Build`], this involves **no buffering**: a unit variant is
+        /// decided
+        /// from the identifier alone, so the generated impl drives
+        /// `deserialize_enum`
+        /// directly and keeps working with non-self-describing formats, and any
+        /// error
+        /// it reports carries the format's own position.
+        pub trait UnitEnum: Sized {
+            /// The name the format sees, i.e. after any container rename.
+            const NAME: &'static str;
+            /// The wire names of the variants, in declaration order.
+            const VARIANTS: &'static [&'static str];
+            /// Build the variant at `index` within [`Self::VARIANTS`].
+            ///
+            /// Only ever called with an index this module has already
+            /// bounds-checked
+            /// against `VARIANTS`.
+            fn from_index(index: usize) -> Self;
+        }
+
+        /// Resolves a variant identifier to its index in `T::VARIANTS`.
+        struct VariantIndex<T>(usize, PhantomData<T>);
+        impl<'de, T: UnitEnum> Deserialize<'de> for VariantIndex<T> {
+            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                deserializer.deserialize_identifier(VariantIndexVisitor::<T>(PhantomData))
+            }
+        }
+
+        struct VariantIndexVisitor<T>(PhantomData<T>);
+        impl<'de, T: UnitEnum> Visitor<'de> for VariantIndexVisitor<T> {
+            type Value = VariantIndex<T>;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("variant identifier")
+            }
+            fn visit_u64<E: de::Error>(self, value: u64) -> Result<Self::Value, E> {
+                match usize::try_from(value)
+                    .ok()
+                    .filter(|index| *index < T::VARIANTS.len())
+                {
+                    Some(index) => Ok(VariantIndex(index, PhantomData)),
+                    None => Err(E::invalid_value(
+                        Unexpected::Unsigned(value),
+                        &VariantIndexRange(T::VARIANTS.len()),
+                    )),
+                }
+            }
+            fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                match T::VARIANTS.iter().position(|name| *name == value) {
+                    Some(index) => Ok(VariantIndex(index, PhantomData)),
+                    None => Err(E::unknown_variant(value, T::VARIANTS)),
+                }
+            }
+            fn visit_bytes<E: de::Error>(self, value: &[u8]) -> Result<Self::Value, E> {
+                match std::str::from_utf8(value) {
+                    Ok(text) => self.visit_str(text),
+                    Err(_) => Err(E::invalid_value(Unexpected::Bytes(value), &self)),
+                }
+            }
+        }
+
+        /// `serde_derive`'s wording for an out-of-range variant index.
+        struct VariantIndexRange(usize);
+        impl de::Expected for VariantIndexRange {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "variant index 0 <= i < {}", self.0)
+            }
+        }
+
+        struct UnitEnumVisitor<T>(PhantomData<T>);
+        impl<'de, T: UnitEnum> Visitor<'de> for UnitEnumVisitor<T> {
+            type Value = T;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "enum {}", T::NAME)
+            }
+            fn visit_enum<A: EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+                let (index, variant) = data.variant::<VariantIndex<T>>()?;
+                de::VariantAccess::unit_variant(variant)?;
+                Ok(T::from_index(index.0))
+            }
+        }
+
+        /// Drives `T`'s deserialization. The whole per-type `deserialize`.
+        pub fn deserialize_unit_enum<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+        where
+            T: UnitEnum,
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_enum(T::NAME, T::VARIANTS, UnitEnumVisitor::<T>(PhantomData))
+        }
+
+        /// The deserializer `serde_derive` hands a field that never showed up.
+        ///
+        /// An absent key is a `missing field` error for most types — but *not*
+        /// for
+        /// `Option<T>`, which sees `None`. serde gets this by asking `T` to
+        /// deserialize
+        /// from a source that answers `visit_none` to `deserialize_option` and
+        /// errors
+        /// for everything else, so the special case lives in `Option`'s own
+        /// impl rather
+        /// than in the generated code. A by-name lookup has to do the same, or
+        /// it
+        /// rejects documents the derive accepts whenever a schema marks a
+        /// nullable
+        /// property required.
+        struct MissingField<E> {
+            name: &'static str,
+            marker: PhantomData<E>,
+        }
+
+        impl<'de, E: de::Error> Deserializer<'de> for MissingField<E> {
+            type Error = E;
+            fn deserialize_any<V: Visitor<'de>>(self, _visitor: V) -> Result<V::Value, E> {
+                Err(E::missing_field(self.name))
+            }
+            fn deserialize_option<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, E> {
+                visitor.visit_none()
+            }
+            serde::forward_to_deserialize_any! { bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string bytes byte_buf unit unit_struct newtype_struct seq tuple tuple_struct map struct enum identifier ignored_any }
+        }
+
+        /// Deserialize a field the schema marks required.
+        pub fn required<'de, T: Deserialize<'de>, E: de::Error>(
+            fields: &mut Fields<'de>,
+            name: &'static str,
+        ) -> Result<T, E> {
+            match take(fields, name)? {
+                Some(content) => T::deserialize(ContentDeserializer::new(content)),
+                None => T::deserialize(MissingField {
+                    name,
+                    marker: PhantomData,
+                }),
+            }
+        }
+
+        /// Deserialize a field that falls back to `Default` when the key is
+        /// absent.
+        ///
+        /// Mirrors `#[serde(default)]`: an absent key uses the default, while a
+        /// present
+        /// `null` is still handed to `T`'s own impl (so `Option<T>` sees `None`
+        /// and a
+        /// non-optional `T` reports the same type error the derive would).
+        pub fn defaulted<'de, T: Deserialize<'de> + Default, E: de::Error>(
+            fields: &mut Fields<'de>,
+            name: &'static str,
+        ) -> Result<T, E> {
+            match take(fields, name)? {
+                Some(content) => T::deserialize(ContentDeserializer::new(content)),
+                None => Ok(T::default()),
+            }
+        }
+
+        /// Deserialize a field whose absent-value comes from a named function,
+        /// as
+        /// emitted for `#[serde(default = "path")]`.
+        pub fn defaulted_with<'de, T: Deserialize<'de>, E: de::Error>(
+            fields: &mut Fields<'de>,
+            name: &'static str,
+            default: fn() -> T,
+        ) -> Result<T, E> {
+            match take(fields, name)? {
+                Some(content) => T::deserialize(ContentDeserializer::new(content)),
+                None => Ok(default()),
+            }
+        }
+
+        /// Reject leftover keys, as `#[serde(deny_unknown_fields)]` does.
+        pub fn deny_unknown<'de, E: de::Error>(
+            fields: &Fields<'de>,
+            known: &'static [&'static str],
+        ) -> Result<(), E> {
+            match fields.first() {
+                Some((key, _)) => match key.as_key_str() {
+                    Some(name) => Err(E::unknown_field(name, known)),
+                    None => Err(E::custom("unknown field")),
+                },
+                None => Ok(()),
+            }
+        }
+    }
+
     ///Describes properties that should uniquely identify a Gimlet.
     ///
     /// <details><summary>JSON schema</summary>
@@ -63,11 +969,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Baseboard {
         pub part: ::std::string::String,
         pub revision: i64,
         pub serial: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for Baseboard {
+        const NAME: &'static str = "Baseboard";
+        const FIELDS: &'static [&'static str] = &["part", "revision", "serial"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                part: self::de::required(&mut fields, "part")?,
+                revision: self::de::required(&mut fields, "revision")?,
+                serial: self::de::required(&mut fields, "serial")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Baseboard {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Baseboard {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Baseboard", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "part", &self.part)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "revision", &self.revision)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "serial", &self.serial)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A type storing a range over `T`.
@@ -293,12 +1238,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Bindouble {
         ///The total count of samples in this bin.
         pub count: u64,
         ///The range of the support covered by this bin.
         pub range: BinRangedouble,
+    }
+
+    impl<'de> self::de::Build<'de> for Bindouble {
+        const NAME: &'static str = "Bindouble";
+        const FIELDS: &'static [&'static str] = &["count", "range"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                count: self::de::required(&mut fields, "count")?,
+                range: self::de::required(&mut fields, "range")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Bindouble {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Bindouble {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Bindouble", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "count", &self.count)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "range", &self.range)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Type storing bin edges and a count of samples within it.
@@ -332,12 +1314,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Binint64 {
         ///The total count of samples in this bin.
         pub count: u64,
         ///The range of the support covered by this bin.
         pub range: BinRangeint64,
+    }
+
+    impl<'de> self::de::Build<'de> for Binint64 {
+        const NAME: &'static str = "Binint64";
+        const FIELDS: &'static [&'static str] = &["count", "range"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                count: self::de::required(&mut fields, "count")?,
+                range: self::de::required(&mut fields, "range")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Binint64 {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Binint64 {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Binint64", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "count", &self.count)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "range", &self.range)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`BlockSize`
@@ -522,7 +1541,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Certificate {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -535,6 +1554,70 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Certificate {
+        const NAME: &'static str = "Certificate";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "name",
+            "service",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                service: self::de::required(&mut fields, "service")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Certificate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Certificate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Certificate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "service", &self.service)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -590,7 +1673,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct CertificateCreate {
         ///PEM file containing public certificate chain
         pub cert: ::std::vec::Vec<u8>,
@@ -600,6 +1683,54 @@ pub mod types {
         pub name: Name,
         ///The service using this certificate
         pub service: ServiceUsingCertificate,
+    }
+
+    impl<'de> self::de::Build<'de> for CertificateCreate {
+        const NAME: &'static str = "CertificateCreate";
+        const FIELDS: &'static [&'static str] = &["cert", "description", "key", "name", "service"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                cert: self::de::required(&mut fields, "cert")?,
+                description: self::de::required(&mut fields, "description")?,
+                key: self::de::required(&mut fields, "key")?,
+                name: self::de::required(&mut fields, "name")?,
+                service: self::de::required(&mut fields, "service")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for CertificateCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for CertificateCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "CertificateCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "cert", &self.cert)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "key", &self.key)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "service", &self.service)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -632,13 +1763,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct CertificateResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Certificate>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for CertificateResultsPage {
+        const NAME: &'static str = "CertificateResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for CertificateResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for CertificateResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "CertificateResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Identity-related metadata that's included in "asset" public API objects
@@ -683,7 +1859,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ComponentUpdate {
         pub component_type: UpdateableComponentType,
         ///unique, immutable, system-controlled identifier for each resource
@@ -693,6 +1869,68 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub version: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for ComponentUpdate {
+        const NAME: &'static str = "ComponentUpdate";
+        const FIELDS: &'static [&'static str] = &[
+            "component_type",
+            "id",
+            "time_created",
+            "time_modified",
+            "version",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                component_type: self::de::required(&mut fields, "component_type")?,
+                id: self::de::required(&mut fields, "id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ComponentUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ComponentUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "ComponentUpdate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "component_type",
+                &self.component_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -725,13 +1963,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ComponentUpdateResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<ComponentUpdate>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for ComponentUpdateResultsPage {
+        const NAME: &'static str = "ComponentUpdateResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ComponentUpdateResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ComponentUpdateResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "ComponentUpdateResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A cumulative or counter data type.
@@ -759,10 +2045,52 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Cumulativedouble {
         pub start_time: ::chrono::DateTime<::chrono::offset::Utc>,
         pub value: f64,
+    }
+
+    impl<'de> self::de::Build<'de> for Cumulativedouble {
+        const NAME: &'static str = "Cumulativedouble";
+        const FIELDS: &'static [&'static str] = &["start_time", "value"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                start_time: self::de::required(&mut fields, "start_time")?,
+                value: self::de::required(&mut fields, "value")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Cumulativedouble {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Cumulativedouble {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "Cumulativedouble", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "start_time",
+                &self.start_time,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "value", &self.value)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A cumulative or counter data type.
@@ -790,10 +2118,52 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Cumulativeint64 {
         pub start_time: ::chrono::DateTime<::chrono::offset::Utc>,
         pub value: i64,
+    }
+
+    impl<'de> self::de::Build<'de> for Cumulativeint64 {
+        const NAME: &'static str = "Cumulativeint64";
+        const FIELDS: &'static [&'static str] = &["start_time", "value"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                start_time: self::de::required(&mut fields, "start_time")?,
+                value: self::de::required(&mut fields, "value")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Cumulativeint64 {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Cumulativeint64 {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "Cumulativeint64", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "start_time",
+                &self.start_time,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "value", &self.value)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A `Datum` is a single sampled data point from a metric.
@@ -1070,18 +2440,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum DatumType {
         #[serde(rename = "bool")]
         Bool,
@@ -1101,6 +2460,44 @@ pub mod types {
         HistogramI64,
         #[serde(rename = "histogram_f64")]
         HistogramF64,
+    }
+
+    impl self::de::UnitEnum for DatumType {
+        const NAME: &'static str = "DatumType";
+        const VARIANTS: &'static [&'static str] = &[
+            "bool",
+            "i64",
+            "f64",
+            "string",
+            "bytes",
+            "cumulative_i64",
+            "cumulative_f64",
+            "histogram_i64",
+            "histogram_f64",
+        ];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Bool,
+                1usize => Self::I64,
+                2usize => Self::F64,
+                3usize => Self::String,
+                4usize => Self::Bytes,
+                5usize => Self::CumulativeI64,
+                6usize => Self::CumulativeF64,
+                7usize => Self::HistogramI64,
+                8usize => Self::HistogramF64,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DatumType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for DatumType {
@@ -1186,12 +2583,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DerEncodedKeyPair {
         ///request signing private key (base64 encoded der file)
         pub private_key: ::std::string::String,
         ///request signing public certificate (base64 encoded der file)
         pub public_cert: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for DerEncodedKeyPair {
+        const NAME: &'static str = "DerEncodedKeyPair";
+        const FIELDS: &'static [&'static str] = &["private_key", "public_cert"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                private_key: self::de::required(&mut fields, "private_key")?,
+                public_cert: self::de::required(&mut fields, "public_cert")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DerEncodedKeyPair {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DerEncodedKeyPair {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DerEncodedKeyPair", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "private_key",
+                &self.private_key,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "public_cert",
+                &self.public_cert,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`DeviceAccessTokenRequest`
@@ -1221,11 +2664,63 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DeviceAccessTokenRequest {
         pub client_id: ::uuid::Uuid,
         pub device_code: ::std::string::String,
         pub grant_type: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for DeviceAccessTokenRequest {
+        const NAME: &'static str = "DeviceAccessTokenRequest";
+        const FIELDS: &'static [&'static str] = &["client_id", "device_code", "grant_type"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                client_id: self::de::required(&mut fields, "client_id")?,
+                device_code: self::de::required(&mut fields, "device_code")?,
+                grant_type: self::de::required(&mut fields, "grant_type")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DeviceAccessTokenRequest {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DeviceAccessTokenRequest {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DeviceAccessTokenRequest", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "client_id",
+                &self.client_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "device_code",
+                &self.device_code,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "grant_type",
+                &self.grant_type,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`DeviceAuthRequest`
@@ -1247,9 +2742,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DeviceAuthRequest {
         pub client_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for DeviceAuthRequest {
+        const NAME: &'static str = "DeviceAuthRequest";
+        const FIELDS: &'static [&'static str] = &["client_id"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                client_id: self::de::required(&mut fields, "client_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DeviceAuthRequest {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DeviceAuthRequest {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DeviceAuthRequest", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "client_id",
+                &self.client_id,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`DeviceAuthVerify`
@@ -1270,9 +2805,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DeviceAuthVerify {
         pub user_code: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for DeviceAuthVerify {
+        const NAME: &'static str = "DeviceAuthVerify";
+        const FIELDS: &'static [&'static str] = &["user_code"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                user_code: self::de::required(&mut fields, "user_code")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DeviceAuthVerify {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DeviceAuthVerify {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DeviceAuthVerify", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "user_code",
+                &self.user_code,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`Digest`
@@ -1393,7 +2968,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Disk {
         pub block_size: ByteCount,
         ///human-readable free-form text about a resource
@@ -1401,19 +2976,135 @@ pub mod types {
         pub device_path: ::std::string::String,
         ///unique, immutable, system-controlled identifier for each resource
         pub id: ::uuid::Uuid,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub image_id: ::std::option::Option<::uuid::Uuid>,
         ///unique, mutable, user-controlled identifier for each resource
         pub name: Name,
         pub project_id: ::uuid::Uuid,
         pub size: ByteCount,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub snapshot_id: ::std::option::Option<::uuid::Uuid>,
         pub state: DiskState,
         ///timestamp when this resource was created
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Disk {
+        const NAME: &'static str = "Disk";
+        const FIELDS: &'static [&'static str] = &[
+            "block_size",
+            "description",
+            "device_path",
+            "id",
+            "image_id",
+            "name",
+            "project_id",
+            "size",
+            "snapshot_id",
+            "state",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                block_size: self::de::required(&mut fields, "block_size")?,
+                description: self::de::required(&mut fields, "description")?,
+                device_path: self::de::required(&mut fields, "device_path")?,
+                id: self::de::required(&mut fields, "id")?,
+                image_id: self::de::defaulted(&mut fields, "image_id")?,
+                name: self::de::required(&mut fields, "name")?,
+                project_id: self::de::required(&mut fields, "project_id")?,
+                size: self::de::required(&mut fields, "size")?,
+                snapshot_id: self::de::defaulted(&mut fields, "snapshot_id")?,
+                state: self::de::required(&mut fields, "state")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Disk {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Disk {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.image_id))
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.snapshot_id))
+                + 1
+                + 1
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Disk", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "block_size",
+                &self.block_size,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "device_path",
+                &self.device_path,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            if !::std::option::Option::is_none(&self.image_id) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "image_id",
+                    &self.image_id,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "project_id",
+                &self.project_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "size", &self.size)?;
+            if !::std::option::Option::is_none(&self.snapshot_id) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "snapshot_id",
+                    &self.snapshot_id,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "state", &self.state)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -1458,7 +3149,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DiskCreate {
         pub description: ::std::string::String,
         ///initial source for this disk
@@ -1466,6 +3157,55 @@ pub mod types {
         pub name: Name,
         ///total size of the Disk in bytes
         pub size: ByteCount,
+    }
+
+    impl<'de> self::de::Build<'de> for DiskCreate {
+        const NAME: &'static str = "DiskCreate";
+        const FIELDS: &'static [&'static str] = &["description", "disk_source", "name", "size"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                disk_source: self::de::required(&mut fields, "disk_source")?,
+                name: self::de::required(&mut fields, "name")?,
+                size: self::de::required(&mut fields, "size")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DiskCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DiskCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "DiskCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "disk_source",
+                &self.disk_source,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "size", &self.size)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///TODO-v1: Delete this Parameters for the
@@ -1489,9 +3229,45 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DiskIdentifier {
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for DiskIdentifier {
+        const NAME: &'static str = "DiskIdentifier";
+        const FIELDS: &'static [&'static str] = &["name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DiskIdentifier {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DiskIdentifier {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DiskIdentifier", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`DiskMetricName`
@@ -1512,18 +3288,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum DiskMetricName {
         #[serde(rename = "activated")]
         Activated,
@@ -1537,6 +3302,38 @@ pub mod types {
         Write,
         #[serde(rename = "write_bytes")]
         WriteBytes,
+    }
+
+    impl self::de::UnitEnum for DiskMetricName {
+        const NAME: &'static str = "DiskMetricName";
+        const VARIANTS: &'static [&'static str] = &[
+            "activated",
+            "flush",
+            "read",
+            "read_bytes",
+            "write",
+            "write_bytes",
+        ];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Activated,
+                1usize => Self::Flush,
+                2usize => Self::Read,
+                3usize => Self::ReadBytes,
+                4usize => Self::Write,
+                5usize => Self::WriteBytes,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DiskMetricName {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for DiskMetricName {
@@ -1610,9 +3407,44 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DiskPath {
         pub disk: NameOrId,
+    }
+
+    impl<'de> self::de::Build<'de> for DiskPath {
+        const NAME: &'static str = "DiskPath";
+        const FIELDS: &'static [&'static str] = &["disk"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                disk: self::de::required(&mut fields, "disk")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DiskPath {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DiskPath {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "DiskPath", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "disk", &self.disk)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -1645,13 +3477,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct DiskResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Disk>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for DiskResultsPage {
+        const NAME: &'static str = "DiskResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for DiskResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for DiskResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "DiskResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Different sources for a disk
@@ -1954,12 +3831,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Distribution {
         ///The name of the distribution (e.g. "alpine" or "ubuntu")
         pub name: Name,
         ///The version of the distribution (e.g. "3.10" or "18.04")
         pub version: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for Distribution {
+        const NAME: &'static str = "Distribution";
+        const FIELDS: &'static [&'static str] = &["name", "version"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                name: self::de::required(&mut fields, "name")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Distribution {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Distribution {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Distribution", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Error information from a response.
@@ -1988,12 +3902,63 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Error {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub error_code: ::std::option::Option<::std::string::String>,
         pub message: ::std::string::String,
         pub request_id: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for Error {
+        const NAME: &'static str = "Error";
+        const FIELDS: &'static [&'static str] = &["error_code", "message", "request_id"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                error_code: self::de::defaulted(&mut fields, "error_code")?,
+                message: self::de::required(&mut fields, "message")?,
+                request_id: self::de::required(&mut fields, "request_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Error {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Error {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.error_code))
+                + 1
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Error", len)?;
+            if !::std::option::Option::is_none(&self.error_code) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "error_code",
+                    &self.error_code,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "message", &self.message)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "request_id",
+                &self.request_id,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`ExternalIp`
@@ -2019,10 +3984,47 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ExternalIp {
         pub ip: ::std::net::IpAddr,
         pub kind: IpKind,
+    }
+
+    impl<'de> self::de::Build<'de> for ExternalIp {
+        const NAME: &'static str = "ExternalIp";
+        const FIELDS: &'static [&'static str] = &["ip", "kind"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                ip: self::de::required(&mut fields, "ip")?,
+                kind: self::de::required(&mut fields, "kind")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ExternalIp {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ExternalIp {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "ExternalIp", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "ip", &self.ip)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "kind", &self.kind)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Parameters for creating an external IP address for instances.
@@ -2109,13 +4111,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ExternalIpResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<ExternalIp>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for ExternalIpResultsPage {
+        const NAME: &'static str = "ExternalIpResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ExternalIpResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ExternalIpResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "ExternalIpResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///The name and type information for a field of a timeseries schema.
@@ -2145,11 +4192,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct FieldSchema {
         pub name: ::std::string::String,
         pub source: FieldSource,
         pub ty: FieldType,
+    }
+
+    impl<'de> self::de::Build<'de> for FieldSchema {
+        const NAME: &'static str = "FieldSchema";
+        const FIELDS: &'static [&'static str] = &["name", "source", "ty"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                name: self::de::required(&mut fields, "name")?,
+                source: self::de::required(&mut fields, "source")?,
+                ty: self::de::required(&mut fields, "ty")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FieldSchema {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for FieldSchema {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "FieldSchema", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "source", &self.source)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "ty", &self.ty)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///The source from which a field is derived, the target or metric.
@@ -2167,23 +4253,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum FieldSource {
         #[serde(rename = "target")]
         Target,
         #[serde(rename = "metric")]
         Metric,
+    }
+
+    impl self::de::UnitEnum for FieldSource {
+        const NAME: &'static str = "FieldSource";
+        const VARIANTS: &'static [&'static str] = &["target", "metric"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Target,
+                1usize => Self::Metric,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FieldSource {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for FieldSource {
@@ -2249,18 +4345,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum FieldType {
         #[serde(rename = "string")]
         String,
@@ -2272,6 +4357,30 @@ pub mod types {
         Uuid,
         #[serde(rename = "bool")]
         Bool,
+    }
+
+    impl self::de::UnitEnum for FieldType {
+        const NAME: &'static str = "FieldType";
+        const VARIANTS: &'static [&'static str] = &["string", "i64", "ip_addr", "uuid", "bool"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::String,
+                1usize => Self::I64,
+                2usize => Self::IpAddr,
+                3usize => Self::Uuid,
+                4usize => Self::Bool,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FieldType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for FieldType {
@@ -2340,18 +4449,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum FleetRole {
         #[serde(rename = "admin")]
         Admin,
@@ -2359,6 +4457,28 @@ pub mod types {
         Collaborator,
         #[serde(rename = "viewer")]
         Viewer,
+    }
+
+    impl self::de::UnitEnum for FleetRole {
+        const NAME: &'static str = "FleetRole";
+        const VARIANTS: &'static [&'static str] = &["admin", "collaborator", "viewer"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Admin,
+                1usize => Self::Collaborator,
+                2usize => Self::Viewer,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FleetRole {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for FleetRole {
@@ -2436,10 +4556,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct FleetRolePolicy {
         ///Roles directly assigned on this resource
         pub role_assignments: ::std::vec::Vec<FleetRoleRoleAssignment>,
+    }
+
+    impl<'de> self::de::Build<'de> for FleetRolePolicy {
+        const NAME: &'static str = "FleetRolePolicy";
+        const FIELDS: &'static [&'static str] = &["role_assignments"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                role_assignments: self::de::required(&mut fields, "role_assignments")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FleetRolePolicy {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for FleetRolePolicy {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "FleetRolePolicy", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "role_assignments",
+                &self.role_assignments,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes the assignment of a particular role on a particular resource
@@ -2475,11 +4635,63 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct FleetRoleRoleAssignment {
         pub identity_id: ::uuid::Uuid,
         pub identity_type: IdentityType,
         pub role_name: FleetRole,
+    }
+
+    impl<'de> self::de::Build<'de> for FleetRoleRoleAssignment {
+        const NAME: &'static str = "FleetRoleRoleAssignment";
+        const FIELDS: &'static [&'static str] = &["identity_id", "identity_type", "role_name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                identity_id: self::de::required(&mut fields, "identity_id")?,
+                identity_type: self::de::required(&mut fields, "identity_type")?,
+                role_name: self::de::required(&mut fields, "role_name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for FleetRoleRoleAssignment {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for FleetRoleRoleAssignment {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "FleetRoleRoleAssignment", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "identity_id",
+                &self.identity_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "identity_type",
+                &self.identity_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "role_name",
+                &self.role_name,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of global Images
@@ -2579,14 +4791,13 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct GlobalImage {
         ///size of blocks in bytes
         pub block_size: ByteCount,
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
         ///Hash of the image contents, if applicable
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub digest: ::std::option::Option<Digest>,
         ///Image distribution
         pub distribution: ::std::string::String,
@@ -2601,10 +4812,111 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///URL source of this image, if any
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub url: ::std::option::Option<::std::string::String>,
         ///Image version
         pub version: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for GlobalImage {
+        const NAME: &'static str = "GlobalImage";
+        const FIELDS: &'static [&'static str] = &[
+            "block_size",
+            "description",
+            "digest",
+            "distribution",
+            "id",
+            "name",
+            "size",
+            "time_created",
+            "time_modified",
+            "url",
+            "version",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                block_size: self::de::required(&mut fields, "block_size")?,
+                description: self::de::required(&mut fields, "description")?,
+                digest: self::de::defaulted(&mut fields, "digest")?,
+                distribution: self::de::required(&mut fields, "distribution")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                size: self::de::required(&mut fields, "size")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                url: self::de::defaulted(&mut fields, "url")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for GlobalImage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for GlobalImage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.digest))
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.url))
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "GlobalImage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "block_size",
+                &self.block_size,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            if !::std::option::Option::is_none(&self.digest) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "digest", &self.digest)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "distribution",
+                &self.distribution,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "size", &self.size)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            if !::std::option::Option::is_none(&self.url) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "url", &self.url)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for an
@@ -2658,7 +4970,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct GlobalImageCreate {
         ///block size in bytes
         pub block_size: BlockSize,
@@ -2668,6 +4980,68 @@ pub mod types {
         pub name: Name,
         ///The source of the image's contents.
         pub source: ImageSource,
+    }
+
+    impl<'de> self::de::Build<'de> for GlobalImageCreate {
+        const NAME: &'static str = "GlobalImageCreate";
+        const FIELDS: &'static [&'static str] = &[
+            "block_size",
+            "description",
+            "distribution",
+            "name",
+            "source",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                block_size: self::de::required(&mut fields, "block_size")?,
+                description: self::de::required(&mut fields, "description")?,
+                distribution: self::de::required(&mut fields, "distribution")?,
+                name: self::de::required(&mut fields, "name")?,
+                source: self::de::required(&mut fields, "source")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for GlobalImageCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for GlobalImageCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "GlobalImageCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "block_size",
+                &self.block_size,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "distribution",
+                &self.distribution,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "source", &self.source)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -2700,13 +5074,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct GlobalImageResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<GlobalImage>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for GlobalImageResultsPage {
+        const NAME: &'static str = "GlobalImageResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for GlobalImageResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for GlobalImageResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "GlobalImageResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a [`Group`]
@@ -2740,13 +5159,56 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Group {
         ///Human-readable name that can identify the group
         pub display_name: ::std::string::String,
         pub id: ::uuid::Uuid,
         ///Uuid of the silo to which this group belongs
         pub silo_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for Group {
+        const NAME: &'static str = "Group";
+        const FIELDS: &'static [&'static str] = &["display_name", "id", "silo_id"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                display_name: self::de::required(&mut fields, "display_name")?,
+                id: self::de::required(&mut fields, "id")?,
+                silo_id: self::de::required(&mut fields, "silo_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Group {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Group {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Group", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "display_name",
+                &self.display_name,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "silo_id", &self.silo_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -2779,13 +5241,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct GroupResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Group>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for GroupResultsPage {
+        const NAME: &'static str = "GroupResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for GroupResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for GroupResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "GroupResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A simple type for managing a histogram metric.
@@ -2862,11 +5369,59 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Histogramdouble {
         pub bins: ::std::vec::Vec<Bindouble>,
         pub n_samples: u64,
         pub start_time: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Histogramdouble {
+        const NAME: &'static str = "Histogramdouble";
+        const FIELDS: &'static [&'static str] = &["bins", "n_samples", "start_time"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                bins: self::de::required(&mut fields, "bins")?,
+                n_samples: self::de::required(&mut fields, "n_samples")?,
+                start_time: self::de::required(&mut fields, "start_time")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Histogramdouble {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Histogramdouble {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "Histogramdouble", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "bins", &self.bins)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "n_samples",
+                &self.n_samples,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "start_time",
+                &self.start_time,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A simple type for managing a histogram metric.
@@ -2943,11 +5498,59 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Histogramint64 {
         pub bins: ::std::vec::Vec<Binint64>,
         pub n_samples: u64,
         pub start_time: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Histogramint64 {
+        const NAME: &'static str = "Histogramint64";
+        const FIELDS: &'static [&'static str] = &["bins", "n_samples", "start_time"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                bins: self::de::required(&mut fields, "bins")?,
+                n_samples: self::de::required(&mut fields, "n_samples")?,
+                start_time: self::de::required(&mut fields, "start_time")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Histogramint64 {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Histogramint64 {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "Histogramint64", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "bins", &self.bins)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "n_samples",
+                &self.n_samples,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "start_time",
+                &self.start_time,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Supported set of sort modes for scanning by id only.
@@ -2971,22 +5574,31 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum IdSortMode {
         ///sort in increasing order of "id"
         #[serde(rename = "id_ascending")]
         IdAscending,
+    }
+
+    impl self::de::UnitEnum for IdSortMode {
+        const NAME: &'static str = "IdSortMode";
+        const VARIANTS: &'static [&'static str] = &["id_ascending"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::IdAscending,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IdSortMode {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for IdSortMode {
@@ -3088,7 +5700,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IdentityProvider {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -3102,6 +5714,75 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for IdentityProvider {
+        const NAME: &'static str = "IdentityProvider";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "name",
+            "provider_type",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                provider_type: self::de::required(&mut fields, "provider_type")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IdentityProvider {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IdentityProvider {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "IdentityProvider", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "provider_type",
+                &self.provider_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -3134,13 +5815,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IdentityProviderResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<IdentityProvider>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for IdentityProviderResultsPage {
+        const NAME: &'static str = "IdentityProviderResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IdentityProviderResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IdentityProviderResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "IdentityProviderResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`IdentityProviderType`
@@ -3161,22 +5890,31 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum IdentityProviderType {
         ///SAML identity provider
         #[serde(rename = "saml")]
         Saml,
+    }
+
+    impl self::de::UnitEnum for IdentityProviderType {
+        const NAME: &'static str = "IdentityProviderType";
+        const VARIANTS: &'static [&'static str] = &["saml"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Saml,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IdentityProviderType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for IdentityProviderType {
@@ -3237,23 +5975,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum IdentityType {
         #[serde(rename = "silo_user")]
         SiloUser,
         #[serde(rename = "silo_group")]
         SiloGroup,
+    }
+
+    impl self::de::UnitEnum for IdentityType {
+        const NAME: &'static str = "IdentityType";
+        const VARIANTS: &'static [&'static str] = &["silo_user", "silo_group"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::SiloUser,
+                1usize => Self::SiloGroup,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IdentityType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for IdentityType {
@@ -3457,14 +6205,13 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Image {
         ///size of blocks in bytes
         pub block_size: ByteCount,
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
         ///Hash of the image contents, if applicable
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub digest: ::std::option::Option<Digest>,
         ///unique, immutable, system-controlled identifier for each resource
         pub id: ::uuid::Uuid,
@@ -3479,11 +6226,117 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///URL source of this image, if any
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub url: ::std::option::Option<::std::string::String>,
         ///Version of this, if any
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub version: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for Image {
+        const NAME: &'static str = "Image";
+        const FIELDS: &'static [&'static str] = &[
+            "block_size",
+            "description",
+            "digest",
+            "id",
+            "name",
+            "project_id",
+            "size",
+            "time_created",
+            "time_modified",
+            "url",
+            "version",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                block_size: self::de::required(&mut fields, "block_size")?,
+                description: self::de::required(&mut fields, "description")?,
+                digest: self::de::defaulted(&mut fields, "digest")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                project_id: self::de::required(&mut fields, "project_id")?,
+                size: self::de::required(&mut fields, "size")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                url: self::de::defaulted(&mut fields, "url")?,
+                version: self::de::defaulted(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Image {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Image {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.digest))
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.url))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.version));
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Image", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "block_size",
+                &self.block_size,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            if !::std::option::Option::is_none(&self.digest) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "digest", &self.digest)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "project_id",
+                &self.project_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "size", &self.size)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            if !::std::option::Option::is_none(&self.url) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "url", &self.url)?;
+            }
+            if !::std::option::Option::is_none(&self.version) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "version",
+                    &self.version,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for an
@@ -3528,7 +6381,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ImageCreate {
         ///block size in bytes
         pub block_size: BlockSize,
@@ -3536,6 +6389,55 @@ pub mod types {
         pub name: Name,
         ///The source of the image's contents.
         pub source: ImageSource,
+    }
+
+    impl<'de> self::de::Build<'de> for ImageCreate {
+        const NAME: &'static str = "ImageCreate";
+        const FIELDS: &'static [&'static str] = &["block_size", "description", "name", "source"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                block_size: self::de::required(&mut fields, "block_size")?,
+                description: self::de::required(&mut fields, "description")?,
+                name: self::de::required(&mut fields, "name")?,
+                source: self::de::required(&mut fields, "source")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ImageCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ImageCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "ImageCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "block_size",
+                &self.block_size,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "source", &self.source)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -3568,13 +6470,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ImageResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Image>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for ImageResultsPage {
+        const NAME: &'static str = "ImageResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ImageResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ImageResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "ImageResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///The source of the underlying image.
@@ -3737,7 +6684,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Instance {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -3759,6 +6706,97 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub time_run_state_updated: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Instance {
+        const NAME: &'static str = "Instance";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "hostname",
+            "id",
+            "memory",
+            "name",
+            "ncpus",
+            "project_id",
+            "run_state",
+            "time_created",
+            "time_modified",
+            "time_run_state_updated",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                hostname: self::de::required(&mut fields, "hostname")?,
+                id: self::de::required(&mut fields, "id")?,
+                memory: self::de::required(&mut fields, "memory")?,
+                name: self::de::required(&mut fields, "name")?,
+                ncpus: self::de::required(&mut fields, "ncpus")?,
+                project_id: self::de::required(&mut fields, "project_id")?,
+                run_state: self::de::required(&mut fields, "run_state")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                time_run_state_updated: self::de::required(&mut fields, "time_run_state_updated")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Instance {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Instance {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Instance", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "hostname", &self.hostname)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "memory", &self.memory)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "ncpus", &self.ncpus)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "project_id",
+                &self.project_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "run_state",
+                &self.run_state,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_run_state_updated",
+                &self.time_run_state_updated,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///The number of CPUs in an Instance
@@ -3907,11 +6945,10 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct InstanceCreate {
         pub description: ::std::string::String,
         ///The disks to be created or attached for this instance.
-        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
         pub disks: ::std::vec::Vec<InstanceDiskAttachment>,
         ///The external IP addresses provided to this instance.
         ///
@@ -3919,23 +6956,120 @@ pub mod types {
         /// connectivity. These external addresses can be used to provide a
         /// fixed, known IP address for making inbound connections to the
         /// instance.
-        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
         pub external_ips: ::std::vec::Vec<ExternalIpCreate>,
         pub hostname: ::std::string::String,
         pub memory: ByteCount,
         pub name: Name,
         pub ncpus: InstanceCpuCount,
         ///The network interfaces to be created for this instance.
-        #[serde(default = "defaults::instance_create_network_interfaces")]
         pub network_interfaces: InstanceNetworkInterfaceAttachment,
         ///Should this instance be started upon creation; true by default.
-        #[serde(default = "defaults::default_bool::<true>")]
         pub start: bool,
         ///User data for instance initialization systems (such as cloud-init).
         /// Must be a Base64-encoded string, as specified in RFC 4648 § 4 (+ and
         /// / characters with padding). Maximum 32 KiB unencoded data.
-        #[serde(default)]
         pub user_data: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for InstanceCreate {
+        const NAME: &'static str = "InstanceCreate";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "disks",
+            "external_ips",
+            "hostname",
+            "memory",
+            "name",
+            "ncpus",
+            "network_interfaces",
+            "start",
+            "user_data",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                disks: self::de::defaulted(&mut fields, "disks")?,
+                external_ips: self::de::defaulted(&mut fields, "external_ips")?,
+                hostname: self::de::required(&mut fields, "hostname")?,
+                memory: self::de::required(&mut fields, "memory")?,
+                name: self::de::required(&mut fields, "name")?,
+                ncpus: self::de::required(&mut fields, "ncpus")?,
+                network_interfaces: self::de::defaulted_with(
+                    &mut fields,
+                    "network_interfaces",
+                    || defaults::instance_create_network_interfaces(),
+                )?,
+                start: self::de::defaulted_with(&mut fields, "start", || {
+                    defaults::default_bool::<true>()
+                })?,
+                user_data: self::de::defaulted(&mut fields, "user_data")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for InstanceCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for InstanceCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::vec::Vec::is_empty(&self.disks))
+                + ::std::primitive::usize::from(!::std::vec::Vec::is_empty(&self.external_ips))
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "InstanceCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            if !::std::vec::Vec::is_empty(&self.disks) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "disks", &self.disks)?;
+            }
+            if !::std::vec::Vec::is_empty(&self.external_ips) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "external_ips",
+                    &self.external_ips,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "hostname", &self.hostname)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "memory", &self.memory)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "ncpus", &self.ncpus)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "network_interfaces",
+                &self.network_interfaces,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "start", &self.start)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "user_data",
+                &self.user_data,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describe the instance's disks at creation time
@@ -4057,9 +7191,49 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct InstanceMigrate {
         pub dst_sled_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for InstanceMigrate {
+        const NAME: &'static str = "InstanceMigrate";
+        const FIELDS: &'static [&'static str] = &["dst_sled_id"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                dst_sled_id: self::de::required(&mut fields, "dst_sled_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for InstanceMigrate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for InstanceMigrate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "InstanceMigrate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "dst_sled_id",
+                &self.dst_sled_id,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes an attachment of a `NetworkInterface` to an `Instance`, at the
@@ -4180,13 +7354,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct InstanceResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Instance>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for InstanceResultsPage {
+        const NAME: &'static str = "InstanceResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for InstanceResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for InstanceResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "InstanceResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Contents of an Instance's serial console buffer.
@@ -4221,7 +7440,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct InstanceSerialConsoleData {
         ///The bytes starting from the requested offset up to either the end of
         /// the buffer or the request's `max_bytes`. Provided as a u8 array
@@ -4230,6 +7449,51 @@ pub mod types {
         ///The absolute offset since boot (suitable for use as `byte_offset` in
         /// a subsequent request) of the last byte returned in `data`.
         pub last_byte_offset: u64,
+    }
+
+    impl<'de> self::de::Build<'de> for InstanceSerialConsoleData {
+        const NAME: &'static str = "InstanceSerialConsoleData";
+        const FIELDS: &'static [&'static str] = &["data", "last_byte_offset"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                data: self::de::required(&mut fields, "data")?,
+                last_byte_offset: self::de::required(&mut fields, "last_byte_offset")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for InstanceSerialConsoleData {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for InstanceSerialConsoleData {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "InstanceSerialConsoleData",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "data", &self.data)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "last_byte_offset",
+                &self.last_byte_offset,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Running state of an Instance (primarily: booted or stopped)
@@ -4317,18 +7581,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum InstanceState {
         ///The instance is being created.
         #[serde(rename = "creating")]
@@ -4364,6 +7617,46 @@ pub mod types {
         ///The instance has been deleted.
         #[serde(rename = "destroyed")]
         Destroyed,
+    }
+
+    impl self::de::UnitEnum for InstanceState {
+        const NAME: &'static str = "InstanceState";
+        const VARIANTS: &'static [&'static str] = &[
+            "creating",
+            "starting",
+            "running",
+            "stopping",
+            "stopped",
+            "rebooting",
+            "migrating",
+            "repairing",
+            "failed",
+            "destroyed",
+        ];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Creating,
+                1usize => Self::Starting,
+                2usize => Self::Running,
+                3usize => Self::Stopping,
+                4usize => Self::Stopped,
+                5usize => Self::Rebooting,
+                6usize => Self::Migrating,
+                7usize => Self::Repairing,
+                8usize => Self::Failed,
+                9usize => Self::Destroyed,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for InstanceState {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for InstanceState {
@@ -4442,23 +7735,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum IpKind {
         #[serde(rename = "ephemeral")]
         Ephemeral,
         #[serde(rename = "floating")]
         Floating,
+    }
+
+    impl self::de::UnitEnum for IpKind {
+        const NAME: &'static str = "IpKind";
+        const VARIANTS: &'static [&'static str] = &["ephemeral", "floating"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Ephemeral,
+                1usize => Self::Floating,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpKind {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for IpKind {
@@ -4647,7 +7950,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPool {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -4659,6 +7962,62 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPool {
+        const NAME: &'static str = "IpPool";
+        const FIELDS: &'static [&'static str] =
+            &["description", "id", "name", "time_created", "time_modified"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPool {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPool {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "IpPool", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for an IP Pool.
@@ -4686,10 +8045,51 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPoolCreate {
         pub description: ::std::string::String,
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPoolCreate {
+        const NAME: &'static str = "IpPoolCreate";
+        const FIELDS: &'static [&'static str] = &["description", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPoolCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPoolCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "IpPoolCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`IpPoolRange`
@@ -4720,11 +8120,54 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPoolRange {
         pub id: ::uuid::Uuid,
         pub range: IpRange,
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPoolRange {
+        const NAME: &'static str = "IpPoolRange";
+        const FIELDS: &'static [&'static str] = &["id", "range", "time_created"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                id: self::de::required(&mut fields, "id")?,
+                range: self::de::required(&mut fields, "range")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPoolRange {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPoolRange {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "IpPoolRange", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "range", &self.range)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -4757,13 +8200,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPoolRangeResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<IpPoolRange>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPoolRangeResultsPage {
+        const NAME: &'static str = "IpPoolRangeResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPoolRangeResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPoolRangeResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "IpPoolRangeResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -4796,13 +8284,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPoolResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<IpPool>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPoolResultsPage {
+        const NAME: &'static str = "IpPoolResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPoolResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPoolResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "IpPoolResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Parameters for updating an IP Pool
@@ -4838,12 +8371,57 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct IpPoolUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<Name>,
+    }
+
+    impl<'de> self::de::Build<'de> for IpPoolUpdate {
+        const NAME: &'static str = "IpPoolUpdate";
+        const FIELDS: &'static [&'static str] = &["description", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::defaulted(&mut fields, "description")?,
+                name: self::de::defaulted(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for IpPoolUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for IpPoolUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.description))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.name));
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "IpPoolUpdate", len)?;
+            if !::std::option::Option::is_none(&self.description) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "description",
+                    &self.description,
+                )?;
+            }
+            if !::std::option::Option::is_none(&self.name) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     impl ::std::default::Default for IpPoolUpdate {
@@ -5021,10 +8599,47 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Ipv4Range {
         pub first: ::std::net::Ipv4Addr,
         pub last: ::std::net::Ipv4Addr,
+    }
+
+    impl<'de> self::de::Build<'de> for Ipv4Range {
+        const NAME: &'static str = "Ipv4Range";
+        const FIELDS: &'static [&'static str] = &["first", "last"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                first: self::de::required(&mut fields, "first")?,
+                last: self::de::required(&mut fields, "last")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Ipv4Range {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Ipv4Range {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Ipv4Range", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "first", &self.first)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "last", &self.last)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///An IPv6 subnet, including prefix and subnet mask
@@ -5146,10 +8761,47 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Ipv6Range {
         pub first: ::std::net::Ipv6Addr,
         pub last: ::std::net::Ipv6Addr,
+    }
+
+    impl<'de> self::de::Build<'de> for Ipv6Range {
+        const NAME: &'static str = "Ipv6Range";
+        const FIELDS: &'static [&'static str] = &["first", "last"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                first: self::de::required(&mut fields, "first")?,
+                last: self::de::required(&mut fields, "last")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Ipv6Range {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Ipv6Range {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Ipv6Range", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "first", &self.first)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "last", &self.last)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///An inclusive-inclusive range of IP ports. The second port may be omitted
@@ -5363,10 +9015,51 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Measurement {
         pub datum: Datum,
         pub timestamp: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Measurement {
+        const NAME: &'static str = "Measurement";
+        const FIELDS: &'static [&'static str] = &["datum", "timestamp"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                datum: self::de::required(&mut fields, "datum")?,
+                timestamp: self::de::required(&mut fields, "timestamp")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Measurement {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Measurement {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Measurement", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "datum", &self.datum)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "timestamp",
+                &self.timestamp,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -5399,13 +9092,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct MeasurementResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Measurement>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for MeasurementResultsPage {
+        const NAME: &'static str = "MeasurementResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for MeasurementResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for MeasurementResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "MeasurementResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Names must begin with a lower case ASCII letter, be composed exclusively
@@ -5623,18 +9361,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum NameOrIdSortMode {
         ///sort in increasing order of "name"
         #[serde(rename = "name_ascending")]
@@ -5645,6 +9372,29 @@ pub mod types {
         ///sort in increasing order of "id"
         #[serde(rename = "id_ascending")]
         IdAscending,
+    }
+
+    impl self::de::UnitEnum for NameOrIdSortMode {
+        const NAME: &'static str = "NameOrIdSortMode";
+        const VARIANTS: &'static [&'static str] =
+            &["name_ascending", "name_descending", "id_ascending"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::NameAscending,
+                1usize => Self::NameDescending,
+                2usize => Self::IdAscending,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NameOrIdSortMode {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for NameOrIdSortMode {
@@ -5715,22 +9465,31 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum NameSortMode {
         ///sort in increasing order of "name"
         #[serde(rename = "name_ascending")]
         NameAscending,
+    }
+
+    impl self::de::UnitEnum for NameSortMode {
+        const NAME: &'static str = "NameSortMode";
+        const VARIANTS: &'static [&'static str] = &["name_ascending"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::NameAscending,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NameSortMode {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for NameSortMode {
@@ -5861,7 +9620,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct NetworkInterface {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -5886,6 +9645,94 @@ pub mod types {
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///The VPC to which the interface belongs.
         pub vpc_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for NetworkInterface {
+        const NAME: &'static str = "NetworkInterface";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "instance_id",
+            "ip",
+            "mac",
+            "name",
+            "primary",
+            "subnet_id",
+            "time_created",
+            "time_modified",
+            "vpc_id",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                instance_id: self::de::required(&mut fields, "instance_id")?,
+                ip: self::de::required(&mut fields, "ip")?,
+                mac: self::de::required(&mut fields, "mac")?,
+                name: self::de::required(&mut fields, "name")?,
+                primary: self::de::required(&mut fields, "primary")?,
+                subnet_id: self::de::required(&mut fields, "subnet_id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vpc_id: self::de::required(&mut fields, "vpc_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NetworkInterface {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for NetworkInterface {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "NetworkInterface", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "instance_id",
+                &self.instance_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "ip", &self.ip)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "mac", &self.mac)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "primary", &self.primary)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "subnet_id",
+                &self.subnet_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vpc_id", &self.vpc_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -5938,18 +9785,77 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct NetworkInterfaceCreate {
         pub description: ::std::string::String,
         ///The IP address for the interface. One will be auto-assigned if not
         /// provided.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub ip: ::std::option::Option<::std::net::IpAddr>,
         pub name: Name,
         ///The VPC Subnet in which to create the interface.
         pub subnet_name: Name,
         ///The VPC in which to create the interface.
         pub vpc_name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for NetworkInterfaceCreate {
+        const NAME: &'static str = "NetworkInterfaceCreate";
+        const FIELDS: &'static [&'static str] =
+            &["description", "ip", "name", "subnet_name", "vpc_name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                ip: self::de::defaulted(&mut fields, "ip")?,
+                name: self::de::required(&mut fields, "name")?,
+                subnet_name: self::de::required(&mut fields, "subnet_name")?,
+                vpc_name: self::de::required(&mut fields, "vpc_name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NetworkInterfaceCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for NetworkInterfaceCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.ip))
+                + 1
+                + 1
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "NetworkInterfaceCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            if !::std::option::Option::is_none(&self.ip) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "ip", &self.ip)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "subnet_name",
+                &self.subnet_name,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vpc_name", &self.vpc_name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -5982,13 +9888,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct NetworkInterfaceResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<NetworkInterface>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for NetworkInterfaceResultsPage {
+        const NAME: &'static str = "NetworkInterfaceResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NetworkInterfaceResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for NetworkInterfaceResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "NetworkInterfaceResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Parameters for updating a
@@ -6033,11 +9987,9 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct NetworkInterfaceUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<Name>,
         ///Make a secondary interface the instance's primary interface.
         ///
@@ -6050,8 +10002,58 @@ pub mod types {
         ///Note that this can only be used to select a new primary interface
         /// for an instance. Requests to change the primary interface into a
         /// secondary will return an error.
-        #[serde(default)]
         pub primary: bool,
+    }
+
+    impl<'de> self::de::Build<'de> for NetworkInterfaceUpdate {
+        const NAME: &'static str = "NetworkInterfaceUpdate";
+        const FIELDS: &'static [&'static str] = &["description", "name", "primary"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::defaulted(&mut fields, "description")?,
+                name: self::de::defaulted(&mut fields, "name")?,
+                primary: self::de::defaulted(&mut fields, "primary")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for NetworkInterfaceUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for NetworkInterfaceUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.description))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.name))
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "NetworkInterfaceUpdate", len)?;
+            if !::std::option::Option::is_none(&self.description) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "description",
+                    &self.description,
+                )?;
+            }
+            if !::std::option::Option::is_none(&self.name) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "primary", &self.primary)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     impl ::std::default::Default for NetworkInterfaceUpdate {
@@ -6228,13 +10230,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct OrganizationResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Organization>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for OrganizationResultsPage {
+        const NAME: &'static str = "OrganizationResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for OrganizationResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for OrganizationResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "OrganizationResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`OrganizationRole`
@@ -6281,10 +10328,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct OrganizationRolePolicy {
         ///Roles directly assigned on this resource
         pub role_assignments: ::std::vec::Vec<OrganizationRoleRoleAssignment>,
+    }
+
+    impl<'de> self::de::Build<'de> for OrganizationRolePolicy {
+        const NAME: &'static str = "OrganizationRolePolicy";
+        const FIELDS: &'static [&'static str] = &["role_assignments"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                role_assignments: self::de::required(&mut fields, "role_assignments")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for OrganizationRolePolicy {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for OrganizationRolePolicy {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "OrganizationRolePolicy", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "role_assignments",
+                &self.role_assignments,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes the assignment of a particular role on a particular resource
@@ -6490,7 +10577,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct PhysicalDisk {
         pub disk_type: PhysicalDiskType,
         ///unique, immutable, system-controlled identifier for each resource
@@ -6498,13 +10585,96 @@ pub mod types {
         pub model: ::std::string::String,
         pub serial: ::std::string::String,
         ///The sled to which this disk is attached, if any.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub sled_id: ::std::option::Option<::uuid::Uuid>,
         ///timestamp when this resource was created
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub vendor: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for PhysicalDisk {
+        const NAME: &'static str = "PhysicalDisk";
+        const FIELDS: &'static [&'static str] = &[
+            "disk_type",
+            "id",
+            "model",
+            "serial",
+            "sled_id",
+            "time_created",
+            "time_modified",
+            "vendor",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                disk_type: self::de::required(&mut fields, "disk_type")?,
+                id: self::de::required(&mut fields, "id")?,
+                model: self::de::required(&mut fields, "model")?,
+                serial: self::de::required(&mut fields, "serial")?,
+                sled_id: self::de::defaulted(&mut fields, "sled_id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vendor: self::de::required(&mut fields, "vendor")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for PhysicalDisk {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for PhysicalDisk {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.sled_id))
+                + 1
+                + 1
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "PhysicalDisk", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "disk_type",
+                &self.disk_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "model", &self.model)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "serial", &self.serial)?;
+            if !::std::option::Option::is_none(&self.sled_id) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "sled_id",
+                    &self.sled_id,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vendor", &self.vendor)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -6537,13 +10707,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct PhysicalDiskResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<PhysicalDisk>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for PhysicalDiskResultsPage {
+        const NAME: &'static str = "PhysicalDiskResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for PhysicalDiskResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for PhysicalDiskResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "PhysicalDiskResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`PhysicalDiskType`
@@ -6560,23 +10775,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum PhysicalDiskType {
         #[serde(rename = "internal")]
         Internal,
         #[serde(rename = "external")]
         External,
+    }
+
+    impl self::de::UnitEnum for PhysicalDiskType {
+        const NAME: &'static str = "PhysicalDiskType";
+        const VARIANTS: &'static [&'static str] = &["internal", "external"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Internal,
+                1usize => Self::External,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for PhysicalDiskType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for PhysicalDiskType {
@@ -6676,7 +10901,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Project {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -6689,6 +10914,74 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Project {
+        const NAME: &'static str = "Project";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "name",
+            "organization_id",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                organization_id: self::de::required(&mut fields, "organization_id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Project {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Project {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Project", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "organization_id",
+                &self.organization_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -6746,13 +11039,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ProjectResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Project>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for ProjectResultsPage {
+        const NAME: &'static str = "ProjectResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ProjectResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ProjectResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "ProjectResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`ProjectRole`
@@ -6799,10 +11137,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct ProjectRolePolicy {
         ///Roles directly assigned on this resource
         pub role_assignments: ::std::vec::Vec<ProjectRoleRoleAssignment>,
+    }
+
+    impl<'de> self::de::Build<'de> for ProjectRolePolicy {
+        const NAME: &'static str = "ProjectRolePolicy";
+        const FIELDS: &'static [&'static str] = &["role_assignments"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                role_assignments: self::de::required(&mut fields, "role_assignments")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ProjectRolePolicy {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for ProjectRolePolicy {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "ProjectRolePolicy", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "role_assignments",
+                &self.role_assignments,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes the assignment of a particular role on a particular resource
@@ -6907,7 +11285,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Rack {
         ///unique, immutable, system-controlled identifier for each resource
         pub id: ::uuid::Uuid,
@@ -6915,6 +11293,53 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Rack {
+        const NAME: &'static str = "Rack";
+        const FIELDS: &'static [&'static str] = &["id", "time_created", "time_modified"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                id: self::de::required(&mut fields, "id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Rack {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Rack {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Rack", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -6947,13 +11372,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RackResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Rack>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for RackResultsPage {
+        const NAME: &'static str = "RackResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RackResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RackResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "RackResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a [`Role`]
@@ -6979,10 +11449,51 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Role {
         pub description: ::std::string::String,
         pub name: RoleName,
+    }
+
+    impl<'de> self::de::Build<'de> for Role {
+        const NAME: &'static str = "Role";
+        const FIELDS: &'static [&'static str] = &["description", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Role {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Role {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Role", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Role names consist of two string components separated by dot (".").
@@ -7098,13 +11609,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RoleResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Role>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for RoleResultsPage {
+        const NAME: &'static str = "RoleResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RoleResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RoleResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "RoleResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A `RouteDestination` is used to match traffic with a routing rule, on
@@ -7436,7 +11992,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RouterRoute {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -7454,6 +12010,87 @@ pub mod types {
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///The VPC Router to which the route belongs.
         pub vpc_router_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for RouterRoute {
+        const NAME: &'static str = "RouterRoute";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "destination",
+            "id",
+            "kind",
+            "name",
+            "target",
+            "time_created",
+            "time_modified",
+            "vpc_router_id",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                destination: self::de::required(&mut fields, "destination")?,
+                id: self::de::required(&mut fields, "id")?,
+                kind: self::de::required(&mut fields, "kind")?,
+                name: self::de::required(&mut fields, "name")?,
+                target: self::de::required(&mut fields, "target")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vpc_router_id: self::de::required(&mut fields, "vpc_router_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RouterRoute {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RouterRoute {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "RouterRoute", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "destination",
+                &self.destination,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "kind", &self.kind)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "target", &self.target)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "vpc_router_id",
+                &self.vpc_router_id,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a [`RouterRoute`]
@@ -7487,12 +12124,62 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RouterRouteCreateParams {
         pub description: ::std::string::String,
         pub destination: RouteDestination,
         pub name: Name,
         pub target: RouteTarget,
+    }
+
+    impl<'de> self::de::Build<'de> for RouterRouteCreateParams {
+        const NAME: &'static str = "RouterRouteCreateParams";
+        const FIELDS: &'static [&'static str] = &["description", "destination", "name", "target"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                destination: self::de::required(&mut fields, "destination")?,
+                name: self::de::required(&mut fields, "name")?,
+                target: self::de::required(&mut fields, "target")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RouterRouteCreateParams {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RouterRouteCreateParams {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "RouterRouteCreateParams", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "destination",
+                &self.destination,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "target", &self.target)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///The classification of a [`RouterRoute`] as defined by the system. The
@@ -7539,18 +12226,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum RouterRouteKind {
         ///Determines the default destination of traffic, such as whether it
         /// goes to the internet or not.
@@ -7573,6 +12249,30 @@ pub mod types {
         ///`Destination: User defined` `Modifiable: true`
         #[serde(rename = "custom")]
         Custom,
+    }
+
+    impl self::de::UnitEnum for RouterRouteKind {
+        const NAME: &'static str = "RouterRouteKind";
+        const VARIANTS: &'static [&'static str] =
+            &["default", "vpc_subnet", "vpc_peering", "custom"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Default,
+                1usize => Self::VpcSubnet,
+                2usize => Self::VpcPeering,
+                3usize => Self::Custom,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RouterRouteKind {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for RouterRouteKind {
@@ -7654,13 +12354,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RouterRouteResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<RouterRoute>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for RouterRouteResultsPage {
+        const NAME: &'static str = "RouterRouteResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RouterRouteResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RouterRouteResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "RouterRouteResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Updateable properties of a [`RouterRoute`]
@@ -7706,14 +12451,70 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct RouterRouteUpdateParams {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         pub destination: RouteDestination,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<Name>,
         pub target: RouteTarget,
+    }
+
+    impl<'de> self::de::Build<'de> for RouterRouteUpdateParams {
+        const NAME: &'static str = "RouterRouteUpdateParams";
+        const FIELDS: &'static [&'static str] = &["description", "destination", "name", "target"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::defaulted(&mut fields, "description")?,
+                destination: self::de::required(&mut fields, "destination")?,
+                name: self::de::defaulted(&mut fields, "name")?,
+                target: self::de::required(&mut fields, "target")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for RouterRouteUpdateParams {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for RouterRouteUpdateParams {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.description))
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.name))
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "RouterRouteUpdateParams", len)?;
+            if !::std::option::Option::is_none(&self.description) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "description",
+                    &self.description,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "destination",
+                &self.destination,
+            )?;
+            if !::std::option::Option::is_none(&self.name) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "target", &self.target)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`Saga`
@@ -7739,10 +12540,47 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Saga {
         pub id: ::uuid::Uuid,
         pub state: SagaState,
+    }
+
+    impl<'de> self::de::Build<'de> for Saga {
+        const NAME: &'static str = "Saga";
+        const FIELDS: &'static [&'static str] = &["id", "state"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                id: self::de::required(&mut fields, "id")?,
+                state: self::de::required(&mut fields, "state")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Saga {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Saga {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Saga", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "state", &self.state)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SagaErrorInfo`
@@ -7885,13 +12723,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SagaResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Saga>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SagaResultsPage {
+        const NAME: &'static str = "SagaResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SagaResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SagaResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SagaResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SagaState`
@@ -8049,7 +12932,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SamlIdentityProvider {
         ///service provider endpoint where the response will be sent
         pub acs_url: ::std::string::String,
@@ -8063,7 +12946,6 @@ pub mod types {
         pub name: Name,
         ///optional request signing public certificate (base64 encoded der
         /// file)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub public_cert: ::std::option::Option<::std::string::String>,
         ///service provider endpoint where the idp should send log out requests
         pub slo_url: ::std::string::String,
@@ -8075,6 +12957,118 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for SamlIdentityProvider {
+        const NAME: &'static str = "SamlIdentityProvider";
+        const FIELDS: &'static [&'static str] = &[
+            "acs_url",
+            "description",
+            "id",
+            "idp_entity_id",
+            "name",
+            "public_cert",
+            "slo_url",
+            "sp_client_id",
+            "technical_contact_email",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                acs_url: self::de::required(&mut fields, "acs_url")?,
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                idp_entity_id: self::de::required(&mut fields, "idp_entity_id")?,
+                name: self::de::required(&mut fields, "name")?,
+                public_cert: self::de::defaulted(&mut fields, "public_cert")?,
+                slo_url: self::de::required(&mut fields, "slo_url")?,
+                sp_client_id: self::de::required(&mut fields, "sp_client_id")?,
+                technical_contact_email: self::de::required(
+                    &mut fields,
+                    "technical_contact_email",
+                )?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SamlIdentityProvider {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SamlIdentityProvider {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.public_cert))
+                + 1
+                + 1
+                + 1
+                + 1
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SamlIdentityProvider", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "acs_url", &self.acs_url)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "idp_entity_id",
+                &self.idp_entity_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            if !::std::option::Option::is_none(&self.public_cert) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "public_cert",
+                    &self.public_cert,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "slo_url", &self.slo_url)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "sp_client_id",
+                &self.sp_client_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "technical_contact_email",
+                &self.technical_contact_email,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time identity-related parameters
@@ -8156,7 +13150,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SamlIdentityProviderCreate {
         ///service provider endpoint where the response will be sent
         pub acs_url: ::std::string::String,
@@ -8164,7 +13158,6 @@ pub mod types {
         ///If set, SAML attributes with this name will be considered to denote
         /// a user's group membership, where the attribute value(s) should be a
         /// comma-separated list of group names.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub group_attribute_name: ::std::option::Option<::std::string::String>,
         ///idp's entity id
         pub idp_entity_id: ::std::string::String,
@@ -8172,7 +13165,6 @@ pub mod types {
         pub idp_metadata_source: IdpMetadataSource,
         pub name: Name,
         ///optional request signing key pair
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub signing_keypair: ::std::option::Option<DerEncodedKeyPair>,
         ///service provider endpoint where the idp should send log out requests
         pub slo_url: ::std::string::String,
@@ -8180,6 +13172,123 @@ pub mod types {
         pub sp_client_id: ::std::string::String,
         ///customer's technical contact for saml configuration
         pub technical_contact_email: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for SamlIdentityProviderCreate {
+        const NAME: &'static str = "SamlIdentityProviderCreate";
+        const FIELDS: &'static [&'static str] = &[
+            "acs_url",
+            "description",
+            "group_attribute_name",
+            "idp_entity_id",
+            "idp_metadata_source",
+            "name",
+            "signing_keypair",
+            "slo_url",
+            "sp_client_id",
+            "technical_contact_email",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                acs_url: self::de::required(&mut fields, "acs_url")?,
+                description: self::de::required(&mut fields, "description")?,
+                group_attribute_name: self::de::defaulted(&mut fields, "group_attribute_name")?,
+                idp_entity_id: self::de::required(&mut fields, "idp_entity_id")?,
+                idp_metadata_source: self::de::required(&mut fields, "idp_metadata_source")?,
+                name: self::de::required(&mut fields, "name")?,
+                signing_keypair: self::de::defaulted(&mut fields, "signing_keypair")?,
+                slo_url: self::de::required(&mut fields, "slo_url")?,
+                sp_client_id: self::de::required(&mut fields, "sp_client_id")?,
+                technical_contact_email: self::de::required(
+                    &mut fields,
+                    "technical_contact_email",
+                )?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SamlIdentityProviderCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SamlIdentityProviderCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(
+                    &self.group_attribute_name,
+                ))
+                + 1
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(
+                    &self.signing_keypair,
+                ))
+                + 1
+                + 1
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "SamlIdentityProviderCreate",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "acs_url", &self.acs_url)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            if !::std::option::Option::is_none(&self.group_attribute_name) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "group_attribute_name",
+                    &self.group_attribute_name,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "idp_entity_id",
+                &self.idp_entity_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "idp_metadata_source",
+                &self.idp_metadata_source,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            if !::std::option::Option::is_none(&self.signing_keypair) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "signing_keypair",
+                    &self.signing_keypair,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "slo_url", &self.slo_url)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "sp_client_id",
+                &self.sp_client_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "technical_contact_email",
+                &self.technical_contact_email,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SemverVersion`
@@ -8280,22 +13389,31 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum ServiceUsingCertificate {
         ///This certificate is intended for access to the external API.
         #[serde(rename = "external_api")]
         ExternalApi,
+    }
+
+    impl self::de::UnitEnum for ServiceUsingCertificate {
+        const NAME: &'static str = "ServiceUsingCertificate";
+        const VARIANTS: &'static [&'static str] = &["external_api"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::ExternalApi,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for ServiceUsingCertificate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for ServiceUsingCertificate {
@@ -8402,7 +13520,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Silo {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -8419,6 +13537,81 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Silo {
+        const NAME: &'static str = "Silo";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "discoverable",
+            "id",
+            "identity_mode",
+            "name",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                discoverable: self::de::required(&mut fields, "discoverable")?,
+                id: self::de::required(&mut fields, "id")?,
+                identity_mode: self::de::required(&mut fields, "identity_mode")?,
+                name: self::de::required(&mut fields, "name")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Silo {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Silo {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Silo", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "discoverable",
+                &self.discoverable,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "identity_mode",
+                &self.identity_mode,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a [`Silo`](crate::external_api::views::Silo)
@@ -8459,7 +13652,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SiloCreate {
         ///If set, this group will be created during Silo creation and granted
         /// the "Silo Admin" role. Identity providers can assert that users
@@ -8469,12 +13662,85 @@ pub mod types {
         ///Note that if configuring a SAML based identity provider,
         /// group_attribute_name must be set for users to be considered part of
         /// a group. See [`SamlIdentityProviderCreate`] for more information.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub admin_group_name: ::std::option::Option<::std::string::String>,
         pub description: ::std::string::String,
         pub discoverable: bool,
         pub identity_mode: SiloIdentityMode,
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for SiloCreate {
+        const NAME: &'static str = "SiloCreate";
+        const FIELDS: &'static [&'static str] = &[
+            "admin_group_name",
+            "description",
+            "discoverable",
+            "identity_mode",
+            "name",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                admin_group_name: self::de::defaulted(&mut fields, "admin_group_name")?,
+                description: self::de::required(&mut fields, "description")?,
+                discoverable: self::de::required(&mut fields, "discoverable")?,
+                identity_mode: self::de::required(&mut fields, "identity_mode")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SiloCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SiloCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(
+                    &self.admin_group_name,
+                ))
+                + 1
+                + 1
+                + 1
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "SiloCreate", len)?;
+            if !::std::option::Option::is_none(&self.admin_group_name) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "admin_group_name",
+                    &self.admin_group_name,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "discoverable",
+                &self.discoverable,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "identity_mode",
+                &self.identity_mode,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes how identities are managed and users are authenticated in this
@@ -8504,18 +13770,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum SiloIdentityMode {
         ///Users are authenticated with SAML using an external authentication
         /// provider.  The system updates information about users and groups
@@ -8527,6 +13782,27 @@ pub mod types {
         /// to an external authentication provider or identity provider.
         #[serde(rename = "local_only")]
         LocalOnly,
+    }
+
+    impl self::de::UnitEnum for SiloIdentityMode {
+        const NAME: &'static str = "SiloIdentityMode";
+        const VARIANTS: &'static [&'static str] = &["saml_jit", "local_only"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::SamlJit,
+                1usize => Self::LocalOnly,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SiloIdentityMode {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for SiloIdentityMode {
@@ -8604,13 +13880,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SiloResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Silo>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SiloResultsPage {
+        const NAME: &'static str = "SiloResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SiloResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SiloResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SiloResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SiloRole`
@@ -8657,10 +13978,50 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SiloRolePolicy {
         ///Roles directly assigned on this resource
         pub role_assignments: ::std::vec::Vec<SiloRoleRoleAssignment>,
+    }
+
+    impl<'de> self::de::Build<'de> for SiloRolePolicy {
+        const NAME: &'static str = "SiloRolePolicy";
+        const FIELDS: &'static [&'static str] = &["role_assignments"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                role_assignments: self::de::required(&mut fields, "role_assignments")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SiloRolePolicy {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SiloRolePolicy {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SiloRolePolicy", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "role_assignments",
+                &self.role_assignments,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Describes the assignment of a particular role on a particular resource
@@ -8738,7 +14099,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Sled {
         pub baseboard: Baseboard,
         ///unique, immutable, system-controlled identifier for each resource
@@ -8748,6 +14109,71 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Sled {
+        const NAME: &'static str = "Sled";
+        const FIELDS: &'static [&'static str] = &[
+            "baseboard",
+            "id",
+            "service_address",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                baseboard: self::de::required(&mut fields, "baseboard")?,
+                id: self::de::required(&mut fields, "id")?,
+                service_address: self::de::required(&mut fields, "service_address")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Sled {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Sled {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Sled", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "baseboard",
+                &self.baseboard,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "service_address",
+                &self.service_address,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -8780,13 +14206,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SledResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Sled>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SledResultsPage {
+        const NAME: &'static str = "SledResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SledResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SledResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SledResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a Snapshot
@@ -8854,7 +14325,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Snapshot {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -8870,6 +14341,83 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Snapshot {
+        const NAME: &'static str = "Snapshot";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "disk_id",
+            "id",
+            "name",
+            "project_id",
+            "size",
+            "state",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                disk_id: self::de::required(&mut fields, "disk_id")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                project_id: self::de::required(&mut fields, "project_id")?,
+                size: self::de::required(&mut fields, "size")?,
+                state: self::de::required(&mut fields, "state")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Snapshot {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Snapshot {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Snapshot", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "disk_id", &self.disk_id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "project_id",
+                &self.project_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "size", &self.size)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "state", &self.state)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -8905,12 +14453,56 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SnapshotCreate {
         pub description: ::std::string::String,
         ///The name of the disk to be snapshotted
         pub disk: Name,
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for SnapshotCreate {
+        const NAME: &'static str = "SnapshotCreate";
+        const FIELDS: &'static [&'static str] = &["description", "disk", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                disk: self::de::required(&mut fields, "disk")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SnapshotCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SnapshotCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SnapshotCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "disk", &self.disk)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -8943,13 +14535,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SnapshotResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Snapshot>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SnapshotResultsPage {
+        const NAME: &'static str = "SnapshotResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SnapshotResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SnapshotResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SnapshotResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SnapshotState`
@@ -8968,18 +14605,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum SnapshotState {
         #[serde(rename = "creating")]
         Creating,
@@ -8989,6 +14615,29 @@ pub mod types {
         Faulted,
         #[serde(rename = "destroyed")]
         Destroyed,
+    }
+
+    impl self::de::UnitEnum for SnapshotState {
+        const NAME: &'static str = "SnapshotState";
+        const VARIANTS: &'static [&'static str] = &["creating", "ready", "faulted", "destroyed"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Creating,
+                1usize => Self::Ready,
+                2usize => Self::Faulted,
+                3usize => Self::Destroyed,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SnapshotState {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for SnapshotState {
@@ -9058,9 +14707,45 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SpoofLoginBody {
         pub username: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for SpoofLoginBody {
+        const NAME: &'static str = "SpoofLoginBody";
+        const FIELDS: &'static [&'static str] = &["username"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                username: self::de::required(&mut fields, "username")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SpoofLoginBody {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SpoofLoginBody {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SpoofLoginBody", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "username", &self.username)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a [`SshKey`]
@@ -9121,7 +14806,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SshKey {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -9137,6 +14822,81 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for SshKey {
+        const NAME: &'static str = "SshKey";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "name",
+            "public_key",
+            "silo_user_id",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                public_key: self::de::required(&mut fields, "public_key")?,
+                silo_user_id: self::de::required(&mut fields, "silo_user_id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SshKey {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SshKey {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "SshKey", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "public_key",
+                &self.public_key,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "silo_user_id",
+                &self.silo_user_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for an
@@ -9168,12 +14928,59 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SshKeyCreate {
         pub description: ::std::string::String,
         pub name: Name,
         ///SSH public key, e.g., `"ssh-ed25519 AAAAC3NzaC..."`
         pub public_key: ::std::string::String,
+    }
+
+    impl<'de> self::de::Build<'de> for SshKeyCreate {
+        const NAME: &'static str = "SshKeyCreate";
+        const FIELDS: &'static [&'static str] = &["description", "name", "public_key"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                name: self::de::required(&mut fields, "name")?,
+                public_key: self::de::required(&mut fields, "public_key")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SshKeyCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SshKeyCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "SshKeyCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "public_key",
+                &self.public_key,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -9206,13 +15013,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SshKeyResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<SshKey>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SshKeyResultsPage {
+        const NAME: &'static str = "SshKeyResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SshKeyResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SshKeyResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SshKeyResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SystemMetricName`
@@ -9230,18 +15082,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum SystemMetricName {
         #[serde(rename = "virtual_disk_space_provisioned")]
         VirtualDiskSpaceProvisioned,
@@ -9249,6 +15090,32 @@ pub mod types {
         CpusProvisioned,
         #[serde(rename = "ram_provisioned")]
         RamProvisioned,
+    }
+
+    impl self::de::UnitEnum for SystemMetricName {
+        const NAME: &'static str = "SystemMetricName";
+        const VARIANTS: &'static [&'static str] = &[
+            "virtual_disk_space_provisioned",
+            "cpus_provisioned",
+            "ram_provisioned",
+        ];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::VirtualDiskSpaceProvisioned,
+                1usize => Self::CpusProvisioned,
+                2usize => Self::RamProvisioned,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SystemMetricName {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for SystemMetricName {
@@ -9336,7 +15203,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SystemUpdate {
         ///unique, immutable, system-controlled identifier for each resource
         pub id: ::uuid::Uuid,
@@ -9345,6 +15212,55 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub version: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for SystemUpdate {
+        const NAME: &'static str = "SystemUpdate";
+        const FIELDS: &'static [&'static str] = &["id", "time_created", "time_modified", "version"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                id: self::de::required(&mut fields, "id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SystemUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SystemUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "SystemUpdate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -9377,13 +15293,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SystemUpdateResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<SystemUpdate>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for SystemUpdateResultsPage {
+        const NAME: &'static str = "SystemUpdateResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SystemUpdateResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SystemUpdateResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SystemUpdateResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SystemUpdateStart`
@@ -9404,9 +15365,45 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SystemUpdateStart {
         pub version: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for SystemUpdateStart {
+        const NAME: &'static str = "SystemUpdateStart";
+        const FIELDS: &'static [&'static str] = &["version"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SystemUpdateStart {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SystemUpdateStart {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SystemUpdateStart", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`SystemVersion`
@@ -9431,10 +15428,52 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct SystemVersion {
         pub status: UpdateStatus,
         pub version_range: VersionRange,
+    }
+
+    impl<'de> self::de::Build<'de> for SystemVersion {
+        const NAME: &'static str = "SystemVersion";
+        const FIELDS: &'static [&'static str] = &["status", "version_range"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                status: self::de::required(&mut fields, "status")?,
+                version_range: self::de::required(&mut fields, "version_range")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for SystemVersion {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for SystemVersion {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "SystemVersion", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "status", &self.status)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "version_range",
+                &self.version_range,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Names are constructed by concatenating the target and metric names with
@@ -9564,12 +15603,67 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct TimeseriesSchema {
         pub created: ::chrono::DateTime<::chrono::offset::Utc>,
         pub datum_type: DatumType,
         pub field_schema: ::std::vec::Vec<FieldSchema>,
         pub timeseries_name: TimeseriesName,
+    }
+
+    impl<'de> self::de::Build<'de> for TimeseriesSchema {
+        const NAME: &'static str = "TimeseriesSchema";
+        const FIELDS: &'static [&'static str] =
+            &["created", "datum_type", "field_schema", "timeseries_name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                created: self::de::required(&mut fields, "created")?,
+                datum_type: self::de::required(&mut fields, "datum_type")?,
+                field_schema: self::de::required(&mut fields, "field_schema")?,
+                timeseries_name: self::de::required(&mut fields, "timeseries_name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for TimeseriesSchema {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for TimeseriesSchema {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "TimeseriesSchema", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "created", &self.created)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "datum_type",
+                &self.datum_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "field_schema",
+                &self.field_schema,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "timeseries_name",
+                &self.timeseries_name,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -9602,13 +15696,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct TimeseriesSchemaResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<TimeseriesSchema>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for TimeseriesSchemaResultsPage {
+        const NAME: &'static str = "TimeseriesSchemaResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for TimeseriesSchemaResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for TimeseriesSchemaResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "TimeseriesSchemaResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Identity-related metadata that's included in "asset" public API objects
@@ -9653,7 +15795,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UpdateDeployment {
         ///unique, immutable, system-controlled identifier for each resource
         pub id: ::uuid::Uuid,
@@ -9663,6 +15805,59 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub version: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for UpdateDeployment {
+        const NAME: &'static str = "UpdateDeployment";
+        const FIELDS: &'static [&'static str] =
+            &["id", "status", "time_created", "time_modified", "version"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                id: self::de::required(&mut fields, "id")?,
+                status: self::de::required(&mut fields, "status")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UpdateDeployment {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UpdateDeployment {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "UpdateDeployment", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "status", &self.status)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -9695,13 +15890,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UpdateDeploymentResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<UpdateDeployment>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for UpdateDeploymentResultsPage {
+        const NAME: &'static str = "UpdateDeploymentResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UpdateDeploymentResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UpdateDeploymentResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "UpdateDeploymentResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`UpdateStatus`
@@ -9862,7 +16105,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UpdateableComponent {
         pub component_type: UpdateableComponentType,
         pub device_id: ::std::string::String,
@@ -9875,6 +16118,85 @@ pub mod types {
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         pub version: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for UpdateableComponent {
+        const NAME: &'static str = "UpdateableComponent";
+        const FIELDS: &'static [&'static str] = &[
+            "component_type",
+            "device_id",
+            "id",
+            "status",
+            "system_version",
+            "time_created",
+            "time_modified",
+            "version",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                component_type: self::de::required(&mut fields, "component_type")?,
+                device_id: self::de::required(&mut fields, "device_id")?,
+                id: self::de::required(&mut fields, "id")?,
+                status: self::de::required(&mut fields, "status")?,
+                system_version: self::de::required(&mut fields, "system_version")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                version: self::de::required(&mut fields, "version")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UpdateableComponent {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UpdateableComponent {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "UpdateableComponent", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "component_type",
+                &self.component_type,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "device_id",
+                &self.device_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "status", &self.status)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "system_version",
+                &self.system_version,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "version", &self.version)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -9907,13 +16229,61 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UpdateableComponentResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<UpdateableComponent>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for UpdateableComponentResultsPage {
+        const NAME: &'static str = "UpdateableComponentResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UpdateableComponentResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UpdateableComponentResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "UpdateableComponentResultsPage",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`UpdateableComponentType`
@@ -9940,18 +16310,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum UpdateableComponentType {
         #[serde(rename = "bootloader_for_rot")]
         BootloaderForRot,
@@ -9977,6 +16336,50 @@ pub mod types {
         HeliosHostPhase2,
         #[serde(rename = "host_omicron")]
         HostOmicron,
+    }
+
+    impl self::de::UnitEnum for UpdateableComponentType {
+        const NAME: &'static str = "UpdateableComponentType";
+        const VARIANTS: &'static [&'static str] = &[
+            "bootloader_for_rot",
+            "bootloader_for_sp",
+            "bootloader_for_host_proc",
+            "hubris_for_psc_rot",
+            "hubris_for_psc_sp",
+            "hubris_for_sidecar_rot",
+            "hubris_for_sidecar_sp",
+            "hubris_for_gimlet_rot",
+            "hubris_for_gimlet_sp",
+            "helios_host_phase1",
+            "helios_host_phase2",
+            "host_omicron",
+        ];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::BootloaderForRot,
+                1usize => Self::BootloaderForSp,
+                2usize => Self::BootloaderForHostProc,
+                3usize => Self::HubrisForPscRot,
+                4usize => Self::HubrisForPscSp,
+                5usize => Self::HubrisForSidecarRot,
+                6usize => Self::HubrisForSidecarSp,
+                7usize => Self::HubrisForGimletRot,
+                8usize => Self::HubrisForGimletSp,
+                9usize => Self::HeliosHostPhase1,
+                10usize => Self::HeliosHostPhase2,
+                11usize => Self::HostOmicron,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UpdateableComponentType {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for UpdateableComponentType {
@@ -10075,13 +16478,56 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct User {
         ///Human-readable name that can identify the user
         pub display_name: ::std::string::String,
         pub id: ::uuid::Uuid,
         ///Uuid of the silo to which this user belongs
         pub silo_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for User {
+        const NAME: &'static str = "User";
+        const FIELDS: &'static [&'static str] = &["display_name", "id", "silo_id"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                display_name: self::de::required(&mut fields, "display_name")?,
+                id: self::de::required(&mut fields, "id")?,
+                silo_id: self::de::required(&mut fields, "silo_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for User {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for User {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "User", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "display_name",
+                &self.display_name,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "silo_id", &self.silo_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a [`UserBuiltin`]
@@ -10162,13 +16608,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UserBuiltinResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<UserBuiltin>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for UserBuiltinResultsPage {
+        const NAME: &'static str = "UserBuiltinResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UserBuiltinResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UserBuiltinResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "UserBuiltinResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a [`User`](crate::external_api::views::User)
@@ -10204,12 +16695,53 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UserCreate {
         ///username used to log in
         pub external_id: UserId,
         ///password used to log in
         pub password: UserPassword,
+    }
+
+    impl<'de> self::de::Build<'de> for UserCreate {
+        const NAME: &'static str = "UserCreate";
+        const FIELDS: &'static [&'static str] = &["external_id", "password"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                external_id: self::de::required(&mut fields, "external_id")?,
+                password: self::de::required(&mut fields, "password")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UserCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UserCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "UserCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "external_id",
+                &self.external_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "password", &self.password)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Names must begin with a lower case ASCII letter, be composed exclusively
@@ -10321,13 +16853,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UserResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<User>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for UserResultsPage {
+        const NAME: &'static str = "UserResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UserResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UserResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "UserResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Credentials for local user login
@@ -10353,10 +16930,51 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct UsernamePasswordCredentials {
         pub password: Password,
         pub username: UserId,
+    }
+
+    impl<'de> self::de::Build<'de> for UsernamePasswordCredentials {
+        const NAME: &'static str = "UsernamePasswordCredentials";
+        const FIELDS: &'static [&'static str] = &["password", "username"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                password: self::de::required(&mut fields, "password")?,
+                username: self::de::required(&mut fields, "username")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for UsernamePasswordCredentials {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for UsernamePasswordCredentials {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "UsernamePasswordCredentials",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "password", &self.password)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "username", &self.username)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///`VersionRange`
@@ -10381,10 +16999,47 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VersionRange {
         pub high: SemverVersion,
         pub low: SemverVersion,
+    }
+
+    impl<'de> self::de::Build<'de> for VersionRange {
+        const NAME: &'static str = "VersionRange";
+        const FIELDS: &'static [&'static str] = &["high", "low"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                high: self::de::required(&mut fields, "high")?,
+                low: self::de::required(&mut fields, "low")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VersionRange {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VersionRange {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "VersionRange", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "high", &self.high)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "low", &self.low)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Client view of a [`Vpc`]
@@ -10464,7 +17119,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct Vpc {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -10484,6 +17139,91 @@ pub mod types {
         pub time_created: ::chrono::DateTime<::chrono::offset::Utc>,
         ///timestamp when this resource was last modified
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+
+    impl<'de> self::de::Build<'de> for Vpc {
+        const NAME: &'static str = "Vpc";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "dns_name",
+            "id",
+            "ipv6_prefix",
+            "name",
+            "project_id",
+            "system_router_id",
+            "time_created",
+            "time_modified",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                dns_name: self::de::required(&mut fields, "dns_name")?,
+                id: self::de::required(&mut fields, "id")?,
+                ipv6_prefix: self::de::required(&mut fields, "ipv6_prefix")?,
+                name: self::de::required(&mut fields, "name")?,
+                project_id: self::de::required(&mut fields, "project_id")?,
+                system_router_id: self::de::required(&mut fields, "system_router_id")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for Vpc {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for Vpc {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "Vpc", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "dns_name", &self.dns_name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "ipv6_prefix",
+                &self.ipv6_prefix,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "project_id",
+                &self.project_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "system_router_id",
+                &self.system_router_id,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a [`Vpc`](crate::external_api::views::Vpc)
@@ -10528,7 +17268,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcCreate {
         pub description: ::std::string::String,
         pub dns_name: Name,
@@ -10538,9 +17278,63 @@ pub mod types {
         /// range, which sould be a Unique Local Address in the range
         /// `fd00::/48`. The default VPC Subnet will have the first `/64` range
         /// from this prefix.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub ipv6_prefix: ::std::option::Option<Ipv6Net>,
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcCreate {
+        const NAME: &'static str = "VpcCreate";
+        const FIELDS: &'static [&'static str] = &["description", "dns_name", "ipv6_prefix", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                dns_name: self::de::required(&mut fields, "dns_name")?,
+                ipv6_prefix: self::de::defaulted(&mut fields, "ipv6_prefix")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.ipv6_prefix))
+                + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "VpcCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "dns_name", &self.dns_name)?;
+            if !::std::option::Option::is_none(&self.ipv6_prefix) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "ipv6_prefix",
+                    &self.ipv6_prefix,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single rule in a VPC firewall
@@ -10647,7 +17441,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcFirewallRule {
         ///whether traffic matching the rule should be allowed or dropped
         pub action: VpcFirewallRuleAction,
@@ -10675,6 +17469,93 @@ pub mod types {
         pub vpc_id: ::uuid::Uuid,
     }
 
+    impl<'de> self::de::Build<'de> for VpcFirewallRule {
+        const NAME: &'static str = "VpcFirewallRule";
+        const FIELDS: &'static [&'static str] = &[
+            "action",
+            "description",
+            "direction",
+            "filters",
+            "id",
+            "name",
+            "priority",
+            "status",
+            "targets",
+            "time_created",
+            "time_modified",
+            "vpc_id",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                action: self::de::required(&mut fields, "action")?,
+                description: self::de::required(&mut fields, "description")?,
+                direction: self::de::required(&mut fields, "direction")?,
+                filters: self::de::required(&mut fields, "filters")?,
+                id: self::de::required(&mut fields, "id")?,
+                name: self::de::required(&mut fields, "name")?,
+                priority: self::de::required(&mut fields, "priority")?,
+                status: self::de::required(&mut fields, "status")?,
+                targets: self::de::required(&mut fields, "targets")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vpc_id: self::de::required(&mut fields, "vpc_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRule {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcFirewallRule {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcFirewallRule", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "action", &self.action)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "direction",
+                &self.direction,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "filters", &self.filters)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "priority", &self.priority)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "status", &self.status)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "targets", &self.targets)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vpc_id", &self.vpc_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
+    }
+
     ///`VpcFirewallRuleAction`
     ///
     /// <details><summary>JSON schema</summary>
@@ -10689,23 +17570,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum VpcFirewallRuleAction {
         #[serde(rename = "allow")]
         Allow,
         #[serde(rename = "deny")]
         Deny,
+    }
+
+    impl self::de::UnitEnum for VpcFirewallRuleAction {
+        const NAME: &'static str = "VpcFirewallRuleAction";
+        const VARIANTS: &'static [&'static str] = &["allow", "deny"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Allow,
+                1usize => Self::Deny,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleAction {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for VpcFirewallRuleAction {
@@ -10767,23 +17658,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum VpcFirewallRuleDirection {
         #[serde(rename = "inbound")]
         Inbound,
         #[serde(rename = "outbound")]
         Outbound,
+    }
+
+    impl self::de::UnitEnum for VpcFirewallRuleDirection {
+        const NAME: &'static str = "VpcFirewallRuleDirection";
+        const VARIANTS: &'static [&'static str] = &["inbound", "outbound"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Inbound,
+                1usize => Self::Outbound,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleDirection {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for VpcFirewallRuleDirection {
@@ -10876,18 +17777,68 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcFirewallRuleFilter {
         ///If present, the sources (if incoming) or destinations (if outgoing)
         /// this rule applies to.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub hosts: ::std::option::Option<::std::vec::Vec<VpcFirewallRuleHostFilter>>,
         ///If present, the destination ports this rule applies to.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub ports: ::std::option::Option<::std::vec::Vec<L4PortRange>>,
         ///If present, the networking protocols this rule applies to.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub protocols: ::std::option::Option<::std::vec::Vec<VpcFirewallRuleProtocol>>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcFirewallRuleFilter {
+        const NAME: &'static str = "VpcFirewallRuleFilter";
+        const FIELDS: &'static [&'static str] = &["hosts", "ports", "protocols"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                hosts: self::de::defaulted(&mut fields, "hosts")?,
+                ports: self::de::defaulted(&mut fields, "ports")?,
+                protocols: self::de::defaulted(&mut fields, "protocols")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleFilter {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcFirewallRuleFilter {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.hosts))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.ports))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.protocols));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcFirewallRuleFilter", len)?;
+            if !::std::option::Option::is_none(&self.hosts) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "hosts", &self.hosts)?;
+            }
+            if !::std::option::Option::is_none(&self.ports) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "ports", &self.ports)?;
+            }
+            if !::std::option::Option::is_none(&self.protocols) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "protocols",
+                    &self.protocols,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     impl ::std::default::Default for VpcFirewallRuleFilter {
@@ -11057,18 +18008,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum VpcFirewallRuleProtocol {
         #[serde(rename = "TCP")]
         Tcp,
@@ -11076,6 +18016,28 @@ pub mod types {
         Udp,
         #[serde(rename = "ICMP")]
         Icmp,
+    }
+
+    impl self::de::UnitEnum for VpcFirewallRuleProtocol {
+        const NAME: &'static str = "VpcFirewallRuleProtocol";
+        const VARIANTS: &'static [&'static str] = &["TCP", "UDP", "ICMP"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Tcp,
+                1usize => Self::Udp,
+                2usize => Self::Icmp,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleProtocol {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for VpcFirewallRuleProtocol {
@@ -11139,23 +18101,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum VpcFirewallRuleStatus {
         #[serde(rename = "disabled")]
         Disabled,
         #[serde(rename = "enabled")]
         Enabled,
+    }
+
+    impl self::de::UnitEnum for VpcFirewallRuleStatus {
+        const NAME: &'static str = "VpcFirewallRuleStatus";
+        const VARIANTS: &'static [&'static str] = &["disabled", "enabled"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::Disabled,
+                1usize => Self::Enabled,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleStatus {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for VpcFirewallRuleStatus {
@@ -11424,7 +18396,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcFirewallRuleUpdate {
         ///whether traffic matching the rule should be allowed or dropped
         pub action: VpcFirewallRuleAction,
@@ -11442,6 +18414,73 @@ pub mod types {
         pub status: VpcFirewallRuleStatus,
         ///list of sets of instances that the rule applies to
         pub targets: ::std::vec::Vec<VpcFirewallRuleTarget>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcFirewallRuleUpdate {
+        const NAME: &'static str = "VpcFirewallRuleUpdate";
+        const FIELDS: &'static [&'static str] = &[
+            "action",
+            "description",
+            "direction",
+            "filters",
+            "name",
+            "priority",
+            "status",
+            "targets",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                action: self::de::required(&mut fields, "action")?,
+                description: self::de::required(&mut fields, "description")?,
+                direction: self::de::required(&mut fields, "direction")?,
+                filters: self::de::required(&mut fields, "filters")?,
+                name: self::de::required(&mut fields, "name")?,
+                priority: self::de::required(&mut fields, "priority")?,
+                status: self::de::required(&mut fields, "status")?,
+                targets: self::de::required(&mut fields, "targets")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcFirewallRuleUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcFirewallRuleUpdate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "action", &self.action)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "direction",
+                &self.direction,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "filters", &self.filters)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "priority", &self.priority)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "status", &self.status)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "targets", &self.targets)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Updateable properties of a `Vpc`'s firewall Note that VpcFirewallRules
@@ -11468,9 +18507,48 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcFirewallRuleUpdateParams {
         pub rules: ::std::vec::Vec<VpcFirewallRuleUpdate>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcFirewallRuleUpdateParams {
+        const NAME: &'static str = "VpcFirewallRuleUpdateParams";
+        const FIELDS: &'static [&'static str] = &["rules"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                rules: self::de::required(&mut fields, "rules")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRuleUpdateParams {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcFirewallRuleUpdateParams {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state = ::serde::Serializer::serialize_struct(
+                serializer,
+                "VpcFirewallRuleUpdateParams",
+                len,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "rules", &self.rules)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Collection of a Vpc's firewall rules
@@ -11495,9 +18573,45 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcFirewallRules {
         pub rules: ::std::vec::Vec<VpcFirewallRule>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcFirewallRules {
+        const NAME: &'static str = "VpcFirewallRules";
+        const FIELDS: &'static [&'static str] = &["rules"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                rules: self::de::required(&mut fields, "rules")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcFirewallRules {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcFirewallRules {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcFirewallRules", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "rules", &self.rules)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -11530,13 +18644,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<Vpc>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcResultsPage {
+        const NAME: &'static str = "VpcResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A VPC router defines a series of rules that indicate where traffic
@@ -11597,7 +18756,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcRouter {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -11612,6 +18771,73 @@ pub mod types {
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///The VPC to which the router belongs.
         pub vpc_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcRouter {
+        const NAME: &'static str = "VpcRouter";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "kind",
+            "name",
+            "time_created",
+            "time_modified",
+            "vpc_id",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                kind: self::de::required(&mut fields, "kind")?,
+                name: self::de::required(&mut fields, "name")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vpc_id: self::de::required(&mut fields, "vpc_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcRouter {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcRouter {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "VpcRouter", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "kind", &self.kind)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vpc_id", &self.vpc_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -11653,23 +18879,33 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(
-        :: serde :: Deserialize,
-        :: serde :: Serialize,
-        Clone,
-        Copy,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-    )]
+    #[derive(:: serde :: Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum VpcRouterKind {
         #[serde(rename = "system")]
         System,
         #[serde(rename = "custom")]
         Custom,
+    }
+
+    impl self::de::UnitEnum for VpcRouterKind {
+        const NAME: &'static str = "VpcRouterKind";
+        const VARIANTS: &'static [&'static str] = &["system", "custom"];
+        fn from_index(index: usize) -> Self {
+            match index {
+                0usize => Self::System,
+                1usize => Self::Custom,
+                _ => unreachable!("variant index out of range"),
+            }
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcRouterKind {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_unit_enum(deserializer)
+        }
     }
 
     impl ::std::fmt::Display for VpcRouterKind {
@@ -11747,13 +18983,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcRouterResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<VpcRouter>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcRouterResultsPage {
+        const NAME: &'static str = "VpcRouterResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcRouterResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcRouterResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcRouterResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Updateable properties of a
@@ -11864,7 +19145,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcSubnet {
         ///human-readable free-form text about a resource
         pub description: ::std::string::String,
@@ -11882,6 +19163,84 @@ pub mod types {
         pub time_modified: ::chrono::DateTime<::chrono::offset::Utc>,
         ///The VPC to which the subnet belongs.
         pub vpc_id: ::uuid::Uuid,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcSubnet {
+        const NAME: &'static str = "VpcSubnet";
+        const FIELDS: &'static [&'static str] = &[
+            "description",
+            "id",
+            "ipv4_block",
+            "ipv6_block",
+            "name",
+            "time_created",
+            "time_modified",
+            "vpc_id",
+        ];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                id: self::de::required(&mut fields, "id")?,
+                ipv4_block: self::de::required(&mut fields, "ipv4_block")?,
+                ipv6_block: self::de::required(&mut fields, "ipv6_block")?,
+                name: self::de::required(&mut fields, "name")?,
+                time_created: self::de::required(&mut fields, "time_created")?,
+                time_modified: self::de::required(&mut fields, "time_modified")?,
+                vpc_id: self::de::required(&mut fields, "vpc_id")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcSubnet {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcSubnet {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1;
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "VpcSubnet", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "ipv4_block",
+                &self.ipv4_block,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "ipv6_block",
+                &self.ipv6_block,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_created",
+                &self.time_created,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "time_modified",
+                &self.time_modified,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "vpc_id", &self.vpc_id)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Create-time parameters for a
@@ -11932,7 +19291,7 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcSubnetCreate {
         pub description: ::std::string::String,
         ///The IPv4 address range for this subnet.
@@ -11946,9 +19305,69 @@ pub mod types {
         /// with the prefix equal to the parent VPC's prefix. A random `/64`
         /// block will be assigned if one is not provided. It must not overlap
         /// with any existing subnet in the VPC.
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub ipv6_block: ::std::option::Option<Ipv6Net>,
         pub name: Name,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcSubnetCreate {
+        const NAME: &'static str = "VpcSubnetCreate";
+        const FIELDS: &'static [&'static str] =
+            &["description", "ipv4_block", "ipv6_block", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::required(&mut fields, "description")?,
+                ipv4_block: self::de::required(&mut fields, "ipv4_block")?,
+                ipv6_block: self::de::defaulted(&mut fields, "ipv6_block")?,
+                name: self::de::required(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcSubnetCreate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcSubnetCreate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.ipv6_block))
+                + 1;
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcSubnetCreate", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "description",
+                &self.description,
+            )?;
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                "ipv4_block",
+                &self.ipv4_block,
+            )?;
+            if !::std::option::Option::is_none(&self.ipv6_block) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "ipv6_block",
+                    &self.ipv6_block,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///A single page of results
@@ -11981,13 +19400,58 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcSubnetResultsPage {
         ///list of items on this page of results
         pub items: ::std::vec::Vec<VpcSubnet>,
         ///token used to fetch the next page of results (if any)
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_page: ::std::option::Option<::std::string::String>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcSubnetResultsPage {
+        const NAME: &'static str = "VpcSubnetResultsPage";
+        const FIELDS: &'static [&'static str] = &["items", "next_page"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                items: self::de::required(&mut fields, "items")?,
+                next_page: self::de::defaulted(&mut fields, "next_page")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcSubnetResultsPage {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcSubnetResultsPage {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + 1
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.next_page));
+            let mut state =
+                ::serde::Serializer::serialize_struct(serializer, "VpcSubnetResultsPage", len)?;
+            ::serde::ser::SerializeStruct::serialize_field(&mut state, "items", &self.items)?;
+            if !::std::option::Option::is_none(&self.next_page) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "next_page",
+                    &self.next_page,
+                )?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     ///Updateable properties of a
@@ -12072,14 +19536,67 @@ pub mod types {
     /// }
     /// ```
     /// </details>
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    #[derive(Clone, Debug)]
     pub struct VpcUpdate {
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub dns_name: ::std::option::Option<Name>,
-        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<Name>,
+    }
+
+    impl<'de> self::de::Build<'de> for VpcUpdate {
+        const NAME: &'static str = "VpcUpdate";
+        const FIELDS: &'static [&'static str] = &["description", "dns_name", "name"];
+        fn build<E>(mut fields: self::de::Fields<'de>) -> ::std::result::Result<Self, E>
+        where
+            E: ::serde::de::Error,
+        {
+            let value = Self {
+                description: self::de::defaulted(&mut fields, "description")?,
+                dns_name: self::de::defaulted(&mut fields, "dns_name")?,
+                name: self::de::defaulted(&mut fields, "name")?,
+            };
+            ::std::result::Result::Ok(value)
+        }
+    }
+
+    impl<'de> ::serde::Deserialize<'de> for VpcUpdate {
+        fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+        {
+            self::de::deserialize_struct(deserializer)
+        }
+    }
+
+    impl ::serde::Serialize for VpcUpdate {
+        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let len = 0usize
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.description))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.dns_name))
+                + ::std::primitive::usize::from(!::std::option::Option::is_none(&self.name));
+            let mut state = ::serde::Serializer::serialize_struct(serializer, "VpcUpdate", len)?;
+            if !::std::option::Option::is_none(&self.description) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "description",
+                    &self.description,
+                )?;
+            }
+            if !::std::option::Option::is_none(&self.dns_name) {
+                ::serde::ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "dns_name",
+                    &self.dns_name,
+                )?;
+            }
+            if !::std::option::Option::is_none(&self.name) {
+                ::serde::ser::SerializeStruct::serialize_field(&mut state, "name", &self.name)?;
+            }
+            ::serde::ser::SerializeStruct::end(state)
+        }
     }
 
     impl ::std::default::Default for VpcUpdate {

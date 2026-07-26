@@ -20,6 +20,7 @@ pub use crate::openapi::ParseOpenApiError;
 pub use crate::openapi::parse_openapi_str;
 pub use crate::openapi::parse_openapi_value;
 pub use typify::CrateVers;
+pub use typify::DeserializeImpl;
 pub use typify::SchemaDocs;
 pub use typify::TypeDedup;
 pub use typify::TypeSpaceImpl as TypeImpl;
@@ -117,6 +118,10 @@ pub struct GenerationSettings {
     extra_cli_bounds: Vec<String>,
     schema_docs: SchemaDocs,
     type_dedup: TypeDedup,
+    /// `None` selects [`Generator::DEFAULT_DESERIALIZE_IMPL`]. Held as an
+    /// option only so that `GenerationSettings` can keep deriving `Default`
+    /// while still defaulting this one knob away from typify's own default.
+    deserialize_impl: Option<DeserializeImpl>,
 
     map_type: Option<String>,
     unknown_crates: UnknownPolicy,
@@ -240,6 +245,19 @@ impl GenerationSettings {
         self
     }
 
+    /// How the generated types implement `Deserialize`.
+    ///
+    /// Defaults to [`Generator::DEFAULT_DESERIALIZE_IMPL`], which differs from
+    /// typify's own default: an API document routinely yields thousands of
+    /// structs, and the derive's cost is what makes those crates slow to
+    /// compile. Set this to [`DeserializeImpl::Derived`] to opt back out.
+    ///
+    /// See [`typify::TypeSpaceSettings::with_deserialize_impl`].
+    pub fn with_deserialize_impl(&mut self, deserialize_impl: DeserializeImpl) -> &mut Self {
+        self.deserialize_impl = Some(deserialize_impl);
+        self
+    }
+
     /// Modify a type with the given name.
     /// See [`typify::TypeSpaceSettings::with_patch`].
     pub fn with_patch<S: AsRef<str>>(&mut self, type_name: S, patch: &TypePatch) -> &mut Self {
@@ -325,20 +343,16 @@ impl GenerationSettings {
 
 impl Default for Generator {
     fn default() -> Self {
-        Self {
-            type_space: TypeSpace::new(TypeSpaceSettings::default().with_type_mod("types")),
-            settings: Default::default(),
-            uses_futures: Default::default(),
-            uses_websockets: Default::default(),
-            schema_type_ids: Default::default(),
-            component_schemas: Default::default(),
-            prepared: None,
-            diagnostics: Default::default(),
-        }
+        // Delegate rather than build a `TypeSpace` here: the two must agree on
+        // every default, and duplicating the construction is how they drift.
+        Self::new(&GenerationSettings::default())
     }
 }
 
 impl Generator {
+    /// The `Deserialize` form generated clients use unless told otherwise.
+    pub const DEFAULT_DESERIALIZE_IMPL: DeserializeImpl = DeserializeImpl::Buffered;
+
     /// Create a new generator with default values.
     #[must_use]
     pub fn new(settings: &GenerationSettings) -> Self {
@@ -347,7 +361,12 @@ impl Generator {
             .with_type_mod("types")
             .with_struct_builder(settings.interface == InterfaceStyle::Builder)
             .with_schema_docs(settings.schema_docs)
-            .with_type_dedup(settings.type_dedup);
+            .with_type_dedup(settings.type_dedup)
+            .with_deserialize_impl(
+                settings
+                    .deserialize_impl
+                    .unwrap_or(Self::DEFAULT_DESERIALIZE_IMPL),
+            );
         settings.extra_derives.iter().for_each(|derive| {
             let _ = type_settings.with_derive(derive.clone());
         });
