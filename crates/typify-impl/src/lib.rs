@@ -342,6 +342,43 @@ pub enum TypeDedup {
     PerName,
 }
 
+/// Runtime support emitted into generated crates that use
+/// [`DeserializeImpl::Buffered`]. Kept as ordinary Rust in `de_runtime.rs` (and
+/// re-parsed here) so it can be edited and tested like normal code.
+const DE_RUNTIME: &str = include_str!("de_runtime.rs");
+
+/// How each generated type's [`serde::Deserialize`] impl is produced.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeserializeImpl {
+    /// `#[derive(::serde::Deserialize)]`.
+    ///
+    /// Works with every serde data format, including non-self-describing ones
+    /// such as `bincode` and `postcard`.
+    #[default]
+    Derived,
+    /// A hand-emitted impl that buffers the input and then builds the value.
+    ///
+    /// `serde_derive` expands to roughly nine functions per type — the visitor,
+    /// the field-name enum, that enum's own `Deserialize`, and its visitor —
+    /// most of them generic over the `Deserializer` and each repeating every
+    /// field. That expansion, not the type definition, dominates the cost of
+    /// compiling a large generated crate. The buffered form is one tiny generic
+    /// function plus one monomorphic builder, which measures at roughly 40% of
+    /// the derive's check time and half its peak memory.
+    ///
+    /// The wire format, the public API and the error *messages* are unchanged.
+    /// Two things do change, so this is not the default:
+    ///
+    /// - Deserialization requires a self-describing format. Buffering a value
+    ///   means asking the deserializer what it holds, and `bincode`/`postcard`
+    ///   have no answer — the bytes carry no type tags. Those formats fail at
+    ///   run time with `deserialize_any` unsupported.
+    /// - Errors report the position of the end of the enclosing object rather
+    ///   than of the offending field, because the failure happens after the
+    ///   input has been buffered.
+    Buffered,
+}
+
 /// Settings that alter type generation.
 #[derive(Default, Debug, Clone)]
 pub struct TypeSpaceSettings {
@@ -351,6 +388,7 @@ pub struct TypeSpaceSettings {
     struct_builder: bool,
     schema_docs: SchemaDocs,
     type_dedup: TypeDedup,
+    deserialize_impl: DeserializeImpl,
 
     unknown_crates: UnknownPolicy,
     crates: BTreeMap<String, CrateSpec>,
@@ -502,6 +540,13 @@ impl TypeSpaceSettings {
     /// Defaults to [`TypeDedup::Collapse`].
     pub fn with_type_dedup(&mut self, type_dedup: TypeDedup) -> &mut Self {
         self.type_dedup = type_dedup;
+        self
+    }
+
+    /// Choose how each type's `Deserialize` impl is produced. Defaults to
+    /// [`DeserializeImpl::Derived`].
+    pub fn with_deserialize_impl(&mut self, deserialize_impl: DeserializeImpl) -> &mut Self {
+        self.deserialize_impl = deserialize_impl;
         self
     }
 
@@ -979,6 +1024,21 @@ impl TypeSpace {
     /// All code for processed types.
     pub fn to_stream(&self) -> TokenStream {
         let mut output = OutputSpace::default();
+
+        // Support for the generated `Deserialize` impls. Emitted whenever the
+        // buffered form is selected rather than only when some type actually
+        // uses it: the module is `#[allow(dead_code)]`, and deciding otherwise
+        // would mean knowing the eligibility of every type before emitting any
+        // of them.
+        if self.settings.deserialize_impl == DeserializeImpl::Buffered {
+            output.add_item(
+                output::OutputSpaceMod::De,
+                "",
+                DE_RUNTIME
+                    .parse::<TokenStream>()
+                    .expect("the deserialize runtime is valid Rust"),
+            );
+        }
 
         // Add the error type we use for conversions; it's fine if this is
         // unused.

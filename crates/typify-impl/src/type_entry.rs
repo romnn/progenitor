@@ -12,9 +12,9 @@ use crate::{
     enums::output_variant,
     output::{OutputSpace, OutputSpaceMod},
     sanitize,
-    structs::{generate_serde_attr, DefaultFunction},
+    structs::{generate_serde_attr, DefaultFunction, PropSerde},
     util::{get_type_name, metadata_description, unique, TypePatch},
-    Case, Name, Result, SchemaDocs, TypeId, TypeSpace, TypeSpaceImpl,
+    Case, DeserializeImpl, Name, Result, SchemaDocs, TypeId, TypeSpace, TypeSpaceImpl,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -918,6 +918,36 @@ impl TypeEntry {
         }
     }
 
+    /// Whether a hand-written `Deserialize` may stand in for the derive here.
+    ///
+    /// The generated impls are rendered from typify's own model of a type, so
+    /// they reproduce only what that model describes. Attributes injected
+    /// through [`TypeSpaceSettings::with_attr`] or a [`TypeSpacePatch`] are
+    /// outside it: a `#[serde(rename_all)]`, `deny_unknown_fields`, `from` or
+    /// `try_from` added that way still lands on the item, but a hand-written
+    /// impl never reads container attributes — so the type would keep
+    /// compiling while quietly changing meaning on the wire. An injected
+    /// `Deserialize` derive is the same hazard from the other direction. There
+    /// is nothing to gain by guessing at either, so a customised type keeps
+    /// the derive.
+    ///
+    /// [`TypeSpaceSettings::with_attr`]: crate::TypeSpaceSettings::with_attr
+    /// [`TypeSpacePatch`]: crate::TypeSpacePatch
+    fn hand_written_serde_allowed(&self, type_space: &TypeSpace, trait_name: &str) -> bool {
+        type_space.settings.deserialize_impl == DeserializeImpl::Buffered
+            && self.extra_attrs.is_empty()
+            && type_space.settings.extra_attrs.is_empty()
+            && !self
+                .extra_derives
+                .iter()
+                .any(|d| is_serde_derive(d, trait_name))
+            && !type_space
+                .settings
+                .extra_derives
+                .iter()
+                .any(|d| is_serde_derive(d, trait_name))
+    }
+
     fn output_enum(
         &self,
         type_space: &TypeSpace,
@@ -979,6 +1009,67 @@ impl TypeEntry {
             .iter()
             .map(|variant| output_variant(variant, type_space, output, name))
             .collect::<Vec<_>>();
+
+        // A fieldless enum is decided from the variant identifier alone, so —
+        // unlike the struct form — it needs no buffering: the generated impl
+        // drives `deserialize_enum` directly. That keeps non-self-describing
+        // formats working and keeps the format's own error positions, which is
+        // why this is applied wherever it fits rather than only to JSON.
+        //
+        // Only the external representation qualifies. `tag`/`content`/`untagged`
+        // change how the variant is located on the wire, and `deny_unknown_fields`
+        // has no meaning without fields.
+        let unit_enum = self.hand_written_serde_allowed(type_space, "Deserialize")
+            && tag_type == &EnumTagType::External
+            && !*deny_unknown_fields
+            && !variants.is_empty()
+            && variants
+                .iter()
+                .all(|variant| matches!(variant.details, VariantDetails::Simple));
+
+        let unit_enum_impl = unit_enum.then(|| {
+            derive_set.remove("::serde::Deserialize");
+
+            // `raw_name` is what the variant is called on the wire; the Rust
+            // ident may have been sanitised away from it.
+            let wire_names = variants
+                .iter()
+                .map(|variant| variant.raw_name.clone())
+                .collect::<Vec<_>>();
+            let idents = variants
+                .iter()
+                .map(|variant| format_ident!("{}", variant.ident_name.as_ref().unwrap()))
+                .collect::<Vec<_>>();
+            let indices = (0..variants.len()).collect::<Vec<_>>();
+            let wire_type_name = rename.clone().unwrap_or_else(|| name.clone());
+
+            quote! {
+                impl self::de::UnitEnum for #type_name {
+                    const NAME: &'static str = #wire_type_name;
+                    const VARIANTS: &'static [&'static str] = &[ #(#wire_names),* ];
+
+                    fn from_index(index: usize) -> Self {
+                        match index {
+                            #(#indices => Self::#idents,)*
+                            // `deserialize_unit_enum` only ever passes an index
+                            // it has already checked against `VARIANTS`.
+                            _ => unreachable!("variant index out of range"),
+                        }
+                    }
+                }
+
+                impl<'de> ::serde::Deserialize<'de> for #type_name {
+                    fn deserialize<D>(
+                        deserializer: D,
+                    ) -> ::std::result::Result<Self, D::Error>
+                    where
+                        D: ::serde::Deserializer<'de>,
+                    {
+                        self::de::deserialize_unit_enum(deserializer)
+                    }
+                }
+            }
+        });
 
         // It should not be possible to construct an untagged enum
         // with more than one simple variant--it would not be usable.
@@ -1253,6 +1344,7 @@ impl TypeEntry {
                 #(#variants_decl)*
             }
 
+            #unit_enum_impl
             #simple_enum_impl
             #default_impl
             #untagged_newtype_from_string_impl
@@ -1267,7 +1359,7 @@ impl TypeEntry {
         type_space: &TypeSpace,
         output: &mut OutputSpace,
         struct_details: &TypeEntryStruct,
-        derive_set: BTreeSet<&str>,
+        mut derive_set: BTreeSet<&str>,
     ) {
         enum PropDefault {
             None(String),
@@ -1307,6 +1399,9 @@ impl TypeEntry {
         let mut prop_error = Vec::new();
         let mut prop_type = Vec::new();
         let mut prop_type_scoped = Vec::new();
+        let mut prop_buffered_ok = Vec::new();
+        let mut prop_serialized_ok = Vec::new();
+        let mut prop_skip_if: Vec<Option<String>> = Vec::new();
 
         properties.iter().for_each(|prop| {
             prop_doc.push(prop.description.as_ref().map(|d| quote! { #[doc = #d] }));
@@ -1321,7 +1416,13 @@ impl TypeEntry {
             prop_type_scoped
                 .push(prop_type_entry.type_ident(type_space, &Some("super".to_string())));
 
-            let (serde, default_fn) = generate_serde_attr(
+            let PropSerde {
+                attr: serde,
+                default_fn,
+                buffered_form_reproduces,
+                serialized_form_reproduces,
+                skip_serializing_if,
+            } = generate_serde_attr(
                 name,
                 &prop.name,
                 &prop.rename,
@@ -1332,6 +1433,9 @@ impl TypeEntry {
             );
 
             prop_serde.push(serde);
+            prop_buffered_ok.push(buffered_form_reproduces);
+            prop_serialized_ok.push(serialized_form_reproduces);
+            prop_skip_if.push(skip_serializing_if);
             prop_default.push(match default_fn {
                 // Fully qualified: Stripe names a schema `default`, and the
                 // resulting `struct Default` shadows the trait inside the
@@ -1352,6 +1456,181 @@ impl TypeEntry {
             });
         });
 
+        // serde's derive reports the *renamed* container, both as the name hint
+        // passed to `deserialize_struct`/`serialize_struct` and in the
+        // "expected struct X" of an error, so a `#[serde(rename)]` has to be
+        // honoured here too or the forms disagree on their error text.
+        let wire_type_name = rename.clone().unwrap_or_else(|| name.clone());
+
+        let wire_names = properties
+            .iter()
+            .map(|prop| match &prop.rename {
+                StructPropertyRename::Rename(rename) => rename.clone(),
+                StructPropertyRename::None | StructPropertyRename::Flatten => prop.name.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        // Eligibility is decided by the serde options that were actually
+        // emitted, not by a list kept in step by hand here: a buffered impl
+        // reads fields by name and never sees those attributes, so anything it
+        // does not reproduce must keep the derive. See
+        // `PropSerdeOption::buffered_form_reproduces`.
+        let buffered = self.hand_written_serde_allowed(type_space, "Deserialize")
+            && prop_buffered_ok.iter().all(|ok| *ok);
+
+        let buffered_impl = buffered.then(|| {
+            derive_set.remove("::serde::Deserialize");
+
+            let wire_type_name = &wire_type_name;
+
+            let wire_names = properties
+                .iter()
+                .map(|prop| match &prop.rename {
+                    StructPropertyRename::Rename(rename) => rename.clone(),
+                    StructPropertyRename::None | StructPropertyRename::Flatten => prop.name.clone(),
+                })
+                .collect::<Vec<_>>();
+
+            let build_field = properties.iter().zip(&wire_names).zip(&prop_default).map(
+                |((prop, wire), default)| {
+                    let ident = format_ident!("{}", prop.name);
+                    match default {
+                        PropDefault::None(_) => quote! {
+                            #ident: self::de::required(&mut fields, #wire)?
+                        },
+                        PropDefault::Default(_) => quote! {
+                            #ident: self::de::defaulted(&mut fields, #wire)?
+                        },
+                        // The named function is the same one `#[serde(default =
+                        // "…")]` would have pointed at, so the two forms agree
+                        // on the value as well as on when it is used.
+                        PropDefault::Custom(call) => quote! {
+                            #ident: self::de::defaulted_with(&mut fields, #wire, || #call)?
+                        },
+                    }
+                },
+            );
+
+            // The field list is the only thing `deny_unknown` needs, and it is
+            // the only caller — without it the const is dead code in every
+            // generated struct.
+            let deny = deny_unknown_fields.then(|| {
+                quote! {
+                    self::de::deny_unknown(&fields, <Self as self::de::Build>::FIELDS)?;
+                }
+            });
+
+            // Everything that walks the input — `expecting`, `visit_map`,
+            // `visit_seq` — lives in the generic `de::StructVisitor` and is
+            // type-checked once for the whole crate. What repeats per struct is
+            // just the two bodies below.
+            quote! {
+                impl<'de> self::de::Build<'de> for #type_name {
+                    const NAME: &'static str = #wire_type_name;
+                    const FIELDS: &'static [&'static str] = &[ #(#wire_names),* ];
+
+                    fn build<E>(
+                        mut fields: self::de::Fields<'de>,
+                    ) -> ::std::result::Result<Self, E>
+                    where
+                        E: ::serde::de::Error,
+                    {
+                        let value = Self {
+                            #(#build_field,)*
+                        };
+                        #deny
+                        ::std::result::Result::Ok(value)
+                    }
+                }
+
+                impl<'de> ::serde::Deserialize<'de> for #type_name {
+                    fn deserialize<D>(
+                        deserializer: D,
+                    ) -> ::std::result::Result<Self, D::Error>
+                    where
+                        D: ::serde::Deserializer<'de>,
+                    {
+                        self::de::deserialize_struct(deserializer)
+                    }
+                }
+            }
+        });
+
+        // Serializing is far simpler than deserializing — the field set is
+        // known and nothing has to be matched — so this saves no function
+        // bodies over the derive. It is worth doing anyway because it saves the
+        // *macro expansion*: `serde_derive` runs once per type, and that shows
+        // up as `macro_expand_crate` in the profile.
+        //
+        // Gated on there being no caller-supplied derives, because the
+        // `#[serde(...)]` attributes have to come off with the derive — they
+        // are *helper* attributes, so without a serde derive on the item they
+        // do not even resolve — and other derives read them. `schemars`
+        // notably honours `rename` and `skip_serializing_if`, so stripping
+        // them under a `JsonSchema` derive would silently change the schema.
+        let manual_serialize = self.hand_written_serde_allowed(type_space, "Serialize")
+            && self.extra_derives.is_empty()
+            && type_space.settings.extra_derives.is_empty()
+            && prop_serialized_ok.iter().all(|ok| *ok);
+
+        let serialize_impl = manual_serialize.then(|| {
+            derive_set.remove("::serde::Serialize");
+
+            let skip_paths = prop_skip_if
+                .iter()
+                .map(|skip| {
+                    skip.as_ref()
+                        .map(|path| syn::parse_str::<Path>(path).unwrap())
+                })
+                .collect::<Vec<_>>();
+
+            // `serialize_struct` is told the field count up front, and a format
+            // like bincode relies on it being exact, so a skipped field has to
+            // be subtracted here as well as omitted below.
+            let len_term = prop_name
+                .iter()
+                .zip(&skip_paths)
+                .map(|(ident, skip)| match skip {
+                    Some(path) => quote! {
+                        + ::std::primitive::usize::from(!#path(&self.#ident))
+                    },
+                    None => quote! { + 1 },
+                });
+
+            let ser_field =
+                prop_name
+                    .iter()
+                    .zip(&wire_names)
+                    .zip(&skip_paths)
+                    .map(|((ident, wire), skip)| {
+                        let emit = quote! {
+                            ::serde::ser::SerializeStruct::serialize_field(
+                                &mut state, #wire, &self.#ident,
+                            )?;
+                        };
+                        match skip {
+                            Some(path) => quote! { if !#path(&self.#ident) { #emit } },
+                            None => emit,
+                        }
+                    });
+
+            quote! {
+                impl ::serde::Serialize for #type_name {
+                    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+                    where
+                        S: ::serde::Serializer,
+                    {
+                        let len = 0usize #(#len_term)*;
+                        let mut state = ::serde::Serializer::serialize_struct(
+                            serializer, #wire_type_name, len,
+                        )?;
+                        #(#ser_field)*
+                        ::serde::ser::SerializeStruct::end(state)
+                    }
+                }
+            }
+        });
+
         let derives = strings_to_derives(
             derive_set,
             &self.extra_derives,
@@ -1359,6 +1638,15 @@ impl TypeEntry {
         );
 
         let attrs = strings_to_attrs(&self.extra_attrs, &type_space.settings.extra_attrs);
+
+        // With both halves hand-written there is no serde derive left on the
+        // item to register `serde` as a helper attribute, and nothing reads
+        // these anyway — the impls above encode the same decisions directly.
+        let (serde, prop_serde) = if buffered && manual_serialize {
+            (None, vec![quote! {}; prop_serde.len()])
+        } else {
+            (serde, prop_serde)
+        };
 
         output.add_item(
             OutputSpaceMod::Crate,
@@ -1375,6 +1663,9 @@ impl TypeEntry {
                         pub #prop_name: #prop_type,
                     )*
                 }
+
+                #buffered_impl
+                #serialize_impl
             },
         );
 
@@ -2441,6 +2732,20 @@ fn mark_partial_eq(type_space: &mut TypeSpace, type_id: &TypeId) {
             | TypeEntryDetails::JsonValue => {}
         }
     }
+}
+
+/// Recognises a `Serialize`/`Deserialize` derive however the caller spelled
+/// its path.
+///
+/// Deliberately matches on the trailing segment alone: a derive from some
+/// other crate that happens to share the name is a false positive that only
+/// costs the optimisation, whereas a miss would emit a second impl of the same
+/// trait for the type.
+fn is_serde_derive(derive: &str, trait_name: &str) -> bool {
+    syn::parse_str::<syn::Path>(derive)
+        .ok()
+        .and_then(|path| path.segments.last().map(|last| last.ident == trait_name))
+        .unwrap_or(false)
 }
 
 fn strings_to_derives<'a>(

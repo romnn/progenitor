@@ -375,6 +375,95 @@ pub(crate) enum DefaultFunction {
 /// Note that if we have several serde attribute parameters, they could each
 /// appear in their own attribute. We choose to condense them for the sake of
 /// legibility.
+/// One `#[serde(...)]` option emitted for a property.
+///
+/// Modelled rather than pushed straight into a `TokenStream` so that
+/// [`Self::buffered_form_reproduces`] can be exhaustive: a buffered
+/// `Deserialize` reads fields by name and never sees these attributes, so an
+/// option it does not implement has to fall back to the derive instead of being
+/// silently dropped.
+pub(crate) enum PropSerdeOption {
+    Rename(String),
+    Flatten,
+    Default,
+    DefaultWith(String),
+    SkipSerializingIf(String),
+}
+
+impl PropSerdeOption {
+    fn to_tokens(&self) -> TokenStream {
+        match self {
+            Self::Rename(name) => quote! { rename = #name },
+            Self::Flatten => quote! { flatten },
+            Self::Default => quote! { default },
+            Self::DefaultWith(path) => quote! { default = #path },
+            Self::SkipSerializingIf(path) => quote! { skip_serializing_if = #path },
+        }
+    }
+
+    /// Whether the buffered `Deserialize` form honours this option.
+    ///
+    /// Deliberately an exhaustive match and not a `matches!` on the one known
+    /// exception: adding a variant should fail to compile until someone decides
+    /// whether the buffered builder reproduces it. Getting this wrong does not
+    /// produce a build error, it produces a client that quietly mis-parses
+    /// responses.
+    fn buffered_form_reproduces(&self) -> bool {
+        match self {
+            // The builder looks the field up under its wire name.
+            Self::Rename(_) => true,
+            // `de::defaulted` / `de::defaulted_with` cover both spellings.
+            Self::Default | Self::DefaultWith(_) => true,
+            // Serialization only; deserialization never consults it.
+            Self::SkipSerializingIf(_) => true,
+            // Consumes exactly the keys the struct does *not* name, which a
+            // by-name lookup cannot express.
+            Self::Flatten => false,
+        }
+    }
+
+    /// Whether a hand-written `Serialize` honours this option.
+    ///
+    /// Exhaustive for the same reason as [`Self::buffered_form_reproduces`]:
+    /// an unhandled option here changes what goes out on the wire without
+    /// failing the build.
+    fn serialized_form_reproduces(&self) -> bool {
+        match self {
+            // Emitted as the key handed to `serialize_field`.
+            Self::Rename(_) => true,
+            // Deserialization only; serializing never consults either.
+            Self::Default | Self::DefaultWith(_) => true,
+            // The emitted impl tests the predicate itself, both to skip the
+            // field and to size the struct.
+            Self::SkipSerializingIf(_) => true,
+            // Needs serde's `FlatMapSerializer`: the key set is not static, so
+            // `serialize_struct` cannot describe it.
+            Self::Flatten => false,
+        }
+    }
+
+    /// The `skip_serializing_if` predicate, if this is one.
+    fn skip_predicate(&self) -> Option<&str> {
+        match self {
+            Self::SkipSerializingIf(path) => Some(path),
+            Self::Rename(_) | Self::Flatten | Self::Default | Self::DefaultWith(_) => None,
+        }
+    }
+}
+
+/// What [`generate_serde_attr`] produced for one property.
+pub(crate) struct PropSerde {
+    /// The rendered `#[serde(...)]` attribute, empty when there are no options.
+    pub attr: TokenStream,
+    pub default_fn: DefaultFunction,
+    /// Whether every option emitted here survives the buffered form.
+    pub buffered_form_reproduces: bool,
+    /// Whether every option emitted here survives a hand-written `Serialize`.
+    pub serialized_form_reproduces: bool,
+    /// The `skip_serializing_if` predicate, for the hand-written `Serialize`.
+    pub skip_serializing_if: Option<String>,
+}
+
 pub(crate) fn generate_serde_attr(
     type_name: &str,
     prop_name: &str,
@@ -383,27 +472,31 @@ pub(crate) fn generate_serde_attr(
     prop_type: &TypeEntry,
     type_space: &TypeSpace,
     output: &mut OutputSpace,
-) -> (TokenStream, DefaultFunction) {
+) -> PropSerde {
     let mut serde_options = Vec::new();
     match naming {
-        StructPropertyRename::Rename(s) => serde_options.push(quote! { rename = #s }),
-        StructPropertyRename::Flatten => serde_options.push(quote! { flatten }),
+        StructPropertyRename::Rename(s) => serde_options.push(PropSerdeOption::Rename(s.clone())),
+        StructPropertyRename::Flatten => serde_options.push(PropSerdeOption::Flatten),
         StructPropertyRename::None => (),
     }
 
     let default_fn = match (state, &prop_type.details) {
         (StructPropertyState::Optional, TypeEntryDetails::Option(_)) => {
-            serde_options.push(quote! { default });
-            serde_options.push(quote! { skip_serializing_if = "::std::option::Option::is_none" });
+            serde_options.push(PropSerdeOption::Default);
+            serde_options.push(PropSerdeOption::SkipSerializingIf(
+                "::std::option::Option::is_none".to_string(),
+            ));
             DefaultFunction::Default
         }
         (StructPropertyState::Optional, TypeEntryDetails::Vec(_)) => {
-            serde_options.push(quote! { default });
-            serde_options.push(quote! { skip_serializing_if = "::std::vec::Vec::is_empty" });
+            serde_options.push(PropSerdeOption::Default);
+            serde_options.push(PropSerdeOption::SkipSerializingIf(
+                "::std::vec::Vec::is_empty".to_string(),
+            ));
             DefaultFunction::Default
         }
         (StructPropertyState::Optional, TypeEntryDetails::Map(key_id, value_id)) => {
-            serde_options.push(quote! { default });
+            serde_options.push(PropSerdeOption::Default);
 
             let map_to_use = &type_space.settings.map_type;
             let key_ty = type_space
@@ -418,26 +511,24 @@ pub(crate) fn generate_serde_attr(
             if key_ty.details == TypeEntryDetails::String
                 && value_ty.details == TypeEntryDetails::JsonValue
             {
-                serde_options.push(quote! {
-                    skip_serializing_if = "::serde_json::Map::is_empty"
-                });
+                serde_options.push(PropSerdeOption::SkipSerializingIf(
+                    "::serde_json::Map::is_empty".to_string(),
+                ));
             } else {
                 let is_empty = format!("{}::is_empty", map_to_use);
-                serde_options.push(quote! {
-                    skip_serializing_if = #is_empty
-                });
+                serde_options.push(PropSerdeOption::SkipSerializingIf(is_empty));
             }
             DefaultFunction::Default
         }
         (StructPropertyState::Optional, _) => {
-            serde_options.push(quote! { default });
+            serde_options.push(PropSerdeOption::Default);
             DefaultFunction::Default
         }
 
         (StructPropertyState::Default(WrappedValue(value)), _) => {
             let (fn_name, default_fn) =
                 prop_type.default_fn(value, type_space, type_name, prop_name);
-            serde_options.push(quote! { default = #fn_name });
+            serde_options.push(PropSerdeOption::DefaultWith(fn_name.clone()));
 
             if let Some((key, default_fn)) = default_fn {
                 output.add_default_fn(key, default_fn);
@@ -448,15 +539,32 @@ pub(crate) fn generate_serde_attr(
         (StructPropertyState::Required, _) => DefaultFunction::None,
     };
 
-    let serde = if serde_options.is_empty() {
+    let buffered_form_reproduces = serde_options
+        .iter()
+        .all(PropSerdeOption::buffered_form_reproduces);
+    let serialized_form_reproduces = serde_options
+        .iter()
+        .all(PropSerdeOption::serialized_form_reproduces);
+    let skip_serializing_if = serde_options
+        .iter()
+        .find_map(|option| option.skip_predicate().map(ToString::to_string));
+
+    let attr = if serde_options.is_empty() {
         quote! {}
     } else {
+        let rendered = serde_options.iter().map(PropSerdeOption::to_tokens);
         quote! {
-            #[serde( #(#serde_options),*)]
+            #[serde( #(#rendered),*)]
         }
     };
 
-    (serde, default_fn)
+    PropSerde {
+        attr,
+        default_fn,
+        buffered_form_reproduces,
+        serialized_form_reproduces,
+        skip_serializing_if,
+    }
 }
 
 /// See if this type is a type that we can omit with a serde directive; note

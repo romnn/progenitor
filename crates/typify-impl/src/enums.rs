@@ -11,7 +11,7 @@ use schemars::schema::{
 
 use crate::{
     output::OutputSpace,
-    structs::generate_serde_attr,
+    structs::{self, generate_serde_attr},
     type_entry::{
         EnumTagType, TypeEntry, TypeEntryDetails, TypeEntryEnum, TypeEntryStruct, Variant,
         VariantDetails,
@@ -1007,7 +1007,9 @@ pub(crate) fn output_variant(
                 let prop_doc = prop.description.as_ref().map(|s| quote! { #[doc = #s] });
 
                 let prop_type_entry = type_space.id_to_entry.get(&prop.type_id).unwrap();
-                let (prop_serde, _) = generate_serde_attr(
+                let structs::PropSerde {
+                    attr: prop_serde, ..
+                } = generate_serde_attr(
                     &format!("{}{}", type_name, variant.ident_name.as_ref().unwrap()),
                     &prop.name,
                     &prop.rename,

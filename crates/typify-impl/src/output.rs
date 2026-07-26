@@ -13,6 +13,7 @@ pub struct OutputSpace {
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OutputSpaceMod {
     Error,
+    De,
     Crate,
     Builder,
     Defaults,
@@ -74,6 +75,21 @@ impl OutputSpace {
             OutputSpaceMod::Error => quote! {
                 /// Error types.
                 pub mod error {
+                    #items
+                }
+            },
+            OutputSpaceMod::De => quote! {
+                /// Support for the generated `Deserialize` impls.
+                ///
+                /// Emitted only for [`DeserializeImpl::Buffered`](crate::DeserializeImpl::Buffered);
+                /// see that variant for what the generated impls do with it.
+                ///
+                /// Not public API. It is `pub(crate)` so that changing the
+                /// runtime is never a breaking change for the crate this was
+                /// generated into.
+                #[doc(hidden)]
+                #[allow(dead_code)]
+                pub(crate) mod de {
                     #items
                 }
             },
