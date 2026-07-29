@@ -115,3 +115,6 @@ typify-macro = { version = "0.6.2", path = "crates/typify-macro" }
 url = "2.5.8"
 unicode-ident = "1.0.24"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
+
+[workspace.metadata.cargo-fc.subcommands.udeps]
+maximal_features = true
