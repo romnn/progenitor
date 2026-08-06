@@ -29,9 +29,6 @@ unused_must_use = "deny"
 missing_docs = "warn"
 
 [workspace.lints.clippy]
-# Applied to the runtime, macro/tool, generator, and facade crates. The
-# vendored typify fork and example crates stay outside this policy to avoid
-# upstream divergence and noise in throwaway demonstration code.
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
 unwrap_used = "deny"
